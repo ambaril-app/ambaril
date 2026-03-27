@@ -1,0 +1,237 @@
+import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/neon-http";
+import { hash } from "@node-rs/argon2";
+import {
+  tenants,
+  users,
+  userTenants,
+  roles,
+  permissions,
+} from "./src/schema/global";
+import { creatorTiers } from "./src/schema/creators";
+
+// Default password for all seed users — MUST be changed after first login
+const DEFAULT_PASSWORD = "ambaril2026";
+
+// Argon2id config (same as auth.ts)
+async function hashPassword(password: string): Promise<string> {
+  return hash(password, {
+    memoryCost: 19456,
+    timeCost: 2,
+    outputLen: 32,
+    parallelism: 1,
+  });
+}
+
+// ─── Seed Data ──────────────────────────────────────────
+
+const CIENA_TENANT = {
+  name: "CIENA",
+  slug: "ciena",
+  plan: "starter" as const,
+  settings: {
+    currency: "BRL",
+    timezone: "America/Sao_Paulo",
+    locale: "pt-BR",
+    logo: null,
+  },
+};
+
+const TEAM = [
+  { name: "Marcus", email: "marcus@ciena.com.br", role: "admin" as const },
+  { name: "Caio", email: "caio@ciena.com.br", role: "pm" as const },
+  { name: "Tavares", email: "tavares@ciena.com.br", role: "operations" as const },
+  { name: "Pedro", email: "pedro@ciena.com.br", role: "finance" as const },
+  { name: "Yuri", email: "yuri@ciena.com.br", role: "creative" as const },
+  { name: "Sick", email: "sick@ciena.com.br", role: "creative" as const },
+  { name: "Slimgust", email: "slimgust@ciena.com.br", role: "support" as const },
+  { name: "Ana Clara", email: "ana@ciena.com.br", role: "operations" as const },
+  { name: "Guilherme", email: "guilherme@ciena.com.br", role: "commercial" as const },
+];
+
+const CREATOR_TIERS_DATA = [
+  { name: "Seed", slug: "seed", commissionRate: "8.00", minFollowers: 0, sortOrder: 0, benefits: { discount: 10 } },
+  { name: "Grow", slug: "grow", commissionRate: "10.00", minFollowers: 5000, sortOrder: 1, benefits: { discount: 15, earlyAccess: true } },
+  { name: "Bloom", slug: "bloom", commissionRate: "12.00", minFollowers: 20000, sortOrder: 2, benefits: { discount: 20, earlyAccess: true, exclusiveProducts: true } },
+  { name: "Core", slug: "core", commissionRate: "15.00", minFollowers: 50000, sortOrder: 3, benefits: { discount: 25, earlyAccess: true, exclusiveProducts: true, monthlyGifting: true } },
+];
+
+// Role definitions with display names
+const ROLE_DEFINITIONS = [
+  { name: "admin", displayName: "Administrador", description: "Full system access" },
+  { name: "pm", displayName: "Product Manager", description: "CRM, Creators, Marketing, Dashboard" },
+  { name: "creative", displayName: "Criativo", description: "DAM, Tasks, Marketing Intel (read-only)" },
+  { name: "operations", displayName: "Operacoes", description: "ERP, PCP, Exchanges, Inventory" },
+  { name: "support", displayName: "Suporte", description: "Inbox, Exchanges, CRM (read-only)" },
+  { name: "finance", displayName: "Financeiro", description: "ERP financial, DRE, Margins" },
+  { name: "commercial", displayName: "Comercial", description: "B2B Portal" },
+];
+
+// Permission matrix (resource:action format)
+const ROLE_PERMISSIONS: Record<string, string[]> = {
+  // admin uses wildcard at app layer — no DB rows needed
+  pm: [
+    "creators:profiles:read", "creators:profiles:write",
+    "creators:challenges:read", "creators:challenges:write",
+    "creators:campaigns:read", "creators:campaigns:write",
+    "creators:payouts:read", "creators:payouts:write",
+    "creators:analytics:read",
+    "crm:contacts:read", "crm:contacts:write",
+    "crm:segments:read", "crm:segments:write",
+    "crm:automations:read", "crm:automations:write",
+    "crm:campaigns:read", "crm:campaigns:write",
+    "checkout:orders:read",
+    "checkout:carts:read", "checkout:abandoned:read",
+    "checkout:ab_tests:read", "checkout:ab_tests:write",
+    "dashboard:overview:read", "dashboard:war_room:read",
+  ],
+  creative: [
+    "dashboard:overview:read",
+  ],
+  operations: [
+    "erp:products:read", "erp:products:write",
+    "erp:inventory:read", "erp:inventory:write",
+    "erp:nfe:read", "erp:nfe:write",
+    "erp:shipping:read", "erp:shipping:write",
+    "checkout:orders:read", "checkout:orders:write",
+    "dashboard:overview:read",
+  ],
+  support: [
+    "crm:contacts:read",
+    "whatsapp:conversations:read", "whatsapp:conversations:write",
+    "whatsapp:templates:read",
+  ],
+  finance: [
+    "erp:products:read",
+    "erp:finance:read", "erp:finance:write",
+    "dashboard:overview:read",
+  ],
+  commercial: [
+    "checkout:orders:read",
+  ],
+};
+
+// ─── Main Seed Function ─────────────────────────────────
+
+async function seed() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL is not set. Add it to .env");
+  }
+
+  const sql = neon(process.env.DATABASE_URL);
+  const db = drizzle(sql);
+
+  console.log("Seeding Ambaril database...\n");
+
+  // 1. Create CIENA tenant
+  console.log("1. Creating CIENA tenant...");
+  const [tenant] = await db
+    .insert(tenants)
+    .values(CIENA_TENANT)
+    .onConflictDoNothing()
+    .returning({ id: tenants.id });
+
+  if (!tenant) throw new Error("Failed to create tenant (may already exist)");
+  console.log(`   Tenant created: ${tenant.id}`);
+
+  // 2. Create roles
+  console.log("2. Creating roles...");
+  const insertedRoles: Record<string, string> = {};
+  for (const roleDef of ROLE_DEFINITIONS) {
+    const [role] = await db
+      .insert(roles)
+      .values(roleDef)
+      .onConflictDoNothing()
+      .returning({ id: roles.id, name: roles.name });
+    if (role) {
+      insertedRoles[role.name] = role.id;
+      console.log(`   Role: ${roleDef.displayName} (${roleDef.name})`);
+    }
+  }
+
+  // 3. Create permissions
+  console.log("3. Creating permissions...");
+  let permCount = 0;
+  for (const [roleName, perms] of Object.entries(ROLE_PERMISSIONS)) {
+    const roleId = insertedRoles[roleName];
+    if (!roleId) continue;
+
+    for (const perm of perms) {
+      const parts = perm.split(":");
+      // resource = all parts except last, action = last part
+      const resource = parts.slice(0, -1).join(":");
+      const action = parts[parts.length - 1]!;
+      await db
+        .insert(permissions)
+        .values({ roleId, resource, action })
+        .onConflictDoNothing();
+      permCount++;
+    }
+  }
+  console.log(`   ${permCount} permissions created`);
+
+  // 4. Create users
+  console.log("4. Creating users...");
+  const passwordHash = await hashPassword(DEFAULT_PASSWORD);
+  const insertedUsers: { id: string; role: string }[] = [];
+
+  for (const member of TEAM) {
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: member.email,
+        name: member.name,
+        passwordHash,
+        role: member.role,
+      })
+      .onConflictDoNothing()
+      .returning({ id: users.id });
+
+    if (user) {
+      insertedUsers.push({ id: user.id, role: member.role });
+      console.log(`   User: ${member.name} <${member.email}> [${member.role}]`);
+    }
+  }
+
+  // 5. Create user_tenants (link all users to CIENA)
+  console.log("5. Linking users to CIENA tenant...");
+  for (const user of insertedUsers) {
+    await db
+      .insert(userTenants)
+      .values({
+        userId: user.id,
+        tenantId: tenant.id,
+        role: user.role as typeof userTenants.$inferInsert.role,
+        isDefault: true,
+      })
+      .onConflictDoNothing();
+  }
+  console.log(`   ${insertedUsers.length} user-tenant links created`);
+
+  // 6. Create creator tiers for CIENA
+  console.log("6. Creating creator tiers...");
+  for (const tier of CREATOR_TIERS_DATA) {
+    await db
+      .insert(creatorTiers)
+      .values({
+        tenantId: tenant.id,
+        name: tier.name,
+        slug: tier.slug,
+        commissionRate: tier.commissionRate,
+        minFollowers: tier.minFollowers,
+        benefits: tier.benefits,
+        sortOrder: tier.sortOrder,
+      })
+      .onConflictDoNothing();
+    console.log(`   Tier: ${tier.name} (${tier.commissionRate}%)`);
+  }
+
+  console.log("\nSeed completed successfully!");
+  console.log(`\nDefault password for all users: ${DEFAULT_PASSWORD}`);
+  console.log("IMPORTANT: Change all passwords after first login.\n");
+}
+
+seed().catch((err) => {
+  console.error("Seed failed:", err);
+  process.exit(1);
+});

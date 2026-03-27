@@ -1,0 +1,1322 @@
+# LUMN — API Design Patterns
+
+> **Version:** 1.0
+> **Date:** March 2026
+> **Status:** Active
+> **References:** [STACK.md](./STACK.md), [GLOSSARY.md](../dev/GLOSSARY.md)
+
+---
+
+## 1. API Philosophy
+
+LUMN follows a **REST-first** approach. All responses are JSON. There is no GraphQL layer — it is overkill for a team of this size (2 devs) and adds unnecessary complexity to the toolchain. REST with smart field selection and predefined includes covers every use case.
+
+### Communication Channels
+
+| Channel | Mechanism | Why |
+|---------|-----------|-----|
+| Admin UI mutations (forms, tables, inline edits) | **Server Actions** | Collocated with components, automatic revalidation, CSRF protection built-in, zero client-side fetch code |
+| Admin UI data reads | **React Server Components** | Zero client JS for data, streaming, caching via Next.js |
+| Admin UI client-side data (polling, optimistic) | **TanStack Query + API Routes** | Cache, refetch, devtools |
+| External webhooks (Mercado Pago, Melhor Envio) | **API Routes** | Need raw request access, signature verification, independent of UI |
+| Public endpoints (Checkout, "Meu Pedido") | **API Routes** | Consumed by public-facing pages, potentially by future mobile app |
+| Mobile access (Ana Clara) | **API Routes** | Responsive web now; native app later can hit same endpoints |
+| Discord bot (ClawdBot / Pulse) | **API Routes** | Standalone Node.js process calling the platform API |
+| SSE streams (War Room, notifications) | **API Routes** | Long-lived HTTP connections, not compatible with Server Actions |
+
+### Non-Negotiables
+
+- Every mutation is validated with a **Zod schema** on the server (same schema used on the client for inline validation).
+- Every response follows the **standard envelope** (section 3).
+- Every endpoint logs a structured JSON entry with `requestId`, `userId`, `duration`, `status`.
+- No endpoint returns raw database rows. All responses pass through a **serializer/mapper** layer.
+
+---
+
+## 2. URL Conventions
+
+### Base Pattern
+
+```
+/api/v1/{module}/{resource}
+```
+
+### Rules
+
+| Rule | Example | Notes |
+|------|---------|-------|
+| Plural nouns for collections | `/api/v1/erp/orders` | Never `/api/v1/erp/order` |
+| Singular item by ID | `/api/v1/erp/orders/{id}` | UUID format |
+| Nested sub-resources | `/api/v1/pcp/production-orders/{id}/stages` | Max 1 level of nesting |
+| Non-CRUD actions | `POST /api/v1/erp/orders/{id}/actions/emit-nfe` | Always under `/actions/` |
+| Public endpoints (no auth) | `/api/v1/public/checkout/...` | Separate namespace, no Bearer token |
+| Webhook receivers | `/api/v1/webhooks/{provider}` | Not module-scoped |
+| SSE streams | `/api/v1/sse/{stream-name}` | Long-lived GET connections |
+
+### Module Prefixes
+
+All 15 modules are addressable via these route prefixes:
+
+| Module | Prefix | Description |
+|--------|--------|-------------|
+| Checkout | `checkout` | Cart, payment, public storefront |
+| CRM | `crm` | Contacts, segments, RFM, automations |
+| ERP | `erp` | Orders, products, SKUs, NF-e, shipping, financials |
+| PCP | `pcp` | Production orders, stages, suppliers, materials, collections, drops |
+| WhatsApp Engine | `whatsapp` | Templates, campaigns, conversations, broadcasts |
+| Trocas & Devolu. | `trocas` | Exchanges, returns, store credits |
+| Inbox | `inbox` | Unified inbox (WhatsApp, Instagram, email threads) |
+| B2B | `b2b` | Retailers, wholesale orders, catalogs |
+| Creators | `creators` | Creator profiles, tiers, commissions, payouts, challenges |
+| Marketing Intel | `marketing` | Competitor monitoring, UGC detection, campaign analytics |
+| Tarefas | `tarefas` | Tasks, boards, assignments |
+| ClawdBot (Pulse) | `clawdbot` | Report config, bot settings, prompt management |
+| Dashboard (Beacon) | `dashboard` | Metrics, panels, War Room sessions |
+| DAM | `dam` | Assets, folders, tags, thumbnails |
+| Platform | `platform` | Users, roles, permissions, audit log, settings |
+
+### URL Naming Conventions
+
+- **kebab-case** for multi-word resources: `production-orders`, `store-credits`, `shipping-labels`
+- **camelCase** for query parameters: `?createdAfter=`, `?contactId=`
+- **snake_case** for JSON body fields: `{ "billing_cpf": "...", "shipping_address": { ... } }`
+- IDs are **UUIDs** (v7 for time-sortable where order matters, v4 elsewhere)
+- Dates in **ISO 8601**: `2026-03-17T14:30:00Z`
+- Money in **integer cents** (BRL): `{ "total_cents": 15990 }` = R$ 159,90
+
+---
+
+## 3. Request/Response Standards
+
+### Response Envelope
+
+Every API response follows this structure. No exceptions.
+
+**Success (single resource):**
+
+```json
+{
+  "data": {
+    "id": "01961a2b-3c4d-7e8f-9a0b-1c2d3e4f5a6b",
+    "order_number": "CIENA-20260317-0042",
+    "status": "paid",
+    "total_cents": 25990,
+    "contact_id": "01961a2b-4d5e-7f8a-9b0c-2d3e4f5a6b7c",
+    "created_at": "2026-03-17T14:30:00Z",
+    "updated_at": "2026-03-17T14:35:00Z"
+  },
+  "meta": null,
+  "errors": null
+}
+```
+
+**Success (collection):**
+
+```json
+{
+  "data": [
+    { "id": "...", "order_number": "CIENA-20260317-0042", "status": "paid" },
+    { "id": "...", "order_number": "CIENA-20260317-0041", "status": "shipped" }
+  ],
+  "meta": {
+    "cursor": "eyJpZCI6IjAxOTYxYTJiLTNjNGQifQ==",
+    "hasMore": true,
+    "total": 152
+  },
+  "errors": null
+}
+```
+
+**Success (empty — 204):**
+
+No body. Used for `DELETE` operations and some actions.
+
+### Error Response
+
+```json
+{
+  "data": null,
+  "meta": null,
+  "errors": [
+    {
+      "code": "VALIDATION_ERROR",
+      "message": "CPF invalido",
+      "field": "billing_cpf",
+      "detail": "CPF must be 11 digits after removing formatting"
+    }
+  ]
+}
+```
+
+Multiple errors can be returned in a single response (for form validation):
+
+```json
+{
+  "data": null,
+  "meta": null,
+  "errors": [
+    {
+      "code": "VALIDATION_ERROR",
+      "message": "CPF invalido",
+      "field": "billing_cpf",
+      "detail": "CPF must be 11 digits"
+    },
+    {
+      "code": "VALIDATION_ERROR",
+      "message": "CEP nao encontrado",
+      "field": "shipping_cep",
+      "detail": "CEP must be a valid 8-digit Brazilian postal code"
+    }
+  ]
+}
+```
+
+### Pagination --- Cursor-Based
+
+All list endpoints use **cursor-based pagination**. No offset pagination.
+
+**Why cursor over offset:** LUMN handles real-time data. Orders, messages, and notifications arrive continuously. Offset pagination breaks when rows are inserted between page fetches (rows shift, causing duplicates or missing items). Cursor pagination is stable regardless of concurrent inserts.
+
+**Request:**
+
+```
+GET /api/v1/erp/orders?cursor=eyJpZCI6IjAxOTYxYTJiLTNjNGQifQ==&limit=25
+```
+
+| Parameter | Type | Default | Max | Description |
+|-----------|------|---------|-----|-------------|
+| `cursor` | string | `null` (first page) | — | Opaque cursor from previous response |
+| `limit` | integer | `25` | `100` | Number of items per page |
+
+**How cursors work internally:**
+
+- Cursor is a base64-encoded JSON object: `{ "id": "01961a2b-3c4d" }` or `{ "created_at": "2026-03-17T14:30:00Z", "id": "01961a2b-3c4d" }` (for time-sorted lists).
+- The client must not decode or construct cursors. They are opaque.
+- First page request: omit `cursor`.
+- Next page: pass `meta.cursor` from the previous response.
+- When `meta.hasMore` is `false`, there are no more pages.
+- `meta.total` is included when feasible (for displaying "Showing 25 of 152"). Omitted for expensive counts.
+
+### Filtering
+
+Query parameters for filtering. Each endpoint defines its allowed filters.
+
+```
+GET /api/v1/erp/orders?status=pending&createdAfter=2026-01-01&contactId=uuid
+```
+
+| Pattern | Example | Behavior |
+|---------|---------|----------|
+| Single value | `?status=pending` | Exact match |
+| Multiple values | `?status=pending,paid` | OR match (comma-separated) |
+| Date range (after) | `?createdAfter=2026-01-01` | `>= 2026-01-01T00:00:00Z` |
+| Date range (before) | `?createdBefore=2026-02-01` | `< 2026-02-01T00:00:00Z` |
+| Search (text) | `?search=camiseta` | Full-text search (tsvector) |
+| Foreign key | `?contactId=uuid` | Exact match on FK |
+| Boolean | `?hasNfe=true` | Boolean filter |
+| Numeric range | `?totalMin=10000&totalMax=50000` | Range in cents |
+
+Invalid filter params are **ignored** (not errored) to allow forward compatibility.
+
+### Sorting
+
+```
+GET /api/v1/erp/orders?sort=-createdAt
+```
+
+| Pattern | Example | Behavior |
+|---------|---------|----------|
+| Ascending | `?sort=name` | A-Z / oldest first |
+| Descending | `?sort=-createdAt` | Newest first (prefix `-`) |
+| Multiple | `?sort=-createdAt,name` | Primary: newest first, secondary: A-Z |
+
+**Default sort for all list endpoints:** `-createdAt` (newest first).
+
+Each endpoint defines its sortable fields. Attempting to sort by an unsupported field returns a `400` with error code `VALIDATION_ERROR`.
+
+### Field Selection
+
+```
+GET /api/v1/erp/orders?fields=id,orderNumber,status,totalCents
+```
+
+- Reduces payload size for list views and mobile.
+- `id` is always included even if not requested.
+- If `fields` is omitted, all default fields are returned.
+- Nested fields are not supported in field selection (use `include` for relations).
+
+### Include Relations
+
+```
+GET /api/v1/erp/orders?include=items,contact
+```
+
+- Only **predefined** includes are allowed per endpoint. No arbitrary deep traversal.
+- Each endpoint documents its available includes.
+- Included data is nested inside the resource:
+
+```json
+{
+  "data": {
+    "id": "...",
+    "order_number": "CIENA-20260317-0042",
+    "contact": {
+      "id": "...",
+      "name": "Joao Silva",
+      "email": "joao@email.com"
+    },
+    "items": [
+      { "id": "...", "sku_code": "SKU-0412-P-PRETA", "quantity": 2, "unit_price_cents": 12995 }
+    ]
+  }
+}
+```
+
+- Invalid include names return `400` with `VALIDATION_ERROR`.
+
+---
+
+## 4. HTTP Status Codes
+
+| Code | Name | When to Use | Example |
+|------|------|-------------|---------|
+| `200` | OK | Successful GET, PUT, PATCH. Successful action that returns data. | `GET /orders` returns list |
+| `201` | Created | Successful POST that creates a resource. Response body contains the created resource. | `POST /orders` creates and returns order |
+| `204` | No Content | Successful DELETE. Successful action with no response body. | `DELETE /orders/{id}` |
+| `400` | Bad Request | Malformed request syntax, invalid query parameters, unparseable JSON body. | Missing required field, invalid sort column |
+| `401` | Unauthorized | No authentication token provided, or token is expired/invalid. | Missing `Authorization` header |
+| `403` | Forbidden | Authenticated but lacks permission for this action. | User with `erp:orders:read` tries to `DELETE` |
+| `404` | Not Found | Resource does not exist, or the authenticated user does not have access to it. | `GET /orders/{non-existent-id}` |
+| `409` | Conflict | Action conflicts with current resource state. Business logic prevents the operation. | Trying to cancel an already-shipped order |
+| `422` | Unprocessable Entity | Request is syntactically valid but fails business validation (Zod schema, domain rules). | Invalid CPF, negative quantity, duplicate coupon code |
+| `429` | Too Many Requests | Rate limit exceeded. Includes `Retry-After` header. | More than 100 requests/minute |
+| `500` | Internal Server Error | Unexpected server error. Logged to Sentry. Generic message returned to client. | Unhandled exception, database connection failure |
+| `502` | Bad Gateway | Upstream service (Mercado Pago, Focus NF-e, Melhor Envio) returned an error. | NF-e emission API returned 500 |
+| `503` | Service Unavailable | System is temporarily down (maintenance, overload). Includes `Retry-After` header. | Planned deployment window |
+
+### 400 vs 422 Distinction
+
+- **400**: The request cannot be parsed. Structural problems. (e.g., invalid JSON, unknown query param type)
+- **422**: The request is structurally valid but the data fails validation. (e.g., CPF is wrong length, email format invalid, order total is negative)
+
+---
+
+## 5. Authentication
+
+### Mechanisms
+
+| Context | Method | Details |
+|---------|--------|---------|
+| API Routes (internal admin) | **Bearer Token** | `Authorization: Bearer <jwt>` header. JWT issued by auth system on login. |
+| Server Actions (admin UI) | **Session Cookie** | Next.js built-in session cookie. HttpOnly, Secure, SameSite=Lax. No manual token management. |
+| Public endpoints (Checkout) | **None or Session** | Cart uses session cookie. Anonymous until checkout provides email/CPF. |
+| External webhooks (incoming) | **Signature Verification** | Each provider has its own HMAC/signature scheme. See section 7. |
+| ClawdBot (Discord bot) | **API Key** | `X-API-Key` header. Server-to-server. Key stored in env vars, rotated quarterly. |
+| B2B Portal | **Bearer Token** | Same JWT system, scoped to `b2b:*` permissions. |
+| Creator Portal | **Bearer Token** | Same JWT system, scoped to `creators:*` permissions. |
+
+### JWT Structure
+
+```json
+{
+  "sub": "01961a2b-3c4d-7e8f-9a0b-1c2d3e4f5a6b",
+  "email": "marcus@ciena.com.br",
+  "role": "admin",
+  "permissions": ["erp:orders:read", "erp:orders:write", "crm:contacts:read"],
+  "iat": 1710684600,
+  "exp": 1710770400
+}
+```
+
+- **Access token:** 24-hour expiry.
+- **Refresh token:** 30-day expiry, stored HttpOnly cookie, rotated on use.
+- Tokens are verified on every request by middleware (not per-handler).
+
+### API Key for Webhooks
+
+External services authenticate via provider-specific mechanisms:
+
+| Provider | Verification Method |
+|----------|-------------------|
+| Mercado Pago | HMAC-SHA256 signature in `x-signature` header, verified with webhook secret |
+| Melhor Envio | HMAC-SHA256 signature in `x-melhor-envio-signature` header |
+| Instagram (Meta) | SHA1 signature in `X-Hub-Signature` header, challenge verification for subscription |
+| Discord | Ed25519 signature verification per Discord documentation |
+
+---
+
+## 6. Authorization
+
+### Middleware Pattern
+
+Authorization is checked in Next.js middleware **before** the handler executes. The flow:
+
+```
+Request
+  -> Auth middleware (verify JWT / session)
+  -> Permission middleware (check role + permission)
+  -> Rate limit middleware
+  -> Handler
+```
+
+### Permission Format
+
+```
+{module}:{resource}:{action}
+```
+
+| Component | Values | Example |
+|-----------|--------|---------|
+| `module` | `erp`, `crm`, `pcp`, `checkout`, `whatsapp`, `trocas`, `inbox`, `b2b`, `creators`, `marketing`, `tarefas`, `clawdbot`, `dashboard`, `dam`, `platform` | `erp` |
+| `resource` | Resource name (plural) | `orders` |
+| `action` | `read`, `write`, `delete`, `manage` | `write` |
+
+**`manage`** grants `read` + `write` + `delete` for that resource. It is shorthand.
+
+### Example Permissions
+
+| Permission | Grants |
+|-----------|--------|
+| `erp:orders:read` | View orders, order list, order detail |
+| `erp:orders:write` | Create, update orders. Emit NF-e. Generate shipping label. |
+| `erp:orders:delete` | Cancel orders (soft delete) |
+| `crm:contacts:manage` | Full CRUD on contacts |
+| `pcp:production-orders:write` | Create and update production orders, advance stages |
+| `dashboard:war-room:read` | View War Room (SSE stream) |
+| `platform:users:manage` | Create, update, deactivate users and assign roles |
+
+### Authorization Responses
+
+- **401 Unauthorized**: No valid token. Client should redirect to login.
+- **403 Forbidden**: Valid token but insufficient permissions. Response includes the missing permission:
+
+```json
+{
+  "data": null,
+  "meta": null,
+  "errors": [
+    {
+      "code": "FORBIDDEN",
+      "message": "Sem permissao para esta acao",
+      "field": null,
+      "detail": "Required permission: erp:orders:write"
+    }
+  ]
+}
+```
+
+> For the full RBAC matrix (which roles have which permissions), see **AUTH.md**.
+
+---
+
+## 7. Webhook Patterns
+
+### Incoming Webhooks (from external services)
+
+All incoming webhooks follow the same processing pattern:
+
+```
+POST /api/v1/webhooks/{provider}
+  -> Verify signature
+  -> Parse payload
+  -> Check idempotency (webhook ID)
+  -> Acknowledge immediately (200 OK)
+  -> Enqueue background job for processing
+```
+
+#### Endpoints
+
+| Endpoint | Provider | Purpose |
+|----------|----------|---------|
+| `POST /api/v1/webhooks/mercado-pago` | Mercado Pago | Payment status notifications (approved, pending, rejected, refunded, charged_back) |
+| `POST /api/v1/webhooks/melhor-envio` | Melhor Envio | Shipping status updates (posted, in_transit, delivered, returned) |
+| `POST /api/v1/webhooks/instagram` | Meta/Instagram | Subscription verification (GET challenge) and updates (mentions, comments, story_mentions) |
+
+#### Signature Verification
+
+Every incoming webhook is verified before processing. Unverified requests return `401`.
+
+```typescript
+// Example: Mercado Pago signature verification
+function verifyMercadoPagoSignature(req: Request, secret: string): boolean {
+  const xSignature = req.headers.get('x-signature');
+  const xRequestId = req.headers.get('x-request-id');
+  const dataId = new URL(req.url).searchParams.get('data.id');
+
+  // Build the manifest string
+  const manifest = `id:${dataId};request-id:${xRequestId};ts:${ts};`;
+
+  // HMAC-SHA256 with the webhook secret
+  const hmac = crypto.createHmac('sha256', secret);
+  hmac.update(manifest);
+  const computed = hmac.digest('hex');
+
+  return computed === extractedHash;
+}
+```
+
+#### Idempotency
+
+Webhooks can be delivered multiple times. Every webhook handler:
+
+1. Extracts the provider's unique event ID from the payload.
+2. Checks `webhook_events` table for that ID.
+3. If found, returns `200` immediately (no reprocessing).
+4. If not found, inserts the event record and enqueues the job.
+
+```sql
+CREATE TABLE platform.webhook_events (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider        TEXT NOT NULL,          -- 'mercado_pago', 'melhor_envio', 'instagram'
+  external_id     TEXT NOT NULL,          -- Provider's event ID
+  event_type      TEXT NOT NULL,          -- 'payment.updated', 'shipment.tracking'
+  payload         JSONB NOT NULL,         -- Raw payload stored for debugging
+  status          TEXT NOT NULL DEFAULT 'received', -- 'received', 'processing', 'processed', 'failed'
+  processed_at    TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE(provider, external_id)
+);
+```
+
+#### Async Processing
+
+Webhooks are acknowledged with `200` immediately. Heavy processing happens in BullMQ jobs:
+
+```typescript
+// Webhook handler (fast - <100ms)
+export async function POST(req: Request) {
+  const verified = verifySignature(req);
+  if (!verified) return Response.json({ error: 'Invalid signature' }, { status: 401 });
+
+  const payload = await req.json();
+  const eventId = payload.id;
+
+  const existing = await db.query.webhookEvents.findFirst({
+    where: eq(webhookEvents.externalId, eventId),
+  });
+  if (existing) return Response.json({ status: 'already_processed' }, { status: 200 });
+
+  await db.insert(webhookEvents).values({
+    provider: 'mercado_pago',
+    externalId: eventId,
+    eventType: payload.type,
+    payload,
+  });
+
+  await paymentWebhookQueue.add('process-payment', { eventId });
+
+  return Response.json({ status: 'received' }, { status: 200 });
+}
+```
+
+### Outgoing Events (to ClawdBot / Flare)
+
+LUMN uses an internal event bus for cross-module communication. No outgoing HTTP webhooks (simplicity — everything is in the same monorepo).
+
+#### Event Bus Pattern
+
+```typescript
+// Emitting an event
+eventBus.emit('order.paid', {
+  orderId: '01961a2b-3c4d',
+  contactId: '01961a2b-4d5e',
+  totalCents: 25990,
+  paymentMethod: 'pix',
+});
+
+// Subscribers
+eventBus.on('order.paid', async (data) => {
+  await flare.notify('order_confirmation', data);       // Flare: WhatsApp + email
+  await warRoom.broadcastSalesUpdate(data);              // War Room: SSE push
+  await crm.recordPurchase(data);                        // CRM: update RFM data
+  await creators.attributeSale(data);                    // Creators: commission tracking
+});
+```
+
+#### Standard Events
+
+| Event | Emitter | Subscribers |
+|-------|---------|-------------|
+| `order.created` | Checkout | ERP, CRM, Dashboard |
+| `order.paid` | Webhook (Mercado Pago) | ERP (NF-e queue), CRM, Dashboard (War Room), Creators, Flare |
+| `order.shipped` | ERP | CRM, Flare (tracking notification), Dashboard |
+| `order.delivered` | Webhook (Melhor Envio) | CRM, Flare (review request), Trocas (enable exchange window) |
+| `order.cancelled` | ERP | CRM, Dashboard, Creators (reverse commission) |
+| `exchange.requested` | Trocas | ERP, Flare, CRM |
+| `exchange.completed` | Trocas | ERP (stock update), CRM |
+| `production.stage_advanced` | PCP | Dashboard, Flare (if delayed) |
+| `production.completed` | PCP | ERP (stock entry), Dashboard |
+| `contact.created` | CRM | WhatsApp (welcome automation) |
+| `cart.abandoned` | Checkout | CRM (cart recovery queue) |
+| `creator.sale_attributed` | Creators | Flare (creator notification) |
+| `creator.tier_changed` | Creators | Flare, CRM |
+| `whatsapp.message_received` | WhatsApp | Inbox, ClawdBot (if #geral-ia) |
+| `campaign.sent` | WhatsApp | Marketing (analytics), Dashboard |
+
+---
+
+## 8. Real-time Patterns
+
+### Server-Sent Events (SSE)
+
+LUMN uses SSE for all real-time data. SSE is unidirectional (server to client), which is sufficient — the War Room and notification feeds are read-only streams.
+
+#### Endpoints
+
+| Endpoint | Purpose | Auth |
+|----------|---------|------|
+| `GET /api/v1/sse/notifications` | User notification stream (Flare) | Bearer Token |
+| `GET /api/v1/sse/war-room/{sessionId}` | Drop War Room live data | Bearer Token + `dashboard:war-room:read` |
+
+#### Implementation Pattern
+
+```typescript
+// app/api/v1/sse/war-room/[sessionId]/route.ts
+export async function GET(req: Request, { params }: { params: { sessionId: string } }) {
+  const user = await authenticate(req);
+  if (!user) return new Response('Unauthorized', { status: 401 });
+
+  authorize(user, 'dashboard:war-room:read');
+
+  const stream = new ReadableStream({
+    start(controller) {
+      const encoder = new TextEncoder();
+
+      const sendEvent = (event: string, data: object) => {
+        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      };
+
+      // Subscribe to Redis pub/sub for this War Room session
+      const subscriber = redisSubscribe(`war-room:${params.sessionId}`, (message) => {
+        sendEvent(message.event, message.data);
+      });
+
+      // Heartbeat every 30s to keep connection alive
+      const heartbeat = setInterval(() => {
+        controller.enqueue(encoder.encode(': heartbeat\n\n'));
+      }, 30_000);
+
+      // Cleanup on disconnect
+      req.signal.addEventListener('abort', () => {
+        clearInterval(heartbeat);
+        subscriber.unsubscribe();
+      });
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
+}
+```
+
+#### War Room Event Types
+
+```
+event: sales_update
+data: {"sales_per_minute": 12, "total_revenue_cents": 4520000, "orders_count": 174, "timestamp": "2026-03-17T19:05:00Z"}
+
+event: inventory_update
+data: {"sku_id": "01961a2b-3c4d", "sku_code": "SKU-0412-P-PRETA", "quantity_remaining": 5, "product_name": "Camiseta Preta Basic", "timestamp": "2026-03-17T19:05:01Z"}
+
+event: conversion_update
+data: {"visitors": 2450, "carts_created": 890, "checkouts_completed": 174, "conversion_rate": 7.1, "timestamp": "2026-03-17T19:05:00Z"}
+
+event: top_products
+data: {"products": [{"sku_code": "SKU-0412-P-PRETA", "name": "Camiseta Preta Basic P", "units_sold": 42}, {"sku_code": "SKU-0618-M-BRANCA", "name": "Hoodie Branco M", "units_sold": 38}], "timestamp": "2026-03-17T19:05:00Z"}
+
+event: alert
+data: {"type": "low_stock", "sku_code": "SKU-0412-P-PRETA", "quantity_remaining": 3, "message": "Estoque critico: Camiseta Preta Basic P", "timestamp": "2026-03-17T19:05:02Z"}
+```
+
+#### Notification Stream Events
+
+```
+event: notification
+data: {"id": "...", "type": "order_paid", "title": "Novo pedido pago", "body": "Pedido CIENA-20260317-0042 - R$ 259,90", "module": "erp", "link": "/pedidos/01961a2b-3c4d", "timestamp": "2026-03-17T19:05:00Z"}
+
+event: notification
+data: {"id": "...", "type": "exchange_requested", "title": "Troca solicitada", "body": "Cliente Joao Silva quer trocar P por M", "module": "trocas", "link": "/trocas/01961a2b-5e6f", "timestamp": "2026-03-17T19:06:00Z"}
+```
+
+#### Client Reconnection
+
+- Client uses `EventSource` API with automatic reconnection.
+- Server sends `id:` field with each event. On reconnect, client sends `Last-Event-ID` header.
+- Server replays missed events from Redis (events cached for 5 minutes).
+
+```typescript
+// Client-side
+const es = new EventSource('/api/v1/sse/war-room/session-123', {
+  headers: { 'Authorization': `Bearer ${token}` },
+});
+
+es.addEventListener('sales_update', (event) => {
+  const data = JSON.parse(event.data);
+  updateSalesMetrics(data);
+});
+
+es.addEventListener('inventory_update', (event) => {
+  const data = JSON.parse(event.data);
+  updateInventoryTable(data);
+});
+
+es.onerror = () => {
+  // EventSource auto-reconnects. Last-Event-ID is sent automatically.
+  console.log('SSE disconnected, reconnecting...');
+};
+```
+
+---
+
+## 9. Rate Limiting
+
+Rate limiting is enforced by middleware using Redis counters (sliding window algorithm).
+
+### Default Limits
+
+| Scope | Limit | Window | Notes |
+|-------|-------|--------|-------|
+| Per user (authenticated) | 100 requests | 1 minute | Applies to all standard endpoints |
+| Search endpoints | 30 requests | 1 minute | `/search`, `?search=` param |
+| Public checkout (per IP) | 60 requests | 1 minute | Prevents cart/checkout abuse |
+| Webhook endpoints | Unlimited | — | External services must not be throttled |
+| SSE connections | 5 concurrent | — | Per user. Prevents connection hoarding. |
+| File upload (DAM) | 20 requests | 1 minute | Prevents storage abuse |
+
+### Response Headers
+
+Every response includes rate limit headers:
+
+```
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 87
+X-RateLimit-Reset: 1710684660
+```
+
+| Header | Description |
+|--------|-------------|
+| `X-RateLimit-Limit` | Maximum requests allowed in the window |
+| `X-RateLimit-Remaining` | Requests remaining in current window |
+| `X-RateLimit-Reset` | Unix timestamp when the window resets |
+
+### 429 Response
+
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 23
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1710684660
+Content-Type: application/json
+
+{
+  "data": null,
+  "meta": null,
+  "errors": [
+    {
+      "code": "RATE_LIMITED",
+      "message": "Limite de requisicoes excedido",
+      "field": null,
+      "detail": "Rate limit exceeded. Retry after 23 seconds."
+    }
+  ]
+}
+```
+
+---
+
+## 10. API Versioning
+
+### Strategy
+
+- **URL prefix versioning:** `/api/v1/`, `/api/v2/`, etc.
+- Current version: **v1**.
+- All clients must include the version in the URL.
+
+### What Requires a New Version
+
+| Change Type | Version Bump? | Example |
+|-------------|--------------|---------|
+| New endpoint | No | `POST /api/v1/crm/segments` (additive) |
+| New optional field in response | No | Adding `contact.instagram_handle` to response |
+| New optional query parameter | No | Adding `?hasPhone=true` filter |
+| New optional field in request body | No | Adding optional `notes` field to order creation |
+| Removing a field from response | **Yes (v2)** | Removing `contact.legacy_id` |
+| Renaming a field | **Yes (v2)** | `total` -> `total_cents` |
+| Changing field type | **Yes (v2)** | `total: string` -> `total: number` |
+| Changing URL structure | **Yes (v2)** | `/orders` -> `/sales-orders` |
+| Changing error codes | **Yes (v2)** | Renaming `INVALID_CPF` -> `CPF_INVALID` |
+| Changing authentication mechanism | **Yes (v2)** | Moving from JWT to OAuth2 |
+
+### Deprecation Policy
+
+- Deprecated versions are announced with `Sunset` header: `Sunset: Sat, 17 Sep 2026 00:00:00 GMT`
+- Deprecated endpoints return `Deprecation: true` header.
+- **6-month sunset period** from deprecation announcement to removal.
+- All consumers are notified via Discord (#dev channel) when a deprecation is announced.
+
+---
+
+## 11. Standard Error Codes
+
+### System Error Codes
+
+| Code | HTTP Status | Description | Example |
+|------|-------------|-------------|---------|
+| `VALIDATION_ERROR` | 422 | Request data fails schema or business validation | Invalid CPF, missing required field, email format wrong |
+| `NOT_FOUND` | 404 | Resource does not exist or is not accessible | Order ID not in database |
+| `UNAUTHORIZED` | 401 | Missing or invalid authentication | Expired JWT, missing header |
+| `FORBIDDEN` | 403 | Authenticated but lacks permission | User without `erp:orders:write` trying to create order |
+| `CONFLICT` | 409 | Action conflicts with current state | Cancelling an already-shipped order |
+| `RATE_LIMITED` | 429 | Rate limit exceeded | Too many requests per minute |
+| `BAD_REQUEST` | 400 | Malformed request syntax | Invalid JSON, unknown content type |
+| `INTERNAL_ERROR` | 500 | Unexpected server error | Unhandled exception (logged to Sentry) |
+| `UPSTREAM_ERROR` | 502 | External service returned error | Mercado Pago API down |
+| `SERVICE_UNAVAILABLE` | 503 | System temporarily unavailable | Maintenance window |
+
+### Business Error Codes
+
+| Code | Module | HTTP Status | Description |
+|------|--------|-------------|-------------|
+| `INSUFFICIENT_STOCK` | ERP | 409 | SKU does not have enough stock for the requested quantity |
+| `INVALID_CPF` | Checkout, CRM | 422 | CPF fails validation (checksum or format) |
+| `INVALID_CNPJ` | B2B | 422 | CNPJ fails validation |
+| `INVALID_CEP` | Checkout | 422 | CEP not found in ViaCEP or invalid format |
+| `DUPLICATE_COUPON` | ERP | 409 | Coupon code already exists |
+| `COUPON_EXPIRED` | Checkout | 422 | Coupon is past its valid_until date |
+| `COUPON_USAGE_EXCEEDED` | Checkout | 422 | Coupon has reached its max usage count |
+| `COUPON_MINIMUM_NOT_MET` | Checkout | 422 | Cart total is below coupon minimum |
+| `ORDER_NOT_CANCELLABLE` | ERP | 409 | Order is in a state that does not allow cancellation (shipped, delivered) |
+| `ORDER_NOT_EDITABLE` | ERP | 409 | Order has progressed past editable state |
+| `NFE_EMISSION_FAILED` | ERP | 502 | Focus NF-e API returned an error during emission |
+| `NFE_ALREADY_EMITTED` | ERP | 409 | NF-e has already been emitted for this order |
+| `SHIPPING_LABEL_FAILED` | ERP | 502 | Melhor Envio API returned an error during label generation |
+| `PAYMENT_FAILED` | Checkout | 502 | Mercado Pago returned a payment failure |
+| `PAYMENT_ALREADY_PROCESSED` | Checkout | 409 | Payment has already been processed for this order |
+| `EXCHANGE_WINDOW_EXPIRED` | Trocas | 409 | Exchange/return window (30 days) has passed |
+| `EXCHANGE_NOT_ELIGIBLE` | Trocas | 409 | Product is not eligible for exchange (final sale, underwear, etc.) |
+| `STORE_CREDIT_INSUFFICIENT` | Checkout | 422 | Store credit balance is less than amount being applied |
+| `WHATSAPP_TEMPLATE_REJECTED` | WhatsApp | 409 | Meta rejected the WhatsApp template |
+| `WHATSAPP_RATE_LIMITED` | WhatsApp | 429 | WhatsApp Business API tier rate limit exceeded |
+| `WHATSAPP_INVALID_NUMBER` | WhatsApp | 422 | Phone number is not a valid WhatsApp number |
+| `CREATOR_SUSPENDED` | Creators | 403 | Creator account is suspended, cannot perform actions |
+| `CREATOR_TIER_INSUFFICIENT` | Creators | 403 | Creator's tier does not grant access to this benefit |
+| `DUPLICATE_CREATOR_CODE` | Creators | 409 | Creator referral/coupon code already in use |
+| `PAYOUT_MINIMUM_NOT_MET` | Creators | 422 | Payout amount is below minimum threshold |
+| `B2B_MINIMUM_NOT_MET` | B2B | 422 | Wholesale order does not meet minimum quantity/value |
+| `B2B_RETAILER_INACTIVE` | B2B | 403 | Retailer account is inactive |
+| `PRODUCTION_STAGE_INVALID` | PCP | 409 | Cannot advance to this stage from current stage (FSM violation) |
+| `PRODUCTION_MATERIALS_MISSING` | PCP | 409 | Required materials not confirmed for production order |
+| `TASK_ALREADY_ASSIGNED` | Tarefas | 409 | Task is already assigned to another user |
+| `DAM_FILE_TOO_LARGE` | DAM | 422 | File exceeds maximum upload size (50MB images, 500MB video) |
+| `DAM_UNSUPPORTED_FORMAT` | DAM | 422 | File format is not supported |
+| `CAMPAIGN_ALREADY_SENT` | Marketing | 409 | Campaign has already been dispatched |
+| `DUPLICATE_EMAIL` | Platform | 409 | Email address already registered |
+
+---
+
+## 12. Complete Endpoint Catalog
+
+> Every endpoint follows the standard envelope (section 3), uses cursor pagination for lists (section 3), and returns standard error codes (section 11).
+>
+> **Auth column:** `Bearer` = JWT token required. `Session` = cookie session. `API Key` = server-to-server key. `Signature` = webhook signature. `Public` = no auth.
+>
+> **Permission column:** Format is `{module}:{resource}:{action}`. `manage` = read + write + delete.
+
+---
+
+### Platform (`/api/v1/platform`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/platform/users` | List all platform users | Bearer | `platform:users:read` |
+| `POST` | `/api/v1/platform/users` | Create a new user (invite) | Bearer | `platform:users:manage` |
+| `GET` | `/api/v1/platform/users/{id}` | Get user details | Bearer | `platform:users:read` |
+| `PATCH` | `/api/v1/platform/users/{id}` | Update user (name, email, role) | Bearer | `platform:users:manage` |
+| `DELETE` | `/api/v1/platform/users/{id}` | Deactivate user (soft delete) | Bearer | `platform:users:manage` |
+| `GET` | `/api/v1/platform/users/me` | Get current authenticated user profile | Bearer | Any authenticated |
+| `PATCH` | `/api/v1/platform/users/me` | Update own profile (name, avatar, preferences) | Bearer | Any authenticated |
+| `GET` | `/api/v1/platform/roles` | List all roles with permissions | Bearer | `platform:roles:read` |
+| `POST` | `/api/v1/platform/roles` | Create a custom role | Bearer | `platform:roles:manage` |
+| `PATCH` | `/api/v1/platform/roles/{id}` | Update role permissions | Bearer | `platform:roles:manage` |
+| `DELETE` | `/api/v1/platform/roles/{id}` | Delete custom role | Bearer | `platform:roles:manage` |
+| `GET` | `/api/v1/platform/audit-log` | List audit log entries (filterable by module, user, action, date range) | Bearer | `platform:audit-log:read` |
+| `GET` | `/api/v1/platform/audit-log/{id}` | Get audit log entry detail (includes JSONB diff) | Bearer | `platform:audit-log:read` |
+| `GET` | `/api/v1/platform/settings` | Get platform settings | Bearer | `platform:settings:read` |
+| `PATCH` | `/api/v1/platform/settings` | Update platform settings | Bearer | `platform:settings:manage` |
+
+---
+
+### ERP (`/api/v1/erp`)
+
+#### Products & SKUs
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/erp/products` | List products. Filter: `?search=`, `?status=`, `?collectionId=`. Include: `skus`, `collections`. | Bearer | `erp:products:read` |
+| `POST` | `/api/v1/erp/products` | Create a new product | Bearer | `erp:products:write` |
+| `GET` | `/api/v1/erp/products/{id}` | Get product detail. Include: `skus`, `collections`, `images`. | Bearer | `erp:products:read` |
+| `PATCH` | `/api/v1/erp/products/{id}` | Update product (name, description, category, status) | Bearer | `erp:products:write` |
+| `DELETE` | `/api/v1/erp/products/{id}` | Archive product (soft delete) | Bearer | `erp:products:delete` |
+| `GET` | `/api/v1/erp/products/{id}/skus` | List SKUs for a product | Bearer | `erp:products:read` |
+| `POST` | `/api/v1/erp/products/{id}/skus` | Create a new SKU for a product | Bearer | `erp:products:write` |
+| `PATCH` | `/api/v1/erp/skus/{id}` | Update SKU (price, weight, dimensions, status) | Bearer | `erp:products:write` |
+| `DELETE` | `/api/v1/erp/skus/{id}` | Archive SKU (soft delete) | Bearer | `erp:products:delete` |
+
+#### Inventory
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/erp/inventory` | List inventory levels. Filter: `?skuId=`, `?belowMinimum=true`. | Bearer | `erp:inventory:read` |
+| `GET` | `/api/v1/erp/inventory/{skuId}` | Get inventory detail for a specific SKU | Bearer | `erp:inventory:read` |
+| `POST` | `/api/v1/erp/inventory/{skuId}/actions/adjust` | Manual stock adjustment (in/out with reason) | Bearer | `erp:inventory:write` |
+| `GET` | `/api/v1/erp/inventory/{skuId}/movements` | List stock movement history for a SKU | Bearer | `erp:inventory:read` |
+
+#### Orders
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/erp/orders` | List orders. Filter: `?status=`, `?contactId=`, `?createdAfter=`, `?createdBefore=`, `?search=` (order number, contact name), `?channel=` (dtc, b2b), `?paymentMethod=`. Include: `items`, `contact`, `shipping`. Sort: `-createdAt`, `totalCents`, `orderNumber`. | Bearer | `erp:orders:read` |
+| `POST` | `/api/v1/erp/orders` | Create a manual order (B2B, phone orders) | Bearer | `erp:orders:write` |
+| `GET` | `/api/v1/erp/orders/{id}` | Get order detail. Include: `items`, `items.sku`, `contact`, `shipping`, `payments`, `nfe`, `timeline`. | Bearer | `erp:orders:read` |
+| `PATCH` | `/api/v1/erp/orders/{id}` | Update order (notes, shipping address — only if status allows) | Bearer | `erp:orders:write` |
+| `GET` | `/api/v1/erp/orders/{id}/items` | List order items | Bearer | `erp:orders:read` |
+| `GET` | `/api/v1/erp/orders/{id}/timeline` | Get order event timeline (status changes, NF-e, shipping) | Bearer | `erp:orders:read` |
+| `POST` | `/api/v1/erp/orders/{id}/actions/cancel` | Cancel order. Body: `{ "reason": "..." }`. Error: `ORDER_NOT_CANCELLABLE` if shipped. | Bearer | `erp:orders:write` |
+| `POST` | `/api/v1/erp/orders/{id}/actions/emit-nfe` | Queue NF-e emission via Focus NF-e. Returns job ID. | Bearer | `erp:orders:write` |
+| `POST` | `/api/v1/erp/orders/{id}/actions/generate-shipping-label` | Generate shipping label via Melhor Envio. Body: `{ "service_id": "..." }`. | Bearer | `erp:orders:write` |
+| `POST` | `/api/v1/erp/orders/{id}/actions/mark-shipped` | Mark order as shipped. Body: `{ "tracking_code": "..." }`. | Bearer | `erp:orders:write` |
+| `POST` | `/api/v1/erp/orders/{id}/actions/mark-delivered` | Mark order as delivered (manual override) | Bearer | `erp:orders:write` |
+| `GET` | `/api/v1/erp/orders/{id}/shipping-quotes` | Get shipping quotes from Melhor Envio for this order | Bearer | `erp:orders:read` |
+
+#### NF-e
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/erp/nfe` | List NF-e documents. Filter: `?status=`, `?orderId=`, `?createdAfter=`. | Bearer | `erp:nfe:read` |
+| `GET` | `/api/v1/erp/nfe/{id}` | Get NF-e detail (number, series, XML link, PDF link) | Bearer | `erp:nfe:read` |
+| `POST` | `/api/v1/erp/nfe/{id}/actions/cancel` | Cancel NF-e (within 24h per SEFAZ rules) | Bearer | `erp:nfe:write` |
+| `POST` | `/api/v1/erp/nfe/{id}/actions/correction-letter` | Issue correction letter (carta de correcao) | Bearer | `erp:nfe:write` |
+
+#### Financials
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/erp/financials/income-statement` | Get DRE for a period. Query: `?period=2026-03` (monthly) or `?startDate=&endDate=`. | Bearer | `erp:financials:read` |
+| `GET` | `/api/v1/erp/financials/reconciliation` | Get payment reconciliation (Mercado Pago vs. system). Query: `?period=2026-03`. | Bearer | `erp:financials:read` |
+| `GET` | `/api/v1/erp/financials/margin-calculator` | Calculate margin for a product/SKU. Query: `?skuId=` or `?productId=`. | Bearer | `erp:financials:read` |
+| `GET` | `/api/v1/erp/coupons` | List coupons. Filter: `?status=active`, `?search=`. | Bearer | `erp:coupons:read` |
+| `POST` | `/api/v1/erp/coupons` | Create a coupon | Bearer | `erp:coupons:write` |
+| `GET` | `/api/v1/erp/coupons/{id}` | Get coupon detail (usage stats) | Bearer | `erp:coupons:read` |
+| `PATCH` | `/api/v1/erp/coupons/{id}` | Update coupon | Bearer | `erp:coupons:write` |
+| `DELETE` | `/api/v1/erp/coupons/{id}` | Deactivate coupon | Bearer | `erp:coupons:delete` |
+
+---
+
+### Checkout (`/api/v1/checkout` and `/api/v1/public/checkout`)
+
+#### Public (no auth)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/public/checkout/products` | List published products for storefront. Filter: `?collectionId=`, `?category=`, `?search=`. | Public | — |
+| `GET` | `/api/v1/public/checkout/products/{slug}` | Get product detail by slug (SEO-friendly) | Public | — |
+| `POST` | `/api/v1/public/checkout/cart` | Create a new cart. Returns cart with `cart_id`. | Public | — |
+| `GET` | `/api/v1/public/checkout/cart/{cartId}` | Get cart contents | Public | — |
+| `POST` | `/api/v1/public/checkout/cart/{cartId}/items` | Add item to cart. Body: `{ "sku_id": "...", "quantity": 1 }`. | Public | — |
+| `PATCH` | `/api/v1/public/checkout/cart/{cartId}/items/{itemId}` | Update item quantity | Public | — |
+| `DELETE` | `/api/v1/public/checkout/cart/{cartId}/items/{itemId}` | Remove item from cart | Public | — |
+| `POST` | `/api/v1/public/checkout/cart/{cartId}/coupon` | Apply coupon code. Body: `{ "code": "CIENA10" }`. | Public | — |
+| `DELETE` | `/api/v1/public/checkout/cart/{cartId}/coupon` | Remove applied coupon | Public | — |
+| `POST` | `/api/v1/public/checkout/cart/{cartId}/shipping-quote` | Get shipping quotes. Body: `{ "cep": "01310100" }`. | Public | — |
+| `POST` | `/api/v1/public/checkout/cart/{cartId}/identify` | Identify customer. Body: `{ "email": "...", "cpf": "...", "name": "..." }`. | Public | — |
+| `POST` | `/api/v1/public/checkout/cart/{cartId}/address` | Set shipping address. Body: full address object. | Public | — |
+| `POST` | `/api/v1/public/checkout/cart/{cartId}/place-order` | Place order and get payment URL/PIX code. Body: `{ "payment_method": "pix", "shipping_service_id": "..." }`. | Public | — |
+| `GET` | `/api/v1/public/checkout/cep/{cep}` | Address autocomplete via ViaCEP | Public | — |
+| `GET` | `/api/v1/public/track/{orderNumber}` | Public order tracking by order number (Meu Pedido page) | Public | — |
+
+#### Admin
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/checkout/abandoned-carts` | List abandoned carts. Filter: `?createdAfter=`, `?hasEmail=true`. | Bearer | `checkout:carts:read` |
+| `GET` | `/api/v1/checkout/abandoned-carts/{id}` | Get abandoned cart detail (items, contact info if identified) | Bearer | `checkout:carts:read` |
+| `POST` | `/api/v1/checkout/abandoned-carts/{id}/actions/send-recovery` | Manually trigger cart recovery message | Bearer | `checkout:carts:write` |
+
+---
+
+### CRM (`/api/v1/crm`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/crm/contacts` | List contacts. Filter: `?search=` (name, email, phone, CPF), `?segment=`, `?rfmTier=`, `?tag=`, `?source=`, `?hasOrders=true`, `?createdAfter=`. Include: `orders_summary`, `tags`. Sort: `-createdAt`, `name`, `-ltv`, `-lastOrderAt`. | Bearer | `crm:contacts:read` |
+| `POST` | `/api/v1/crm/contacts` | Create a new contact | Bearer | `crm:contacts:write` |
+| `GET` | `/api/v1/crm/contacts/{id}` | Get contact detail. Include: `orders`, `exchanges`, `whatsapp_conversations`, `tags`, `rfm_score`, `timeline`. | Bearer | `crm:contacts:read` |
+| `PATCH` | `/api/v1/crm/contacts/{id}` | Update contact (name, email, phone, tags, notes) | Bearer | `crm:contacts:write` |
+| `DELETE` | `/api/v1/crm/contacts/{id}` | Archive contact (soft delete, LGPD-compatible) | Bearer | `crm:contacts:delete` |
+| `POST` | `/api/v1/crm/contacts/{id}/actions/merge` | Merge duplicate contacts. Body: `{ "merge_with_id": "..." }`. | Bearer | `crm:contacts:manage` |
+| `GET` | `/api/v1/crm/contacts/{id}/timeline` | Get contact interaction timeline | Bearer | `crm:contacts:read` |
+| `GET` | `/api/v1/crm/contacts/{id}/orders` | List orders for this contact | Bearer | `crm:contacts:read` |
+| `GET` | `/api/v1/crm/segments` | List RFM segments with counts | Bearer | `crm:segments:read` |
+| `GET` | `/api/v1/crm/segments/{id}` | Get segment detail with contact list | Bearer | `crm:segments:read` |
+| `POST` | `/api/v1/crm/segments` | Create a custom segment (filter rules) | Bearer | `crm:segments:write` |
+| `PATCH` | `/api/v1/crm/segments/{id}` | Update segment rules | Bearer | `crm:segments:write` |
+| `DELETE` | `/api/v1/crm/segments/{id}` | Delete custom segment | Bearer | `crm:segments:delete` |
+| `GET` | `/api/v1/crm/tags` | List all contact tags | Bearer | `crm:tags:read` |
+| `POST` | `/api/v1/crm/tags` | Create a new tag | Bearer | `crm:tags:write` |
+| `DELETE` | `/api/v1/crm/tags/{id}` | Delete a tag (unlinks from all contacts) | Bearer | `crm:tags:delete` |
+| `GET` | `/api/v1/crm/automations` | List automations (welcome, post_purchase, cart_recovery, birthday, inactivity) | Bearer | `crm:automations:read` |
+| `GET` | `/api/v1/crm/automations/{id}` | Get automation detail (trigger, steps, stats) | Bearer | `crm:automations:read` |
+| `PATCH` | `/api/v1/crm/automations/{id}` | Update automation (enable/disable, edit steps) | Bearer | `crm:automations:write` |
+| `GET` | `/api/v1/crm/automations/{id}/logs` | List automation execution logs | Bearer | `crm:automations:read` |
+
+---
+
+### PCP (`/api/v1/pcp`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/pcp/production-orders` | List production orders. Filter: `?status=`, `?currentStage=`, `?supplierId=`, `?collectionId=`, `?createdAfter=`. Include: `stages`, `supplier`, `product`. Sort: `-createdAt`, `dueDate`. | Bearer | `pcp:production-orders:read` |
+| `POST` | `/api/v1/pcp/production-orders` | Create a new production order | Bearer | `pcp:production-orders:write` |
+| `GET` | `/api/v1/pcp/production-orders/{id}` | Get production order detail. Include: `stages`, `materials`, `supplier`, `product`, `timeline`. | Bearer | `pcp:production-orders:read` |
+| `PATCH` | `/api/v1/pcp/production-orders/{id}` | Update production order (quantity, due date, notes) | Bearer | `pcp:production-orders:write` |
+| `DELETE` | `/api/v1/pcp/production-orders/{id}` | Cancel production order | Bearer | `pcp:production-orders:delete` |
+| `GET` | `/api/v1/pcp/production-orders/{id}/stages` | List stages for a production order (with current status) | Bearer | `pcp:production-orders:read` |
+| `POST` | `/api/v1/pcp/production-orders/{id}/stages/{stageId}/actions/advance` | Advance to next stage. Validates FSM transition. Body: `{ "notes": "...", "photos": ["..."] }`. | Bearer | `pcp:production-orders:write` |
+| `POST` | `/api/v1/pcp/production-orders/{id}/stages/{stageId}/actions/reject` | Reject stage (send back for rework). Body: `{ "reason": "..." }`. | Bearer | `pcp:production-orders:write` |
+| `POST` | `/api/v1/pcp/production-orders/{id}/actions/complete` | Mark production order as complete. Triggers stock entry. | Bearer | `pcp:production-orders:write` |
+| `GET` | `/api/v1/pcp/suppliers` | List suppliers. Filter: `?type=` (weaving_mill, print_shop, dyeing_mill, trim_supplier), `?search=`. | Bearer | `pcp:suppliers:read` |
+| `POST` | `/api/v1/pcp/suppliers` | Create a new supplier | Bearer | `pcp:suppliers:write` |
+| `GET` | `/api/v1/pcp/suppliers/{id}` | Get supplier detail. Include: `production_orders`, `materials`. | Bearer | `pcp:suppliers:read` |
+| `PATCH` | `/api/v1/pcp/suppliers/{id}` | Update supplier (name, contact, type) | Bearer | `pcp:suppliers:write` |
+| `DELETE` | `/api/v1/pcp/suppliers/{id}` | Archive supplier (soft delete) | Bearer | `pcp:suppliers:delete` |
+| `GET` | `/api/v1/pcp/materials` | List raw materials. Filter: `?type=` (fabric, trim), `?supplierId=`, `?search=`. | Bearer | `pcp:materials:read` |
+| `POST` | `/api/v1/pcp/materials` | Create a new material | Bearer | `pcp:materials:write` |
+| `GET` | `/api/v1/pcp/materials/{id}` | Get material detail | Bearer | `pcp:materials:read` |
+| `PATCH` | `/api/v1/pcp/materials/{id}` | Update material | Bearer | `pcp:materials:write` |
+| `GET` | `/api/v1/pcp/collections` | List collections. Filter: `?status=`, `?year=`. Include: `drops`, `products`. | Bearer | `pcp:collections:read` |
+| `POST` | `/api/v1/pcp/collections` | Create a new collection | Bearer | `pcp:collections:write` |
+| `GET` | `/api/v1/pcp/collections/{id}` | Get collection detail. Include: `drops`, `products`, `production_orders`. | Bearer | `pcp:collections:read` |
+| `PATCH` | `/api/v1/pcp/collections/{id}` | Update collection | Bearer | `pcp:collections:write` |
+| `GET` | `/api/v1/pcp/drops` | List drops. Filter: `?collectionId=`, `?status=`, `?launchAfter=`. | Bearer | `pcp:drops:read` |
+| `POST` | `/api/v1/pcp/drops` | Create a new drop | Bearer | `pcp:drops:write` |
+| `GET` | `/api/v1/pcp/drops/{id}` | Get drop detail. Include: `products`, `war_room_session`. | Bearer | `pcp:drops:read` |
+| `PATCH` | `/api/v1/pcp/drops/{id}` | Update drop (launch date, products, status) | Bearer | `pcp:drops:write` |
+| `GET` | `/api/v1/pcp/pre-costs` | List pre-cost estimates. Filter: `?productId=`, `?collectionId=`. | Bearer | `pcp:pre-costs:read` |
+| `POST` | `/api/v1/pcp/pre-costs` | Create pre-cost estimate for a product | Bearer | `pcp:pre-costs:write` |
+| `GET` | `/api/v1/pcp/pre-costs/{id}` | Get pre-cost detail (materials breakdown, labor, totals) | Bearer | `pcp:pre-costs:read` |
+| `PATCH` | `/api/v1/pcp/pre-costs/{id}` | Update pre-cost | Bearer | `pcp:pre-costs:write` |
+
+---
+
+### WhatsApp Engine (`/api/v1/whatsapp`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/whatsapp/templates` | List WhatsApp message templates. Filter: `?status=` (approved, pending, rejected). | Bearer | `whatsapp:templates:read` |
+| `POST` | `/api/v1/whatsapp/templates` | Create a new template (submits to Meta for approval) | Bearer | `whatsapp:templates:write` |
+| `GET` | `/api/v1/whatsapp/templates/{id}` | Get template detail (status, language, components) | Bearer | `whatsapp:templates:read` |
+| `PATCH` | `/api/v1/whatsapp/templates/{id}` | Update template (resubmits for approval) | Bearer | `whatsapp:templates:write` |
+| `DELETE` | `/api/v1/whatsapp/templates/{id}` | Delete template | Bearer | `whatsapp:templates:delete` |
+| `GET` | `/api/v1/whatsapp/conversations` | List conversations. Filter: `?status=` (open, closed), `?contactId=`, `?assigneeId=`, `?search=`. | Bearer | `whatsapp:conversations:read` |
+| `GET` | `/api/v1/whatsapp/conversations/{id}` | Get conversation detail with messages. Include: `contact`, `messages`. | Bearer | `whatsapp:conversations:read` |
+| `POST` | `/api/v1/whatsapp/conversations/{id}/messages` | Send a message in a conversation. Body: `{ "type": "text", "content": "..." }` or `{ "type": "template", "template_id": "...", "params": {...} }`. | Bearer | `whatsapp:conversations:write` |
+| `POST` | `/api/v1/whatsapp/conversations/{id}/actions/close` | Close a conversation | Bearer | `whatsapp:conversations:write` |
+| `POST` | `/api/v1/whatsapp/conversations/{id}/actions/assign` | Assign conversation to a user. Body: `{ "assignee_id": "..." }`. | Bearer | `whatsapp:conversations:write` |
+| `GET` | `/api/v1/whatsapp/broadcasts` | List broadcast campaigns. Filter: `?status=`, `?createdAfter=`. | Bearer | `whatsapp:broadcasts:read` |
+| `POST` | `/api/v1/whatsapp/broadcasts` | Create a broadcast campaign. Body: `{ "template_id": "...", "segment_id": "...", "scheduled_at": "..." }`. | Bearer | `whatsapp:broadcasts:write` |
+| `GET` | `/api/v1/whatsapp/broadcasts/{id}` | Get broadcast detail (stats: sent, delivered, read, replied) | Bearer | `whatsapp:broadcasts:read` |
+| `POST` | `/api/v1/whatsapp/broadcasts/{id}/actions/send` | Dispatch broadcast (queue all messages via BullMQ) | Bearer | `whatsapp:broadcasts:write` |
+| `POST` | `/api/v1/whatsapp/broadcasts/{id}/actions/cancel` | Cancel scheduled broadcast | Bearer | `whatsapp:broadcasts:write` |
+
+---
+
+### Trocas & Devolucoes (`/api/v1/trocas`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/trocas/exchanges` | List exchanges/returns. Filter: `?status=` (requested, approved, shipped_back, received, completed, rejected), `?type=` (exchange, return), `?orderId=`, `?contactId=`, `?createdAfter=`. | Bearer | `trocas:exchanges:read` |
+| `POST` | `/api/v1/trocas/exchanges` | Create exchange/return request (admin-initiated) | Bearer | `trocas:exchanges:write` |
+| `GET` | `/api/v1/trocas/exchanges/{id}` | Get exchange/return detail. Include: `order`, `contact`, `items`, `timeline`, `shipping_label`. | Bearer | `trocas:exchanges:read` |
+| `PATCH` | `/api/v1/trocas/exchanges/{id}` | Update exchange (notes, items) | Bearer | `trocas:exchanges:write` |
+| `POST` | `/api/v1/trocas/exchanges/{id}/actions/approve` | Approve exchange/return request | Bearer | `trocas:exchanges:write` |
+| `POST` | `/api/v1/trocas/exchanges/{id}/actions/reject` | Reject exchange/return. Body: `{ "reason": "..." }`. | Bearer | `trocas:exchanges:write` |
+| `POST` | `/api/v1/trocas/exchanges/{id}/actions/generate-return-label` | Generate return shipping label via Melhor Envio | Bearer | `trocas:exchanges:write` |
+| `POST` | `/api/v1/trocas/exchanges/{id}/actions/mark-received` | Mark returned items as received in warehouse | Bearer | `trocas:exchanges:write` |
+| `POST` | `/api/v1/trocas/exchanges/{id}/actions/complete` | Complete exchange (ship replacement) or return (issue refund/credit) | Bearer | `trocas:exchanges:write` |
+| `GET` | `/api/v1/trocas/store-credits` | List store credits. Filter: `?contactId=`, `?status=` (active, used, expired). | Bearer | `trocas:store-credits:read` |
+| `POST` | `/api/v1/trocas/store-credits` | Issue store credit manually. Body: `{ "contact_id": "...", "amount_cents": 5000, "reason": "..." }`. | Bearer | `trocas:store-credits:write` |
+| `GET` | `/api/v1/trocas/store-credits/{id}` | Get store credit detail (balance, transactions) | Bearer | `trocas:store-credits:read` |
+
+#### Public (customer-facing exchange request)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `POST` | `/api/v1/public/trocas/request` | Customer submits exchange/return request. Body: `{ "order_number": "...", "cpf": "...", "items": [...], "reason": "..." }`. | Public | — |
+| `GET` | `/api/v1/public/trocas/status/{requestCode}` | Check exchange/return status by request code | Public | — |
+
+---
+
+### Inbox (`/api/v1/inbox`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/inbox/threads` | List unified inbox threads. Filter: `?channel=` (whatsapp, instagram, email), `?status=` (open, closed, snoozed), `?assigneeId=`, `?search=`. Sort: `-lastMessageAt`. | Bearer | `inbox:threads:read` |
+| `GET` | `/api/v1/inbox/threads/{id}` | Get thread detail with messages. Include: `contact`, `messages`. | Bearer | `inbox:threads:read` |
+| `POST` | `/api/v1/inbox/threads/{id}/messages` | Reply to thread. Body: `{ "content": "...", "channel": "whatsapp" }`. | Bearer | `inbox:threads:write` |
+| `POST` | `/api/v1/inbox/threads/{id}/actions/assign` | Assign thread to a user | Bearer | `inbox:threads:write` |
+| `POST` | `/api/v1/inbox/threads/{id}/actions/close` | Close thread | Bearer | `inbox:threads:write` |
+| `POST` | `/api/v1/inbox/threads/{id}/actions/snooze` | Snooze thread. Body: `{ "until": "2026-03-18T09:00:00Z" }`. | Bearer | `inbox:threads:write` |
+| `POST` | `/api/v1/inbox/threads/{id}/actions/add-note` | Add internal note (not sent to customer). Body: `{ "content": "..." }`. | Bearer | `inbox:threads:write` |
+| `GET` | `/api/v1/inbox/quick-replies` | List quick reply templates | Bearer | `inbox:quick-replies:read` |
+| `POST` | `/api/v1/inbox/quick-replies` | Create a quick reply template | Bearer | `inbox:quick-replies:write` |
+| `PATCH` | `/api/v1/inbox/quick-replies/{id}` | Update quick reply template | Bearer | `inbox:quick-replies:write` |
+| `DELETE` | `/api/v1/inbox/quick-replies/{id}` | Delete quick reply template | Bearer | `inbox:quick-replies:delete` |
+
+---
+
+### B2B (`/api/v1/b2b`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/b2b/retailers` | List retailers. Filter: `?status=` (active, inactive, pending), `?search=`, `?tier=`. | Bearer | `b2b:retailers:read` |
+| `POST` | `/api/v1/b2b/retailers` | Register a new retailer | Bearer | `b2b:retailers:write` |
+| `GET` | `/api/v1/b2b/retailers/{id}` | Get retailer detail. Include: `orders`, `contacts`. | Bearer | `b2b:retailers:read` |
+| `PATCH` | `/api/v1/b2b/retailers/{id}` | Update retailer (name, CNPJ, tier, status) | Bearer | `b2b:retailers:write` |
+| `DELETE` | `/api/v1/b2b/retailers/{id}` | Deactivate retailer (soft delete) | Bearer | `b2b:retailers:delete` |
+| `GET` | `/api/v1/b2b/orders` | List B2B orders. Filter: `?retailerId=`, `?status=`, `?createdAfter=`. | Bearer | `b2b:orders:read` |
+| `POST` | `/api/v1/b2b/orders` | Create a B2B order | Bearer | `b2b:orders:write` |
+| `GET` | `/api/v1/b2b/orders/{id}` | Get B2B order detail. Include: `items`, `retailer`. | Bearer | `b2b:orders:read` |
+| `PATCH` | `/api/v1/b2b/orders/{id}` | Update B2B order | Bearer | `b2b:orders:write` |
+| `POST` | `/api/v1/b2b/orders/{id}/actions/approve` | Approve B2B order (triggers NF-e + shipping) | Bearer | `b2b:orders:write` |
+| `GET` | `/api/v1/b2b/catalogs` | List B2B catalogs (curated product lists per tier) | Bearer | `b2b:catalogs:read` |
+| `POST` | `/api/v1/b2b/catalogs` | Create a B2B catalog | Bearer | `b2b:catalogs:write` |
+| `GET` | `/api/v1/b2b/catalogs/{id}` | Get catalog detail. Include: `products`. | Bearer | `b2b:catalogs:read` |
+| `PATCH` | `/api/v1/b2b/catalogs/{id}` | Update catalog (add/remove products, pricing) | Bearer | `b2b:catalogs:write` |
+| `GET` | `/api/v1/b2b/price-tables` | List B2B price tables (tier-based pricing) | Bearer | `b2b:price-tables:read` |
+| `POST` | `/api/v1/b2b/price-tables` | Create a price table | Bearer | `b2b:price-tables:write` |
+| `PATCH` | `/api/v1/b2b/price-tables/{id}` | Update price table | Bearer | `b2b:price-tables:write` |
+
+#### B2B Portal (retailer-facing)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/b2b/portal/catalog` | Get available catalog for authenticated retailer | Bearer (B2B) | `b2b:portal:read` |
+| `POST` | `/api/v1/b2b/portal/orders` | Place a B2B order (retailer self-service) | Bearer (B2B) | `b2b:portal:write` |
+| `GET` | `/api/v1/b2b/portal/orders` | List retailer's own orders | Bearer (B2B) | `b2b:portal:read` |
+| `GET` | `/api/v1/b2b/portal/orders/{id}` | Get retailer's order detail | Bearer (B2B) | `b2b:portal:read` |
+
+---
+
+### Creators (`/api/v1/creators`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/creators/creators` | List creators. Filter: `?tier=` (seed, grow, bloom, core), `?status=` (active, suspended, pending), `?search=`. | Bearer | `creators:creators:read` |
+| `POST` | `/api/v1/creators/creators` | Register a new creator (admin onboarding) | Bearer | `creators:creators:write` |
+| `GET` | `/api/v1/creators/creators/{id}` | Get creator detail. Include: `commissions`, `payouts`, `challenges`, `referrals`. | Bearer | `creators:creators:read` |
+| `PATCH` | `/api/v1/creators/creators/{id}` | Update creator (tier, status, commission rate, notes) | Bearer | `creators:creators:write` |
+| `POST` | `/api/v1/creators/creators/{id}/actions/suspend` | Suspend a creator. Body: `{ "reason": "..." }`. | Bearer | `creators:creators:manage` |
+| `POST` | `/api/v1/creators/creators/{id}/actions/reactivate` | Reactivate a suspended creator | Bearer | `creators:creators:manage` |
+| `POST` | `/api/v1/creators/creators/{id}/actions/promote` | Manually promote creator to next tier | Bearer | `creators:creators:manage` |
+| `GET` | `/api/v1/creators/commissions` | List commissions. Filter: `?creatorId=`, `?status=` (pending, confirmed, paid, reversed), `?period=`. | Bearer | `creators:commissions:read` |
+| `GET` | `/api/v1/creators/commissions/{id}` | Get commission detail (order, creator, amount, status) | Bearer | `creators:commissions:read` |
+| `GET` | `/api/v1/creators/payouts` | List payouts. Filter: `?creatorId=`, `?status=` (pending, processing, paid), `?period=`. | Bearer | `creators:payouts:read` |
+| `POST` | `/api/v1/creators/payouts` | Create a payout batch (monthly payout run) | Bearer | `creators:payouts:write` |
+| `GET` | `/api/v1/creators/payouts/{id}` | Get payout detail (creators, amounts, status) | Bearer | `creators:payouts:read` |
+| `POST` | `/api/v1/creators/payouts/{id}/actions/process` | Process payout (mark as paid, record transfer) | Bearer | `creators:payouts:write` |
+| `GET` | `/api/v1/creators/challenges` | List challenges. Filter: `?status=` (active, ended), `?month=`. | Bearer | `creators:challenges:read` |
+| `POST` | `/api/v1/creators/challenges` | Create a new monthly challenge | Bearer | `creators:challenges:write` |
+| `GET` | `/api/v1/creators/challenges/{id}` | Get challenge detail. Include: `participants`, `leaderboard`. | Bearer | `creators:challenges:read` |
+| `PATCH` | `/api/v1/creators/challenges/{id}` | Update challenge (rules, prizes, status) | Bearer | `creators:challenges:write` |
+| `GET` | `/api/v1/creators/referral-codes` | List referral/coupon codes. Filter: `?creatorId=`. | Bearer | `creators:referral-codes:read` |
+| `POST` | `/api/v1/creators/referral-codes` | Create a referral code for a creator | Bearer | `creators:referral-codes:write` |
+
+#### Creator Portal (creator-facing)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/creators/portal/profile` | Get own creator profile | Bearer (Creator) | `creators:portal:read` |
+| `PATCH` | `/api/v1/creators/portal/profile` | Update own profile (bio, social links, photo) | Bearer (Creator) | `creators:portal:write` |
+| `GET` | `/api/v1/creators/portal/dashboard` | Get creator dashboard (earnings, tier progress, challenges) | Bearer (Creator) | `creators:portal:read` |
+| `GET` | `/api/v1/creators/portal/commissions` | List own commissions | Bearer (Creator) | `creators:portal:read` |
+| `GET` | `/api/v1/creators/portal/payouts` | List own payouts | Bearer (Creator) | `creators:portal:read` |
+| `GET` | `/api/v1/creators/portal/challenges` | List available challenges and own progress | Bearer (Creator) | `creators:portal:read` |
+| `GET` | `/api/v1/creators/portal/digital-kit` | Get digital kit assets (tier benefit) | Bearer (Creator) | `creators:portal:read` |
+
+---
+
+### Marketing Intelligence (`/api/v1/marketing`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/marketing/competitors` | List tracked competitors | Bearer | `marketing:competitors:read` |
+| `POST` | `/api/v1/marketing/competitors` | Add a competitor to track | Bearer | `marketing:competitors:write` |
+| `GET` | `/api/v1/marketing/competitors/{id}` | Get competitor detail. Include: `ads`, `recent_activity`. | Bearer | `marketing:competitors:read` |
+| `PATCH` | `/api/v1/marketing/competitors/{id}` | Update competitor (name, Instagram handle, Ad Library URL) | Bearer | `marketing:competitors:write` |
+| `DELETE` | `/api/v1/marketing/competitors/{id}` | Stop tracking competitor | Bearer | `marketing:competitors:delete` |
+| `GET` | `/api/v1/marketing/competitors/{id}/ads` | List competitor ads from Ad Library. Filter: `?activeOnly=true`, `?createdAfter=`. | Bearer | `marketing:competitors:read` |
+| `GET` | `/api/v1/marketing/ugc` | List detected UGC posts. Filter: `?status=` (pending, approved, rejected), `?platform=` (instagram), `?createdAfter=`. | Bearer | `marketing:ugc:read` |
+| `GET` | `/api/v1/marketing/ugc/{id}` | Get UGC post detail (media URL, creator, caption, approval status) | Bearer | `marketing:ugc:read` |
+| `POST` | `/api/v1/marketing/ugc/{id}/actions/approve` | Approve UGC for use in marketing. Triggers save to DAM. | Bearer | `marketing:ugc:write` |
+| `POST` | `/api/v1/marketing/ugc/{id}/actions/reject` | Reject UGC | Bearer | `marketing:ugc:write` |
+| `GET` | `/api/v1/marketing/campaigns` | List marketing campaigns (ads, email, WhatsApp). Filter: `?channel=`, `?status=`. | Bearer | `marketing:campaigns:read` |
+| `POST` | `/api/v1/marketing/campaigns` | Create a marketing campaign | Bearer | `marketing:campaigns:write` |
+| `GET` | `/api/v1/marketing/campaigns/{id}` | Get campaign detail. Include: `analytics`. | Bearer | `marketing:campaigns:read` |
+| `PATCH` | `/api/v1/marketing/campaigns/{id}` | Update campaign | Bearer | `marketing:campaigns:write` |
+| `GET` | `/api/v1/marketing/analytics/overview` | Get marketing analytics overview. Query: `?period=7d` or `?startDate=&endDate=`. Returns: ROAS, CPA, CAC, spend, revenue attributed. | Bearer | `marketing:analytics:read` |
+| `GET` | `/api/v1/marketing/analytics/utm` | Get UTM attribution report. Query: `?period=`. | Bearer | `marketing:analytics:read` |
+
+---
+
+### Tarefas (`/api/v1/tarefas`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/tarefas/boards` | List task boards | Bearer | `tarefas:boards:read` |
+| `POST` | `/api/v1/tarefas/boards` | Create a new board | Bearer | `tarefas:boards:write` |
+| `GET` | `/api/v1/tarefas/boards/{id}` | Get board detail. Include: `columns`, `tasks`. | Bearer | `tarefas:boards:read` |
+| `PATCH` | `/api/v1/tarefas/boards/{id}` | Update board (name, columns) | Bearer | `tarefas:boards:write` |
+| `DELETE` | `/api/v1/tarefas/boards/{id}` | Archive board | Bearer | `tarefas:boards:delete` |
+| `GET` | `/api/v1/tarefas/tasks` | List tasks across all boards. Filter: `?boardId=`, `?assigneeId=`, `?status=`, `?priority=`, `?dueAfter=`, `?dueBefore=`, `?search=`. | Bearer | `tarefas:tasks:read` |
+| `POST` | `/api/v1/tarefas/tasks` | Create a new task | Bearer | `tarefas:tasks:write` |
+| `GET` | `/api/v1/tarefas/tasks/{id}` | Get task detail. Include: `comments`, `attachments`, `subtasks`. | Bearer | `tarefas:tasks:read` |
+| `PATCH` | `/api/v1/tarefas/tasks/{id}` | Update task (title, description, assignee, priority, due date, column, position) | Bearer | `tarefas:tasks:write` |
+| `DELETE` | `/api/v1/tarefas/tasks/{id}` | Delete task | Bearer | `tarefas:tasks:delete` |
+| `POST` | `/api/v1/tarefas/tasks/{id}/actions/assign` | Assign task to user. Body: `{ "assignee_id": "..." }`. | Bearer | `tarefas:tasks:write` |
+| `POST` | `/api/v1/tarefas/tasks/{id}/actions/move` | Move task to column. Body: `{ "column_id": "...", "position": 2 }`. | Bearer | `tarefas:tasks:write` |
+| `POST` | `/api/v1/tarefas/tasks/{id}/comments` | Add a comment to a task | Bearer | `tarefas:tasks:write` |
+| `GET` | `/api/v1/tarefas/tasks/{id}/comments` | List comments on a task | Bearer | `tarefas:tasks:read` |
+
+---
+
+### ClawdBot / Pulse (`/api/v1/clawdbot`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/clawdbot/reports` | List report configurations (scheduled reports) | Bearer | `clawdbot:reports:read` |
+| `POST` | `/api/v1/clawdbot/reports` | Create a new report config. Body: `{ "type": "sales", "schedule": "daily_08:00", "channel_id": "..." }`. | Bearer | `clawdbot:reports:write` |
+| `GET` | `/api/v1/clawdbot/reports/{id}` | Get report config detail | Bearer | `clawdbot:reports:read` |
+| `PATCH` | `/api/v1/clawdbot/reports/{id}` | Update report config (schedule, channel, enabled) | Bearer | `clawdbot:reports:write` |
+| `DELETE` | `/api/v1/clawdbot/reports/{id}` | Delete report config | Bearer | `clawdbot:reports:delete` |
+| `POST` | `/api/v1/clawdbot/reports/{id}/actions/run-now` | Trigger immediate report generation | Bearer | `clawdbot:reports:write` |
+| `GET` | `/api/v1/clawdbot/reports/{id}/history` | List past report runs (status, output, errors) | Bearer | `clawdbot:reports:read` |
+| `GET` | `/api/v1/clawdbot/prompts` | List prompt templates used by ClawdBot | Bearer | `clawdbot:prompts:read` |
+| `PATCH` | `/api/v1/clawdbot/prompts/{id}` | Update a prompt template | Bearer | `clawdbot:prompts:write` |
+| `GET` | `/api/v1/clawdbot/chat-log` | List recent chat interactions. Filter: `?channelId=`, `?userId=`, `?createdAfter=`. | Bearer | `clawdbot:chat-log:read` |
+| `GET` | `/api/v1/clawdbot/settings` | Get bot settings (default channel, response style, enabled modules) | Bearer | `clawdbot:settings:read` |
+| `PATCH` | `/api/v1/clawdbot/settings` | Update bot settings | Bearer | `clawdbot:settings:write` |
+
+---
+
+### Dashboard / Beacon (`/api/v1/dashboard`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/dashboard/metrics/overview` | Get executive dashboard metrics. Query: `?period=7d` or `?startDate=&endDate=`. Returns: revenue, orders, AOV, conversion rate, top products. | Bearer | `dashboard:metrics:read` |
+| `GET` | `/api/v1/dashboard/metrics/sales` | Get sales metrics (revenue by day, payment method breakdown, channel breakdown). Query: `?period=`. | Bearer | `dashboard:metrics:read` |
+| `GET` | `/api/v1/dashboard/metrics/inventory` | Get inventory metrics (total value, low stock alerts, turnover). | Bearer | `dashboard:metrics:read` |
+| `GET` | `/api/v1/dashboard/metrics/crm` | Get CRM metrics (new contacts, RFM distribution, repurchase rate, churn rate). Query: `?period=`. | Bearer | `dashboard:metrics:read` |
+| `GET` | `/api/v1/dashboard/metrics/production` | Get production metrics (active OPs, on-time rate, stage bottlenecks). | Bearer | `dashboard:metrics:read` |
+| `GET` | `/api/v1/dashboard/metrics/financial` | Get financial metrics (DRE summary, margin, reconciliation status). Query: `?period=`. | Bearer | `dashboard:metrics:read` |
+| `GET` | `/api/v1/dashboard/war-room/sessions` | List War Room sessions. Filter: `?dropId=`, `?status=` (upcoming, live, ended). | Bearer | `dashboard:war-room:read` |
+| `POST` | `/api/v1/dashboard/war-room/sessions` | Create a War Room session for a drop. Body: `{ "drop_id": "...", "starts_at": "..." }`. | Bearer | `dashboard:war-room:write` |
+| `GET` | `/api/v1/dashboard/war-room/sessions/{id}` | Get War Room session detail (drop info, start time, live stats) | Bearer | `dashboard:war-room:read` |
+| `POST` | `/api/v1/dashboard/war-room/sessions/{id}/actions/start` | Start War Room session (begins SSE broadcasting) | Bearer | `dashboard:war-room:write` |
+| `POST` | `/api/v1/dashboard/war-room/sessions/{id}/actions/end` | End War Room session (stops SSE, generates summary) | Bearer | `dashboard:war-room:write` |
+| `GET` | `/api/v1/dashboard/war-room/sessions/{id}/summary` | Get post-War-Room summary (total revenue, units sold, peak sales/min) | Bearer | `dashboard:war-room:read` |
+| `GET` | `/api/v1/dashboard/panels` | List dashboard panels (user-configurable widgets) | Bearer | `dashboard:panels:read` |
+| `POST` | `/api/v1/dashboard/panels` | Create a custom panel | Bearer | `dashboard:panels:write` |
+| `PATCH` | `/api/v1/dashboard/panels/{id}` | Update panel (position, size, data source, filters) | Bearer | `dashboard:panels:write` |
+| `DELETE` | `/api/v1/dashboard/panels/{id}` | Delete custom panel | Bearer | `dashboard:panels:delete` |
+
+---
+
+### DAM (`/api/v1/dam`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/dam/assets` | List assets. Filter: `?folderId=`, `?type=` (image, video, document), `?tag=`, `?search=`. Sort: `-createdAt`, `name`, `size`. | Bearer | `dam:assets:read` |
+| `POST` | `/api/v1/dam/assets` | Upload a new asset (multipart form). Generates thumbnails on upload. | Bearer | `dam:assets:write` |
+| `GET` | `/api/v1/dam/assets/{id}` | Get asset detail (URL, thumbnails, metadata, tags, usage). | Bearer | `dam:assets:read` |
+| `PATCH` | `/api/v1/dam/assets/{id}` | Update asset metadata (name, tags, folder, alt text) | Bearer | `dam:assets:write` |
+| `DELETE` | `/api/v1/dam/assets/{id}` | Delete asset (removes from R2) | Bearer | `dam:assets:delete` |
+| `POST` | `/api/v1/dam/assets/{id}/actions/move` | Move asset to a different folder. Body: `{ "folder_id": "..." }`. | Bearer | `dam:assets:write` |
+| `GET` | `/api/v1/dam/assets/{id}/download` | Get signed download URL (time-limited) | Bearer | `dam:assets:read` |
+| `GET` | `/api/v1/dam/folders` | List folders. Filter: `?parentId=` (null for root). | Bearer | `dam:folders:read` |
+| `POST` | `/api/v1/dam/folders` | Create a new folder | Bearer | `dam:folders:write` |
+| `PATCH` | `/api/v1/dam/folders/{id}` | Update folder (rename, move) | Bearer | `dam:folders:write` |
+| `DELETE` | `/api/v1/dam/folders/{id}` | Delete folder (must be empty or cascade) | Bearer | `dam:folders:delete` |
+| `GET` | `/api/v1/dam/tags` | List asset tags | Bearer | `dam:tags:read` |
+| `POST` | `/api/v1/dam/tags` | Create a new tag | Bearer | `dam:tags:write` |
+| `DELETE` | `/api/v1/dam/tags/{id}` | Delete tag | Bearer | `dam:tags:delete` |
+
+---
+
+### Internal Service-to-Service (`/internal/*`)
+
+> **These endpoints are NOT exposed publicly.** They are internal API routes used for cross-module communication within the monorepo. All `/internal/*` routes are protected by a shared service key and are never called from the frontend.
+>
+> Internal endpoints are documented in each module's spec file (section 6). They follow the same envelope pattern but use API Key auth instead of Bearer tokens.
+
+| Module | Key Internal Endpoints | Called By |
+|--------|----------------------|-----------|
+| CRM | `/internal/contacts/upsert-from-order`, `/internal/contacts/update-financials`, `/internal/automations/trigger` | Checkout, ERP |
+| Creators | `/internal/creators/validate-coupon`, `/internal/creators/check-anti-fraud`, `/internal/creators/attribute-sale`, `/internal/creators/adjust-commission`, `/internal/creators/detect-post` | Checkout, Trocas, Instagram polling |
+| ERP | `/internal/orders/create-from-checkout`, `/internal/inventory/production-entry`, `/internal/inventory/return-entry`, `/internal/nfe/emit-return`, `/internal/inventory/reserve`, `/internal/inventory/release`, `/internal/shipping/generate-label` | Checkout, PCP, Trocas, B2B |
+| WhatsApp | `/internal/send-template`, `/internal/send-text` | CRM automations, Inbox |
+| Inbox | `/internal/inbound/whatsapp`, `/internal/inbound/email` | WhatsApp Engine, Resend webhook |
+| DAM | `/internal/assets/from-ugc`, `/internal/assets/by-collection/:id` | Marketing Intelligence, PCP |
+| Trocas | `/internal/store-credits/validate`, `/internal/store-credits/redeem` | Checkout |
+| Tarefas | `/internal/tasks/from-pcp`, `/internal/tasks/by-source/:id` | PCP |
+| PCP | `/internal/stock-entry-complete` | ERP |
+
+---
+
+### Webhooks (incoming) (`/api/v1/webhooks`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `POST` | `/api/v1/webhooks/mercado-pago` | Mercado Pago payment notifications | Signature | — |
+| `POST` | `/api/v1/webhooks/melhor-envio` | Melhor Envio shipping status updates | Signature | — |
+| `GET` | `/api/v1/webhooks/instagram` | Instagram subscription verification (challenge) | Public | — |
+| `POST` | `/api/v1/webhooks/instagram` | Instagram subscription updates (mentions, comments) | Signature | — |
+
+---
+
+### SSE Streams (`/api/v1/sse`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/sse/notifications` | User notification stream (Flare) | Bearer | Any authenticated |
+| `GET` | `/api/v1/sse/war-room/{sessionId}` | Drop War Room live data stream | Bearer | `dashboard:war-room:read` |
+
+---
+
+### Global Search (`/api/v1/search`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `GET` | `/api/v1/search` | Global search across all modules. Query: `?q=` (tsvector full-text), `?modules=erp,crm` (optional scope). Returns grouped results by module. Rate limited: 30/min. | Bearer | Any authenticated (results filtered by user permissions) |
+
+---
+
+### Auth (`/api/v1/auth`)
+
+| Method | Path | Description | Auth | Permission |
+|--------|------|-------------|------|------------|
+| `POST` | `/api/v1/auth/login` | Login with email + password. Returns access token + sets refresh cookie. | Public | — |
+| `POST` | `/api/v1/auth/logout` | Logout. Clears refresh cookie, invalidates tokens. | Bearer | Any authenticated |
+| `POST` | `/api/v1/auth/refresh` | Refresh access token using refresh cookie. | Cookie | — |
+| `POST` | `/api/v1/auth/forgot-password` | Send password reset email. Body: `{ "email": "..." }`. | Public | — |
+| `POST` | `/api/v1/auth/reset-password` | Reset password with token. Body: `{ "token": "...", "password": "..." }`. | Public | — |
+| `POST` | `/api/v1/auth/change-password` | Change own password. Body: `{ "current_password": "...", "new_password": "..." }`. | Bearer | Any authenticated |
+
+---
+
+*This document is the single source of truth for API design in LUMN. Every endpoint must conform to the patterns described here. When in doubt, reference this document before implementing.*

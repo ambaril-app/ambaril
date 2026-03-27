@@ -1,0 +1,88 @@
+@import "tailwindcss";
+@config "../../tailwind.config.ts";
+
+/* ─── Ambaril Design System — Moonstone Palette ─── */
+
+@theme {
+  /* Backgrounds (dark → light) */
+  --color-bg-void: #07080B;
+  --color-bg-base: #0C0E13;
+  --color-bg-raised: #101216;
+  --color-bg-surface: #16181F;
+  --color-bg-elevated: #1C1F28;
+
+  /* Borders */
+  --color-border-subtle: #1E2129;
+  --color-border-default: #262A34;
+  --color-border-strong: #333844;
+
+  /* Text (ghost → white) */
+  --color-text-ghost: #3A3F4C;
+  --color-text-muted: #5C6170;
+  --color-text-secondary: #7C8293;
+  --color-text-tertiary: #A8AEBB;
+  --color-text-primary: #D0D4DE;
+  --color-text-bright: #E8EAF0;
+  --color-text-white: #F7F8FA;
+
+  /* Semantic */
+  --color-success: #3ECF8E;
+  --color-success-muted: rgba(62, 207, 142, 0.08);
+  --color-warning: #F5A524;
+  --color-warning-muted: rgba(245, 165, 36, 0.08);
+  --color-danger: #EF4444;
+  --color-danger-muted: rgba(239, 68, 68, 0.08);
+  --color-info: #60A5FA;
+  --color-info-muted: rgba(96, 165, 250, 0.08);
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* Spacing (4px grid) */
+  --spacing-1: 4px;
+  --spacing-2: 8px;
+  --spacing-3: 12px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+
+  /* Fonts */
+  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'DM Mono', 'SF Mono', 'Fira Code', monospace;
+}
+
+/* ─── Base styles ─── */
+
+body {
+  background-color: var(--color-bg-void);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-ghost);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}

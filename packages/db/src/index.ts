@@ -1,0 +1,9 @@
+export { db } from "./client";
+export type { Database } from "./client";
+export * as globalSchema from "./schema/global";
+export * as creatorsSchema from "./schema/creators";
+export * as checkoutSchema from "./schema/checkout";
+export * as crmSchema from "./schema/crm";
+export * as erpSchema from "./schema/erp";
+export * as whatsappSchema from "./schema/whatsapp";
+export * as dashboardSchema from "./schema/dashboard";

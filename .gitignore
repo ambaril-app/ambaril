@@ -1,0 +1,42 @@
+# Dependencies
+node_modules
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Build outputs
+.next
+dist
+.turbo
+
+# Test coverage
+coverage
+
+# macOS
+.DS_Store
+
+# Logs
+logs
+*.log
+
+# Shopify
+extensions/*/build
+extensions/*/dist
+.shopify/*
+.shopify.lock
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Legacy (temporary — reverse engineering data)
+_legacy/
+
+# Drizzle
+drizzle/
+
+# Misc
+*.tsbuildinfo
