@@ -6,7 +6,7 @@
     { "path": "/api/cron/creators/monthly-cap-reset", "schedule": "0 0 1 * *" },
     { "path": "/api/cron/creators/ambassador-promotion", "schedule": "0 5 * * 1" },
     { "path": "/api/cron/creators/referral-expiry", "schedule": "0 7 * * *" },
-    { "path": "/api/cron/creators/instagram-polling", "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/creators/instagram-polling", "schedule": "0 8 * * *" },
     { "path": "/api/cron/creators/hashtag-tracking", "schedule": "0 8 * * *" },
     { "path": "/api/cron/creators/social-sync", "schedule": "0 9 * * *" },
     { "path": "/api/cron/creators/inactive-alerter", "schedule": "0 10 * * 1" },
