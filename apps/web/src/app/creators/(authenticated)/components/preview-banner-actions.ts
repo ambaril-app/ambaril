@@ -1,6 +1,10 @@
 "use server";
 
-// Re-export server actions needed by preview-banner.tsx (client component).
-// Client components cannot import next/headers directly — they must call
-// functions from "use server" files (Server Actions).
-export { destroyCreatorSession } from "@/lib/creator-auth";
+// Server Actions for preview-banner.tsx (client component).
+// "use server" files only allow exported async functions — no re-exports.
+
+import { destroyCreatorSession as _destroy } from "@/lib/creator-auth";
+
+export async function destroyCreatorSession(): Promise<void> {
+  await _destroy();
+}
