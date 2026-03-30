@@ -8,7 +8,6 @@ import {
   roles,
   permissions,
   integrationProviders,
-  tenantIntegrations,
   moduleSetupState,
 } from "./src/schema/global";
 import { creatorTiers, creators, coupons } from "./src/schema/creators";
@@ -424,46 +423,14 @@ async function seed() {
     console.log(`   Provider: ${provider.name} (${provider.capability})`);
   }
 
-  // 9. Create CIENA tenant integrations (credentials reference .env)
-  console.log("9. Creating CIENA integrations...");
-  const CIENA_INTEGRATIONS = [
-    {
-      tenantId: tenant.id,
-      providerId: "shopify",
-      capability: "ecommerce",
-      credentials: { source: "env", keys: ["SHOPIFY_SHOP", "SHOPIFY_CLIENT_ID", "SHOPIFY_CLIENT_SECRET"] },
-      isActive: true,
-    },
-    {
-      tenantId: tenant.id,
-      providerId: "yever",
-      capability: "checkout",
-      credentials: { source: "env", keys: ["YEVER_API_URL", "YEVER_API_KEY"] },
-      isActive: true,
-    },
-    {
-      tenantId: tenant.id,
-      providerId: "resend",
-      capability: "messaging",
-      credentials: { source: "env", keys: ["RESEND_API_KEY", "FROM_EMAIL"] },
-      isActive: true,
-    },
-    {
-      tenantId: tenant.id,
-      providerId: "cloudflare-r2",
-      capability: "storage",
-      credentials: { source: "env", keys: ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME", "R2_PUBLIC_URL"] },
-      isActive: true,
-    },
-  ];
-
-  for (const integration of CIENA_INTEGRATIONS) {
-    await db
-      .insert(tenantIntegrations)
-      .values(integration)
-      .onConflictDoNothing();
-    console.log(`   Integration: ${integration.providerId} (${integration.capability})`);
-  }
+  // Step 9: CIENA tenant integrations are configured by the admin via the UI.
+  // Navigate to /admin/settings/integrations after first login to connect:
+  // - Shopify (ecommerce capability)
+  // - Yever (checkout capability)
+  // - Instagram (social capability)
+  // Credentials are encrypted and stored in global.tenant_integrations.
+  // Platform infrastructure (Resend, Cloudflare R2) uses env vars — not per-tenant.
+  console.log("9. Skipping CIENA integrations — configure via /admin/settings/integrations");
 
   // 10. Create module setup state (creators = not yet set up)
   console.log("10. Creating module setup state...");

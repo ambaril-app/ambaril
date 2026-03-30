@@ -62,3 +62,61 @@ export async function getOrderById(
   if (!res.ok) return null;
   return (await res.json()) as YeverOrder;
 }
+
+// ---------------------------------------------------------------------------
+// Per-tenant client factory
+// ---------------------------------------------------------------------------
+
+interface YeverConfig {
+  apiUrl: string;
+  apiKey: string;
+}
+
+/**
+ * Create a Yever client bound to specific credentials.
+ * Used by YeverCheckoutProvider when tenant credentials are loaded from DB.
+ */
+export function createYeverClient(config: YeverConfig) {
+  return {
+    async getOrdersByCoupon(
+      couponCode: string,
+      since?: Date,
+    ): Promise<YeverOrder[]> {
+      const params = new URLSearchParams({ coupon: couponCode });
+      if (since) params.set("since", since.toISOString());
+
+      const res = await fetch(
+        `${config.apiUrl}/orders?${params.toString()}`,
+        { headers: { Authorization: `Bearer ${config.apiKey}` } },
+      );
+
+      if (!res.ok) {
+        throw new Error(`Yever API error: ${res.status} ${res.statusText}`);
+      }
+
+      const data = (await res.json()) as YeverOrdersResponse;
+      return data.orders ?? [];
+    },
+
+    async getOrderById(orderId: string): Promise<YeverOrder | null> {
+      const res = await fetch(`${config.apiUrl}/orders/${orderId}`, {
+        headers: { Authorization: `Bearer ${config.apiKey}` },
+      });
+
+      if (!res.ok) return null;
+      return (await res.json()) as YeverOrder;
+    },
+
+    async testConnection(): Promise<boolean> {
+      try {
+        const res = await fetch(`${config.apiUrl}/orders?limit=1`, {
+          headers: { Authorization: `Bearer ${config.apiKey}` },
+        });
+        // 2xx or 404 = server is reachable; 401/403 = bad credentials
+        return res.ok || res.status === 404;
+      } catch {
+        return false;
+      }
+    },
+  };
+}

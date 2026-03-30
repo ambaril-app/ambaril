@@ -13,17 +13,22 @@ export default async function AdminLayout({
   const session = await getTenantSession();
 
   // Query setup state for all modules
-  const setupRows = await db
-    .select({
-      moduleId: moduleSetupState.moduleId,
-      isSetupComplete: moduleSetupState.isSetupComplete,
-    })
-    .from(moduleSetupState)
-    .where(eq(moduleSetupState.tenantId, session.tenantId));
-
+  // Guard: module_setup_state may not exist yet if migrations are pending
   const setupState: Record<string, boolean> = {};
-  for (const row of setupRows) {
-    setupState[row.moduleId] = row.isSetupComplete;
+  try {
+    const setupRows = await db
+      .select({
+        moduleId: moduleSetupState.moduleId,
+        isSetupComplete: moduleSetupState.isSetupComplete,
+      })
+      .from(moduleSetupState)
+      .where(eq(moduleSetupState.tenantId, session.tenantId));
+
+    for (const row of setupRows) {
+      setupState[row.moduleId] = row.isSetupComplete;
+    }
+  } catch {
+    // Table not yet migrated — treat all modules as not configured
   }
 
   return (

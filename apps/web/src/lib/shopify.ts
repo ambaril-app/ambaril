@@ -220,3 +220,191 @@ export async function getProducts(
   const data = await shopifyGraphQL<ProductsData>(query, { first });
   return data.products.edges.map((e) => e.node);
 }
+
+// ---------------------------------------------------------------------------
+// Per-tenant client factory
+// ---------------------------------------------------------------------------
+
+interface ShopifyConfig {
+  shop: string;
+  clientId: string;
+  clientSecret: string;
+}
+
+interface ShopifyClientToken {
+  accessToken: string;
+  expiresAt: number;
+}
+
+interface ShopifyShopData {
+  shop: { name: string };
+}
+
+/**
+ * Create a Shopify client bound to specific credentials.
+ * Used by ShopifyEcommerceProvider when tenant credentials are loaded from DB.
+ */
+export function createShopifyClient(config: ShopifyConfig) {
+  let clientToken: ShopifyClientToken | null = null;
+
+  async function getClientAccessToken(): Promise<string> {
+    if (clientToken && clientToken.expiresAt > Date.now() + 60_000) {
+      return clientToken.accessToken;
+    }
+
+    const res = await fetch(
+      `https://${config.shop}/admin/oauth/access_token`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_id: config.clientId,
+          client_secret: config.clientSecret,
+          grant_type: "client_credentials",
+        }),
+      },
+    );
+
+    if (!res.ok) {
+      throw new Error(`Shopify auth failed: ${res.status} ${res.statusText}`);
+    }
+
+    const data = (await res.json()) as ShopifyAuthResponse;
+    clientToken = {
+      accessToken: data.access_token,
+      expiresAt: Date.now() + (data.expires_in ?? 86_400) * 1000,
+    };
+
+    return clientToken.accessToken;
+  }
+
+  async function clientGraphQL<T>(
+    query: string,
+    variables?: Record<string, unknown>,
+  ): Promise<T> {
+    const token = await getClientAccessToken();
+
+    const res = await fetch(
+      `https://${config.shop}/admin/api/2025-01/graphql.json`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Shopify-Access-Token": token,
+        },
+        body: JSON.stringify({ query, variables }),
+      },
+    );
+
+    if (res.status === 401) {
+      clientToken = null;
+      const freshToken = await getClientAccessToken();
+
+      const retryRes = await fetch(
+        `https://${config.shop}/admin/api/2025-01/graphql.json`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Shopify-Access-Token": freshToken,
+          },
+          body: JSON.stringify({ query, variables }),
+        },
+      );
+
+      if (!retryRes.ok) {
+        throw new Error(`Shopify GraphQL error after retry: ${retryRes.status}`);
+      }
+
+      const retryJson = (await retryRes.json()) as ShopifyGraphQLResponse<T>;
+      if (retryJson.errors) {
+        throw new Error(`Shopify GraphQL: ${JSON.stringify(retryJson.errors)}`);
+      }
+      return retryJson.data as T;
+    }
+
+    if (!res.ok) {
+      throw new Error(`Shopify GraphQL error: ${res.status}`);
+    }
+
+    const json = (await res.json()) as ShopifyGraphQLResponse<T>;
+    if (json.errors) {
+      throw new Error(`Shopify GraphQL: ${JSON.stringify(json.errors)}`);
+    }
+
+    return json.data as T;
+  }
+
+  return {
+    async getAccessToken(): Promise<string> {
+      return getClientAccessToken();
+    },
+
+    async createDiscountCode(
+      code: string,
+      amount: number,
+    ): Promise<{ id: string }> {
+      const query = `
+        mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
+          discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
+            codeDiscountNode { id }
+            userErrors { field message }
+          }
+        }
+      `;
+
+      const variables = {
+        basicCodeDiscount: {
+          title: `Store Credit - ${code}`,
+          code,
+          startsAt: new Date().toISOString(),
+          customerGets: {
+            value: {
+              discountAmount: {
+                amount: amount.toFixed(2),
+                appliesOnEachItem: false,
+              },
+            },
+            items: { all: true },
+          },
+          usageLimit: 1,
+        },
+      };
+
+      const data = await clientGraphQL<DiscountCodeBasicCreateData>(query, variables);
+
+      if (data.discountCodeBasicCreate.userErrors.length > 0) {
+        const firstError = data.discountCodeBasicCreate.userErrors[0];
+        throw new Error(
+          `Shopify discount error: ${firstError?.message ?? "Unknown error"}`,
+        );
+      }
+
+      return { id: data.discountCodeBasicCreate.codeDiscountNode.id };
+    },
+
+    async getProducts(
+      first = 10,
+    ): Promise<Array<{ id: string; title: string; handle: string }>> {
+      const query = `
+        query products($first: Int!) {
+          products(first: $first) {
+            edges { node { id title handle } }
+          }
+        }
+      `;
+
+      const data = await clientGraphQL<ProductsData>(query, { first });
+      return data.products.edges.map((e) => e.node);
+    },
+
+    async testConnection(): Promise<boolean> {
+      try {
+        await clientGraphQL<ShopifyShopData>(`{ shop { name } }`);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+  };
+}
