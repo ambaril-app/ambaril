@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useRef, useEffect, useCallback } from "react";
+import { useState, useTransition, useRef, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LogIn, ArrowLeft, Loader2, Mail, KeyRound } from "lucide-react";
 import { requestLoginCodeAction, verifyLoginCodeAction } from "./actions";
@@ -12,10 +12,10 @@ import { requestLoginCodeAction, verifyLoginCodeAction } from "./actions";
 type Step = "email" | "code";
 
 // ---------------------------------------------------------------------------
-// Login page — Two-step flow: email -> 6-digit code
+// Login content — extracted so useSearchParams() is inside a Suspense boundary
 // ---------------------------------------------------------------------------
 
-export default function CreatorLoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [step, setStep] = useState<Step>("email");
@@ -339,5 +339,17 @@ export default function CreatorLoginPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Page — wraps LoginContent in Suspense (required by Next.js for useSearchParams)
+// ---------------------------------------------------------------------------
+
+export default function CreatorLoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-dvh items-center justify-center bg-bg-void" />}>
+      <LoginContent />
+    </Suspense>
   );
 }
