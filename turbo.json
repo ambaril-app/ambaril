@@ -1,6 +1,22 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": [".env"],
+  "globalEnv": [
+    "DATABASE_URL",
+    "ENCRYPTION_KEY",
+    "CREATOR_AUTH_SECRET",
+    "CREATOR_SESSION_SECRET",
+    "CRON_SECRET",
+    "RESEND_API_KEY",
+    "RESEND_FROM_EMAIL",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_BUCKET_NAME",
+    "R2_ENDPOINT",
+    "R2_PUBLIC_URL",
+    "NEXT_PUBLIC_APP_URL",
+    "NODE_ENV"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

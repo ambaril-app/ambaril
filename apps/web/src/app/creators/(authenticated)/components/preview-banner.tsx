@@ -1,7 +1,7 @@
 "use client";
 
 import { Eye, X } from "lucide-react";
-import { destroyCreatorSession } from "@/lib/creator-auth";
+import { destroyCreatorSession } from "./preview-banner-actions";
 
 interface PreviewBannerProps {
   creatorName: string;
