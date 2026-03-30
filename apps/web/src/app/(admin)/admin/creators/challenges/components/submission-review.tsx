@@ -181,7 +181,7 @@ export function SubmissionReview({ challengeId }: SubmissionReviewProps) {
               size="sm"
               onPress={() => handleApprove(row.id as string)}
               disabled={isPending}
-              aria-label="Aprovar submissao"
+              aria-label="Aprovar submissão"
             >
               <CheckCircle className="mr-1 h-3.5 w-3.5 text-success" />
               Aprovar
@@ -191,7 +191,7 @@ export function SubmissionReview({ challengeId }: SubmissionReviewProps) {
               size="sm"
               onPress={() => handleOpenReject(row.id as string)}
               disabled={isPending}
-              aria-label="Rejeitar submissao"
+              aria-label="Rejeitar submissão"
             >
               <XCircle className="mr-1 h-3.5 w-3.5 text-danger" />
               Rejeitar
@@ -217,8 +217,8 @@ export function SubmissionReview({ challengeId }: SubmissionReviewProps) {
       {submissions.length === 0 ? (
         <EmptyState
           icon={Inbox}
-          title="Nenhuma submissao"
-          description="Ainda nao ha submissoes para este desafio"
+          title="Nenhuma submissão"
+          description="Ainda não há submissões para este desafio"
           className="py-6"
         />
       ) : (

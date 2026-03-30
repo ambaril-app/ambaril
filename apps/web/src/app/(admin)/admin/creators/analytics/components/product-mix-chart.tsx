@@ -13,7 +13,7 @@ function ProductMixChart() {
         <Package className="h-5 w-5 text-text-ghost" />
       </div>
       <p className="text-sm text-text-secondary">
-        Dados disponiveis quando modulo ERP for implementado
+        Dados disponíveis quando módulo ERP for implementado
       </p>
       <p className="text-xs text-text-muted">
         Mix de produtos vendidos por creators

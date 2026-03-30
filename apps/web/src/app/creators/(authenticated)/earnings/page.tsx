@@ -22,7 +22,7 @@ export default async function EarningsPage() {
     return (
       <div className="flex items-center justify-center py-20">
         <p className="text-sm text-text-secondary">
-          Embaixadores nao possuem acesso a esta pagina.
+          Embaixadores não possuem acesso a esta página.
         </p>
       </div>
     );
@@ -69,9 +69,9 @@ export default async function EarningsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-medium text-text-bright">Meus Ganhos</h1>
+        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Meus Ganhos</h1>
         <p className="text-sm text-text-secondary">
-          Acompanhe seus ganhos, pagamentos e informacoes fiscais.
+          Acompanhe seus ganhos, pagamentos e informações fiscais.
         </p>
       </div>
 

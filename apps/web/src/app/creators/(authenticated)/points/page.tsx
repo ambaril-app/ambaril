@@ -22,9 +22,9 @@ export default async function PointsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-medium text-text-bright">Meus Pontos</h1>
+        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Meus Pontos</h1>
         <p className="text-sm text-text-secondary">
-          Acompanhe seus pontos acumulados e historico de atividades.
+          Acompanhe seus pontos acumulados e histórico de atividades.
         </p>
       </div>
 

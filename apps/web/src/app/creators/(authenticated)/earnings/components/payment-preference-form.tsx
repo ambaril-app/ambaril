@@ -44,7 +44,7 @@ function PaymentPreferenceForm({
       if (result.error) {
         setFeedback({ type: "error", message: result.error });
       } else {
-        setFeedback({ type: "success", message: "Preferencia de pagamento atualizada." });
+        setFeedback({ type: "success", message: "Preferência de pagamento atualizada." });
       }
     } finally {
       setIsSaving(false);

@@ -29,7 +29,7 @@ export async function completeCreatorProfile(data: {
     const creatorId = session.creatorId;
 
     if (!data.contentRightsAccepted) {
-      return { error: "Voce precisa aceitar os termos de uso de conteudo." };
+      return { error: "Você precisa aceitar os termos de uso de conteúdo." };
     }
 
     // Build update payload — only include fields that were provided

@@ -127,7 +127,7 @@ function PointsTab({ creatorId }: PointsTabProps) {
               </span>
             </CardHeader>
             <CardContent>
-              <span className="font-mono text-2xl font-semibold text-text-bright">
+              <span className="font-display text-2xl font-semibold text-text-bright">
                 {balance.total.toLocaleString("pt-BR")}
               </span>
             </CardContent>
@@ -139,7 +139,7 @@ function PointsTab({ creatorId }: PointsTabProps) {
               </span>
             </CardHeader>
             <CardContent>
-              <span className="font-mono text-2xl font-semibold text-success">
+              <span className="font-display text-2xl font-semibold text-success">
                 +{balance.thisMonth.toLocaleString("pt-BR")}
               </span>
             </CardContent>
@@ -162,7 +162,7 @@ function PointsTab({ creatorId }: PointsTabProps) {
           <EmptyState
             icon={Star}
             title="Nenhum registro de pontos"
-            description="O historico de pontos aparecera aqui conforme forem atribuidos."
+            description="O histórico de pontos aparecerá aqui conforme forem atribuídos."
           />
         }
       />

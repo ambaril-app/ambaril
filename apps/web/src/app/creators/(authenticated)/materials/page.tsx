@@ -26,17 +26,17 @@ export default async function MaterialsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-medium text-text-bright">Materiais</h1>
+        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Materiais</h1>
         <p className="text-sm text-text-secondary">
-          Kit de materiais e assets para suas publicacoes.
+          Kit de materiais e assets para suas publicações.
         </p>
       </div>
 
       {assets.length === 0 ? (
         <EmptyState
           icon={FolderOpen}
-          title="Kit de materiais indisponivel"
-          description="O kit de materiais ainda nao foi configurado pela equipe."
+          title="Kit de materiais indisponível"
+          description="O kit de materiais ainda não foi configurado pela equipe."
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

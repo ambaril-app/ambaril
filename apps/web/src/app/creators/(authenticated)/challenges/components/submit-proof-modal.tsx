@@ -61,7 +61,7 @@ export function SubmitProofModal({
 
   const handleSubmit = useCallback(async () => {
     if (!proofUrl.trim()) {
-      setError("URL da prova e obrigatoria");
+      setError("URL da prova é obrigatória");
       return;
     }
 
@@ -115,7 +115,7 @@ export function SubmitProofModal({
         />
 
         <FormSelect
-          label="Tipo de conteudo"
+          label="Tipo de conteúdo"
           options={PROOF_TYPE_OPTIONS}
           value={proofType}
           onChange={setProofType}
@@ -123,7 +123,7 @@ export function SubmitProofModal({
 
         <FormTextarea
           label="Legenda (opcional)"
-          placeholder="Adicione uma descricao ou comentario..."
+          placeholder="Adicione uma descrição ou comentário..."
           value={caption}
           onChange={(e) => setCaption(e.target.value)}
           maxLength={2000}

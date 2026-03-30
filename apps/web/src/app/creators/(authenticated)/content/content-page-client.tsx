@@ -70,7 +70,7 @@ export function ContentPageClient({ detections }: ContentPageClientProps) {
       {/* Content grid */}
       {filteredDetections.length === 0 ? (
         <p className="py-8 text-center text-sm text-text-muted">
-          Nenhum conteudo encontrado para esta plataforma.
+          Nenhum conteúdo encontrado para esta plataforma.
         </p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">

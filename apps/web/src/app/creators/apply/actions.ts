@@ -56,7 +56,7 @@ export async function submitCreatorApplication(
 
     // 2. CPF check-digit validation
     if (!validateCPF(data.cpf)) {
-      return { success: false, error: "CPF invalido (digitos verificadores incorretos)" };
+      return { success: false, error: "CPF inválido (dígitos verificadores incorretos)" };
     }
 
     // 3. Determine tenant — public form uses first active tenant
@@ -67,7 +67,7 @@ export async function submitCreatorApplication(
       .limit(1);
 
     if (!tenant) {
-      return { success: false, error: "Tenant nao encontrado" };
+      return { success: false, error: "Tenant não encontrado" };
     }
 
     const tenantId = tenant.id;
@@ -213,17 +213,17 @@ export async function submitCreatorApplication(
     const messaging = await getProvider(tenantId, "messaging");
     await messaging.sendEmail({
       to: data.email,
-      subject: "Aplicacao recebida — Programa de Creators",
+      subject: "Aplicação recebida — Programa de Creators",
       html: `
         <div style="font-family: 'DM Sans', sans-serif; max-width: 600px; margin: 0 auto; padding: 32px; background: #0C0E13; color: #D0D4DE;">
           <h1 style="color: #F7F8FA; font-size: 24px; margin-bottom: 16px;">Obrigado, ${data.name}!</h1>
-          <p style="font-size: 14px; line-height: 1.65;">Recebemos sua aplicacao para o programa de creators.</p>
-          <p style="font-size: 14px; line-height: 1.65;">Nossa equipe ira analisar suas informacoes e voce recebera um email quando sua aplicacao for aprovada.</p>
+          <p style="font-size: 14px; line-height: 1.65;">Recebemos sua aplicação para o programa de creators.</p>
+          <p style="font-size: 14px; line-height: 1.65;">Nossa equipe irá analisar suas informações e você receberá um email quando sua aplicação for aprovada.</p>
           <div style="background: #101216; border: 1px solid #262A34; border-radius: 12px; padding: 24px; margin: 24px 0;">
             <p style="color: #7C8293; font-size: 12px; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 8px;">Status</p>
-            <p style="color: #F7F8FA; font-size: 18px; font-weight: 500; margin: 0;">Em analise</p>
+            <p style="color: #F7F8FA; font-size: 18px; font-weight: 500; margin: 0;">Em análise</p>
           </div>
-          <p style="font-size: 12px; color: #7C8293; line-height: 1.5;">Se voce tiver duvidas, entre em contato conosco.</p>
+          <p style="font-size: 12px; color: #7C8293; line-height: 1.5;">Se você tiver dúvidas, entre em contato conosco.</p>
         </div>
       `,
     });

@@ -90,7 +90,7 @@ export function CreatorsKpiRow({ kpis, pendingCount }: CreatorsKpiRowProps) {
                 <Icon className={`h-4 w-4 ${card.iconColor}`} />
               </div>
               <div className="mt-3">
-                <span className="font-mono text-2xl font-semibold tabular-nums text-text-bright">
+                <span className="font-display text-2xl font-semibold tabular-nums text-text-bright">
                   {card.value}
                 </span>
               </div>

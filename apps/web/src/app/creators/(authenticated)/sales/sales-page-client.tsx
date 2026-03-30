@@ -286,7 +286,7 @@ function SalesPageClient({ creatorId }: SalesPageClientProps) {
           <EmptyState
             icon={ShoppingBag}
             title="Nenhuma venda ainda"
-            description="Quando seus seguidores usarem seu cupom, as vendas aparecerao aqui."
+            description="Quando seus seguidores usarem seu cupom, as vendas aparecerão aqui."
           />
         }
       />

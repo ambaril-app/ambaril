@@ -18,16 +18,16 @@ export default async function BriefingsPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-lg font-medium text-text-bright">Briefings</h1>
+          <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Briefings</h1>
           <p className="text-sm text-text-secondary">
-            Diretrizes e instrucoes para suas publicacoes.
+            Diretrizes e instruções para suas publicações.
           </p>
         </div>
 
         <EmptyState
           icon={FileText}
-          title="Nenhum briefing disponivel"
-          description="Quando a equipe criar briefings, eles aparecerao aqui."
+          title="Nenhum briefing disponível"
+          description="Quando a equipe criar briefings, eles aparecerão aqui."
         />
       </div>
     );
@@ -47,9 +47,9 @@ export default async function BriefingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-medium text-text-bright">Briefings</h1>
+        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Briefings</h1>
         <p className="text-sm text-text-secondary">
-          Diretrizes e instrucoes para suas publicacoes.
+          Diretrizes e instruções para suas publicações.
         </p>
       </div>
 

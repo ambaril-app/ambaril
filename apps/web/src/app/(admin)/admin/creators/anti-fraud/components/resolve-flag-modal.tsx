@@ -92,7 +92,7 @@ export function ResolveFlagModal({
           label="Motivo"
           placeholder={
             isSuspend
-              ? "Descreva o motivo da suspensao..."
+              ? "Descreva o motivo da suspensão..."
               : "Descreva por que a flag foi liberada..."
           }
           value={reason}

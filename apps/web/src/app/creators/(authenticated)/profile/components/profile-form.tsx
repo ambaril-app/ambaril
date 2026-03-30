@@ -211,7 +211,7 @@ function ProfileForm({ creatorId, initialData }: ProfileFormProps) {
 
           <FormTextarea
             label="Bio"
-            placeholder="Conte um pouco sobre voce..."
+            placeholder="Conte um pouco sobre você..."
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             maxLength={280}

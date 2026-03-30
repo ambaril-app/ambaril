@@ -3,6 +3,7 @@
 import { useState, useTransition, useRef, useEffect, useCallback, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LogIn, ArrowLeft, Loader2, Mail, KeyRound } from "lucide-react";
+import { Button } from "@ambaril/ui/components/button";
 import { requestLoginCodeAction, verifyLoginCodeAction } from "./actions";
 
 // ---------------------------------------------------------------------------
@@ -50,7 +51,7 @@ function LoginContent() {
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError("Email invalido");
+      setError("Email inválido");
       return;
     }
 
@@ -240,11 +241,11 @@ function LoginContent() {
                   </div>
                 </div>
 
-                <button
+                <Button
                   type="button"
                   onClick={handleRequestCode}
                   disabled={isPending || !email.trim()}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-text-white px-4 py-2.5 text-sm font-medium text-bg-void transition-opacity hover:opacity-90 disabled:opacity-50"
+                  className="w-full"
                 >
                   {isPending ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -252,7 +253,7 @@ function LoginContent() {
                     <LogIn size={16} />
                   )}
                   {isPending ? "Enviando..." : "Enviar codigo"}
-                </button>
+                </Button>
               </div>
             ) : (
               /* Code step */
@@ -291,11 +292,11 @@ function LoginContent() {
                   </div>
                 </div>
 
-                <button
+                <Button
                   type="button"
                   onClick={handleVerifyCode}
                   disabled={isPending || code.length !== 6}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-text-white px-4 py-2.5 text-sm font-medium text-bg-void transition-opacity hover:opacity-90 disabled:opacity-50"
+                  className="w-full"
                 >
                   {isPending ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -303,7 +304,7 @@ function LoginContent() {
                     <LogIn size={16} />
                   )}
                   {isPending ? "Verificando..." : "Entrar"}
-                </button>
+                </Button>
 
                 <div className="text-center">
                   <button

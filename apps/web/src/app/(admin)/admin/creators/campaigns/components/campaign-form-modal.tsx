@@ -67,11 +67,11 @@ export function CampaignFormModal({ isOpen, onClose }: CampaignFormModalProps) {
 
   const handleSubmit = useCallback(async () => {
     if (!name.trim()) {
-      setError("Nome da campanha e obrigatorio");
+      setError("Nome da campanha é obrigatório");
       return;
     }
     if (!startDate) {
-      setError("Data de inicio e obrigatoria");
+      setError("Data de início é obrigatória");
       return;
     }
 
@@ -140,7 +140,7 @@ export function CampaignFormModal({ isOpen, onClose }: CampaignFormModalProps) {
 
         <div className="grid grid-cols-2 gap-4">
           <FormDatePicker
-            label="Data de inicio"
+            label="Data de início"
             value={startDate ?? undefined}
             onChange={(d) => setStartDate(d)}
             required

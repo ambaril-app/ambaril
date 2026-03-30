@@ -12,9 +12,9 @@ export default async function SalesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-medium text-text-bright">Minhas Vendas</h1>
+        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Minhas Vendas</h1>
         <p className="text-sm text-text-secondary">
-          Acompanhe suas vendas e comissoes.
+          Acompanhe suas vendas e comissões.
         </p>
       </div>
 

@@ -174,7 +174,7 @@ function AntiFraudTab({ creatorId }: AntiFraudTabProps) {
           <EmptyState
             icon={ShieldAlert}
             title="Nenhuma flag de fraude"
-            description="Quando transacoes suspeitas forem detectadas, elas aparecerao aqui."
+            description="Quando transações suspeitas forem detectadas, elas aparecerão aqui."
           />
         }
       />
@@ -192,7 +192,7 @@ function AntiFraudTab({ creatorId }: AntiFraudTabProps) {
       >
         <div className="space-y-4">
           <p className="text-sm text-text-secondary">
-            Escolha uma acao para resolver esta flag de fraude.
+            Escolha uma ação para resolver esta flag de fraude.
           </p>
 
           <div className="flex gap-2">

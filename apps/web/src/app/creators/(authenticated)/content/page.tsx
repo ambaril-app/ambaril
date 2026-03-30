@@ -18,7 +18,7 @@ export default async function ContentPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-medium text-text-bright">Meu Conteudo</h1>
+        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Meu Conteudo</h1>
         <p className="text-sm text-text-secondary">
           Publicacoes detectadas automaticamente nas suas redes sociais.
         </p>
@@ -27,8 +27,8 @@ export default async function ContentPage() {
       {detections.length === 0 ? (
         <EmptyState
           icon={Camera}
-          title="Nenhum conteudo detectado"
-          description="Seus posts detectados aparecerao aqui automaticamente."
+          title="Nenhum conteúdo detectado"
+          description="Seus posts detectados aparecerão aqui automaticamente."
         />
       ) : (
         <ContentPageClient detections={detections} />

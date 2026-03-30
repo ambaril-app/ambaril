@@ -86,10 +86,10 @@ export function Sidebar({ session, setupState = {} }: SidebarProps) {
                 <button
                   onClick={() => toggleModule(mod.id)}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                    "flex w-full items-center gap-2 rounded-md py-2 pr-3 text-sm transition-colors",
                     isActive
-                      ? "bg-sidebar-item-active-bg text-sidebar-item-active-text font-medium"
-                      : "text-text-secondary hover:bg-sidebar-item-hover hover:text-text-primary",
+                      ? "border-l-2 border-accent bg-sidebar-item-active-bg pl-[10px] text-sidebar-item-active-text font-medium"
+                      : "border-l-2 border-transparent pl-[10px] text-text-secondary hover:bg-sidebar-item-hover hover:text-text-primary",
                   )}
                 >
                   {Icon && <Icon size={18} />}

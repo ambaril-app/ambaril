@@ -15,11 +15,11 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Branding */}
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-text-bright">
+          <h1 className="font-display text-2xl font-medium tracking-[-0.02em] text-text-bright">
             Ambaril
           </h1>
           <p className="mt-1 text-sm text-text-muted">
-            Plataforma de gestao
+            Plataforma de gestão
           </p>
         </div>
 

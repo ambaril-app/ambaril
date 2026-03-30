@@ -117,7 +117,7 @@ function SalesTab({ creatorId }: SalesTabProps) {
         <EmptyState
           icon={ShoppingBag}
           title="Nenhuma venda registrada"
-          description="As vendas aparecerao aqui conforme forem atribuidas via cupom."
+          description="As vendas aparecerão aqui conforme forem atribuídas via cupom."
         />
       }
     />

@@ -123,7 +123,7 @@ function CampaignsTab({ creatorId }: CampaignsTabProps) {
         <EmptyState
           icon={Megaphone}
           title="Nenhuma campanha encontrada"
-          description="As campanhas em que o creator participou aparecerao aqui."
+          description="As campanhas em que o creator participou aparecerão aqui."
         />
       }
     />

@@ -48,7 +48,7 @@ const ALL_ITEMS: SidebarItem[] = [
   { id: "challenges", label: "Desafios", href: "/creators/challenges", icon: Trophy, visibilityKey: "hasActiveChallenges" },
   { id: "ranking", label: "Ranking", href: "/creators/ranking", icon: Star, visibilityKey: "hasRanking" },
   { id: "points", label: "Pontos", href: "/creators/points", icon: Star, visibilityKey: "hasPoints" },
-  { id: "content", label: "Conteudo", href: "/creators/content", icon: Camera, visibilityKey: "hasContent" },
+  { id: "content", label: "Conteúdo", href: "/creators/content", icon: Camera, visibilityKey: "hasContent" },
   { id: "briefings", label: "Briefings", href: "/creators/briefings", icon: FileText, visibilityKey: "hasActiveBriefings" },
   { id: "materials", label: "Materiais", href: "/creators/materials", icon: FolderOpen },
   { id: "products", label: "Produtos", href: "/creators/products", icon: Package },
@@ -82,7 +82,7 @@ export function PortalSidebar({ isAmbassador, visibility }: PortalSidebarProps) 
       <div className="flex h-14 items-center px-4">
         <Link
           href="/creators/dashboard"
-          className="text-lg font-normal tracking-wide text-text-white"
+          className="text-lg font-normal tracking-[-0.01em] text-text-white"
         >
           Ambaril
         </Link>
@@ -101,7 +101,7 @@ export function PortalSidebar({ isAmbassador, visibility }: PortalSidebarProps) 
               className={cn(
                 "flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
                 isActive
-                  ? "border-l-2 border-text-tertiary bg-sidebar-item-active-bg text-text-white"
+                  ? "border-l-2 border-accent bg-sidebar-item-active-bg text-sidebar-item-active-text font-medium"
                   : "text-text-secondary hover:bg-sidebar-item-hover hover:text-text-primary",
               )}
             >

@@ -236,7 +236,7 @@ export function AntiFraudClient({ initialFlags, initialTotal }: AntiFraudClientP
     <>
       {/* Header */}
       <div>
-        <h1 className="text-lg font-medium text-text-bright">Monitor Anti-Fraude</h1>
+        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Monitor Anti-Fraude</h1>
         <p className="text-sm text-text-secondary">
           Flags de auto-compra e limite mensal excedido
         </p>
@@ -252,7 +252,7 @@ export function AntiFraudClient({ initialFlags, initialTotal }: AntiFraudClientP
             </div>
           </CardHeader>
           <CardContent>
-            <span className="font-mono text-2xl font-medium text-text-bright">
+            <span className="font-display text-2xl font-medium text-text-bright">
               {total}
             </span>
           </CardContent>
@@ -266,7 +266,7 @@ export function AntiFraudClient({ initialFlags, initialTotal }: AntiFraudClientP
             </div>
           </CardHeader>
           <CardContent>
-            <span className="font-mono text-2xl font-medium text-danger">
+            <span className="font-display text-2xl font-medium text-danger">
               {selfPurchaseCount}
             </span>
           </CardContent>
@@ -280,7 +280,7 @@ export function AntiFraudClient({ initialFlags, initialTotal }: AntiFraudClientP
             </div>
           </CardHeader>
           <CardContent>
-            <span className="font-mono text-2xl font-medium text-warning">
+            <span className="font-display text-2xl font-medium text-warning">
               {capExceededCount}
             </span>
           </CardContent>

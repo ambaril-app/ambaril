@@ -89,7 +89,7 @@ function KpiCards({ kpis }: KpiCardsProps) {
               </div>
               <div className="mt-3">
                 <span
-                  className="font-mono text-2xl font-semibold tabular-nums text-text-white"
+                  className="font-display text-2xl font-semibold tabular-nums text-text-bright"
                 >
                   {card.format(value)}
                 </span>

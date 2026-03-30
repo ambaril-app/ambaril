@@ -72,8 +72,7 @@ export function KpiCards({
               </div>
               <p
                 className={cn(
-                  "mt-2 text-2xl font-medium tabular-nums text-text-white",
-                  card.isMono && "font-mono",
+                  "mt-2 font-display text-2xl font-medium tabular-nums text-text-bright",
                 )}
               >
                 {card.value}

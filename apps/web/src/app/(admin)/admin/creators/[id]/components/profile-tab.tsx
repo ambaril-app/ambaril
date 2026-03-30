@@ -165,17 +165,17 @@ function ProfileTab({ creator }: ProfileTabProps) {
           <CardContent>
             <div className="divide-y divide-border-subtle">
               <InfoRow label="Bio" value={creator.bio ?? "-"} />
-              <InfoRow label="Motivacao" value={creator.motivation ?? "-"} />
-              <InfoRow label="Nichos de conteudo" value={formatNiches(creator.contentNiches)} />
-              <InfoRow label="Tipos de conteudo" value={formatNiches(creator.contentTypes)} />
+              <InfoRow label="Motivação" value={creator.motivation ?? "-"} />
+              <InfoRow label="Nichos de conteúdo" value={formatNiches(creator.contentNiches)} />
+              <InfoRow label="Tipos de conteúdo" value={formatNiches(creator.contentTypes)} />
               <InfoRow label="Fonte de descoberta" value={creator.discoverySource ?? "-"} />
               <InfoRow
-                label="Direitos de conteudo aceitos"
-                value={creator.contentRightsAccepted ? "Sim" : "Nao"}
+                label="Direitos de conteúdo aceitos"
+                value={creator.contentRightsAccepted ? "Sim" : "Não"}
               />
               {creator.suspensionReason && (
                 <InfoRow
-                  label="Motivo da suspensao"
+                  label="Motivo da suspensão"
                   value={
                     <span className="text-danger">{creator.suspensionReason}</span>
                   }
@@ -202,7 +202,7 @@ function ProfileTab({ creator }: ProfileTabProps) {
           </CardHeader>
           <CardContent>
             <div className="divide-y divide-border-subtle">
-              <InfoRow label="Preferencia" value={formatPaymentPref(creator.paymentPreference)} />
+              <InfoRow label="Preferência" value={formatPaymentPref(creator.paymentPreference)} />
               {creator.paymentPreference === "pix" && (
                 <>
                   <InfoRow label="Chave PIX" value={creator.pixKey ?? "-"} />
@@ -244,11 +244,11 @@ function ProfileTab({ creator }: ProfileTabProps) {
             placeholder="Ex: M, G, GG"
           />
           <FormSelect
-            label="Preferencia de pagamento"
+            label="Preferência de pagamento"
             options={[
               { value: "", label: "Nenhuma" },
               { value: "pix", label: "PIX" },
-              { value: "store_credit", label: "Credito em loja" },
+              { value: "store_credit", label: "Crédito em loja" },
               { value: "product", label: "Produto" },
             ]}
             value={editPaymentPref}

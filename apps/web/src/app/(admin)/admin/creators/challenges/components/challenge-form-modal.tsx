@@ -100,13 +100,13 @@ export function ChallengeFormModal({
     setFieldErrors({});
 
     const errors: Record<string, string> = {};
-    if (!name.trim()) errors.name = "Nome e obrigatorio";
-    if (description.length < 10) errors.description = "Descricao deve ter pelo menos 10 caracteres";
-    if (!category) errors.category = "Categoria e obrigatoria";
+    if (!name.trim()) errors.name = "Nome é obrigatório";
+    if (description.length < 10) errors.description = "Descrição deve ter pelo menos 10 caracteres";
+    if (!category) errors.category = "Categoria é obrigatória";
 
     const parsedMonth = parseInt(month, 10);
     if (isNaN(parsedMonth) || parsedMonth < 1 || parsedMonth > 12) {
-      errors.month = "Mes invalido";
+      errors.month = "Mês inválido";
     }
 
     const parsedYear = parseInt(year, 10);
@@ -123,13 +123,13 @@ export function ChallengeFormModal({
     try {
       parsedRequirements = JSON.parse(requirements) as Record<string, unknown>;
     } catch {
-      errors.requirements = "JSON invalido";
+      errors.requirements = "JSON inválido";
     }
 
-    if (!startsAt) errors.startsAt = "Data de inicio e obrigatoria";
-    if (!endsAt) errors.endsAt = "Data de fim e obrigatoria";
+    if (!startsAt) errors.startsAt = "Data de início é obrigatória";
+    if (!endsAt) errors.endsAt = "Data de fim é obrigatória";
     if (startsAt && endsAt && new Date(endsAt) <= new Date(startsAt)) {
-      errors.endsAt = "Data de fim deve ser posterior a data de inicio";
+      errors.endsAt = "Data de fim deve ser posterior à data de início";
     }
 
     if (Object.keys(errors).length > 0) {

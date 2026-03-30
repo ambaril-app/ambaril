@@ -28,7 +28,7 @@ export default async function ChallengesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-medium text-text-bright">Desafios</h1>
+        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Desafios</h1>
         <p className="text-sm text-text-secondary">
           Participe de desafios e ganhe pontos extras.
         </p>

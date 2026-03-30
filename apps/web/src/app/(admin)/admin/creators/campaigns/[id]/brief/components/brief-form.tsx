@@ -135,7 +135,7 @@ export function BriefForm({ campaignId, existingBrief }: BriefFormProps) {
   // --- Save ---
   const handleSave = useCallback(async () => {
     if (!title.trim()) {
-      setError("Titulo e obrigatorio");
+      setError("Título é obrigatório");
       return;
     }
     if (contentMd.length < 10) {
@@ -422,12 +422,12 @@ export function BriefForm({ campaignId, existingBrief }: BriefFormProps) {
       <Modal
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
-        title="Confirmar exclusao"
+        title="Confirmar exclusão"
         size="sm"
       >
         <div className="space-y-4">
           <p className="text-sm text-text-secondary">
-            Tem certeza que deseja excluir este briefing? Esta acao nao pode ser desfeita.
+            Tem certeza que deseja excluir este briefing? Esta ação não pode ser desfeita.
           </p>
           <div className="flex justify-end gap-3">
             <Button variant="ghost" onPress={() => setShowDeleteConfirm(false)}>

@@ -186,16 +186,16 @@ export function Step3About({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-medium text-text-bright">Sobre Voce</h2>
+        <h2 className="text-lg font-medium text-text-bright">Sobre Você</h2>
         <p className="mt-1 text-sm text-text-secondary">
-          Conte-nos mais sobre voce e seu conteudo.
+          Conte-nos mais sobre você e seu conteúdo.
         </p>
       </div>
 
       {/* Bio */}
       <FormTextarea
         label="Bio"
-        placeholder="Uma breve descricao sobre voce (max 280 caracteres)"
+        placeholder="Uma breve descrição sobre você (max 280 caracteres)"
         maxLength={280}
         value={data.bio ?? ""}
         onChange={(e) => onChangeText("bio", e.target.value)}
@@ -204,8 +204,8 @@ export function Step3About({
 
       {/* Motivation */}
       <FormTextarea
-        label="Motivacao"
-        placeholder="Por que voce quer fazer parte do programa? (minimo 20 caracteres)"
+        label="Motivação"
+        placeholder="Por que você quer fazer parte do programa? (mínimo 20 caracteres)"
         required
         rows={4}
         value={data.motivation ?? ""}
@@ -215,7 +215,7 @@ export function Step3About({
 
       {/* Content niches */}
       <ChipSelect
-        label="Nichos de conteudo *"
+        label="Nichos de conteúdo *"
         options={CONTENT_NICHES}
         selected={data.contentNiches ?? []}
         onChange={(values) => onChangeArray("contentNiches", values)}
@@ -224,7 +224,7 @@ export function Step3About({
 
       {/* Content types */}
       <ChipSelect
-        label="Tipos de conteudo *"
+        label="Tipos de conteúdo *"
         options={CONTENT_TYPES}
         selected={data.contentTypes ?? []}
         onChange={(values) => onChangeArray("contentTypes", values)}
@@ -333,13 +333,13 @@ export function Step3About({
         <Checkbox
           isSelected={data.ambassadorOption ?? false}
           onValueChange={(checked) => onChangeBoolean("ambassadorOption", checked)}
-          label="Quero ser Embaixador (sem comissao, com desconto)"
+          label="Quero ser Embaixador (sem comissão, com desconto)"
         />
 
         <Checkbox
           isSelected={data.contentRightsAccepted === true}
           onValueChange={(checked) => onChangeBoolean("contentRightsAccepted", checked)}
-          label="Autorizo o uso do meu conteudo pela marca *"
+          label="Autorizo o uso do meu conteúdo pela marca *"
         />
         {errors.contentRightsAccepted && (
           <p className="text-xs text-danger">{errors.contentRightsAccepted}</p>

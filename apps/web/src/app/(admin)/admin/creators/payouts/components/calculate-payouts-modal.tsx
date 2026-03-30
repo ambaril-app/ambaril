@@ -54,15 +54,15 @@ export function CalculatePayoutsModal({
     setResult(null);
 
     if (!periodStart) {
-      setError("Data de inicio e obrigatoria");
+      setError("Data de início é obrigatória");
       return;
     }
     if (!periodEnd) {
-      setError("Data de fim e obrigatoria");
+      setError("Data de fim é obrigatória");
       return;
     }
     if (periodEnd <= periodStart) {
-      setError("Data de fim deve ser posterior a data de inicio");
+      setError("Data de fim deve ser posterior à data de início");
       return;
     }
 

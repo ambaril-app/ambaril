@@ -108,7 +108,7 @@ function NewCreatorForm({ tiers }: NewCreatorFormProps) {
 
   // Tier options for select
   const tierOptions: FormSelectOption[] = [
-    { value: "", label: "Nenhum (sera atribuido na aprovacao)" },
+    { value: "", label: "Nenhum (será atribuído na aprovação)" },
     ...tiers.map((t) => ({ value: t.id, label: `${t.name} (${t.commissionRate}%)` })),
   ];
 
@@ -329,10 +329,10 @@ function NewCreatorForm({ tiers }: NewCreatorFormProps) {
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               maxLength={280}
-              placeholder="Breve descricao do creator..."
+              placeholder="Breve descrição do creator..."
             />
             <FormTextarea
-              label="Motivacao"
+              label="Motivação"
               value={motivation}
               onChange={(e) => setMotivation(e.target.value)}
               maxLength={2000}
@@ -340,13 +340,13 @@ function NewCreatorForm({ tiers }: NewCreatorFormProps) {
             />
             <div className="grid gap-4 sm:grid-cols-2">
               <Input
-                label="Nichos de conteudo (separados por virgula)"
+                label="Nichos de conteúdo (separados por vírgula)"
                 value={contentNiches}
                 onChange={(e) => setContentNiches(e.target.value)}
                 placeholder="moda, streetwear, lifestyle"
               />
               <Input
-                label="Tipos de conteudo (separados por virgula)"
+                label="Tipos de conteúdo (separados por vírgula)"
                 value={contentTypes}
                 onChange={(e) => setContentTypes(e.target.value)}
                 placeholder="foto, video, story, reels"
@@ -436,13 +436,13 @@ function NewCreatorForm({ tiers }: NewCreatorFormProps) {
               }}
             />
             <Input
-              label="Taxa de comissao (%)"
+              label="Taxa de comissão (%)"
               value={commissionRate}
               onChange={(e) => setCommissionRate(e.target.value)}
               placeholder="8.00"
             />
             <FormSelect
-              label="Preferencia de pagamento"
+              label="Preferência de pagamento"
               options={PAYMENT_OPTIONS}
               value={paymentPreference}
               onChange={setPaymentPreference}

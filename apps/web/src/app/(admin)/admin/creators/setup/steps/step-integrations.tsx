@@ -62,8 +62,8 @@ export function StepIntegrations({
   return (
     <div className="space-y-4">
       <p className="text-sm text-text-secondary">
-        Verifique se as integracoes necessarias estao configuradas. Integracoes
-        obrigatorias estao marcadas abaixo.
+        Verifique se as integrações necessárias estão configuradas. Integrações
+        obrigatórias estão marcadas abaixo.
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -85,7 +85,7 @@ export function StepIntegrations({
                     </p>
                     {isRequired && (
                       <span className="rounded bg-bg-raised px-1.5 py-0.5 text-[10px] text-text-secondary">
-                        Obrigatorio
+                        Obrigatório
                       </span>
                     )}
                   </div>
@@ -122,12 +122,12 @@ export function StepIntegrations({
                     </p>
                     {isRequired && (
                       <span className="rounded bg-yellow-500/10 px-1.5 py-0.5 text-[10px] text-yellow-500">
-                        Obrigatorio
+                        Obrigatório
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-text-secondary">
-                    {info?.description ?? "Nao configurado"}
+                    {info?.description ?? "Não configurado"}
                   </p>
                 </div>
               </CardContent>
@@ -138,8 +138,8 @@ export function StepIntegrations({
 
       {missing.some((c) => REQUIRED_CAPABILITIES.includes(c)) && (
         <p className="text-xs text-yellow-500">
-          Integracoes obrigatorias pendentes. Voce pode continuar, mas algumas
-          funcoes nao estarao disponiveis.
+          Integrações obrigatórias pendentes. Você pode continuar, mas algumas
+          funções não estarão disponíveis.
         </p>
       )}
     </div>

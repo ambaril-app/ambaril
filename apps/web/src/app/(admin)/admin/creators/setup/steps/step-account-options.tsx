@@ -35,14 +35,14 @@ const OPTIONS = [
     icon: LinkIcon,
     label: "Link de convite",
     description:
-      "Creators se cadastram via link publico do formulario de aplicacao.",
+      "Creators se cadastram via link público do formulário de aplicação.",
   },
   {
     id: "both" as const,
     icon: Users,
     label: "Ambos",
     description:
-      "Equipe cria contas e tambem aceita aplicacoes pelo formulario.",
+      "Equipe cria contas e também aceita aplicações pelo formulário.",
   },
 ];
 
@@ -71,7 +71,7 @@ export function StepAccountOptions({ onChange }: StepAccountOptionsProps) {
     <div className="space-y-6">
       <div className="space-y-4">
         <p className="text-sm text-text-secondary">
-          Como voce quer cadastrar novos creators?
+          Como você quer cadastrar novos creators?
         </p>
 
         <div className="grid gap-3 sm:grid-cols-3">

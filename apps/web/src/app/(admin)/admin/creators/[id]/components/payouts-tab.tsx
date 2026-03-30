@@ -133,7 +133,7 @@ function PayoutsTab({ creatorId }: PayoutsTabProps) {
         <EmptyState
           icon={Wallet}
           title="Nenhum pagamento registrado"
-          description="Os pagamentos aparecerao aqui apos calculo do periodo."
+          description="Os pagamentos aparecerão aqui após cálculo do período."
         />
       }
     />

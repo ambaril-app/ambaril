@@ -15,17 +15,17 @@ export default async function ProductsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-medium text-text-bright">Produtos</h1>
+        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Produtos</h1>
         <p className="text-sm text-text-secondary">
-          Catalogo de produtos disponiveis para divulgacao.
+          Catálogo de produtos disponíveis para divulgação.
         </p>
       </div>
 
       {products.length === 0 ? (
         <EmptyState
           icon={Package}
-          title="Catalogo indisponivel"
-          description="O catalogo de produtos estara disponivel em breve."
+          title="Catálogo indisponível"
+          description="O catálogo de produtos estará disponível em breve."
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

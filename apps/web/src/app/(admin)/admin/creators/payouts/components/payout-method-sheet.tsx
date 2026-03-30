@@ -61,7 +61,7 @@ export function PayoutMethodSheet({
     }
 
     if (paymentMethod === "pix" && !pixKey.trim()) {
-      setError("Chave PIX e obrigatoria para pagamento via PIX");
+      setError("Chave PIX é obrigatória para pagamento via PIX");
       return;
     }
 

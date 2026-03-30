@@ -31,7 +31,7 @@ export default async function NewCreatorPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-lg font-medium text-text-bright">
+        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">
           Novo Creator (Cadastro Manual)
         </h1>
         <p className="text-sm text-text-secondary">

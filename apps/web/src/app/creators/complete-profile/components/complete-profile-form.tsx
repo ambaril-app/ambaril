@@ -28,7 +28,7 @@ export function CompleteProfileForm() {
     setError(null);
 
     if (!contentRights) {
-      setError("Voce precisa aceitar os termos de uso de conteudo.");
+      setError("Você precisa aceitar os termos de uso de conteúdo.");
       return;
     }
 
@@ -133,8 +133,8 @@ export function CompleteProfileForm() {
             className="mt-1 h-4 w-4 rounded border-input-border bg-input-bg text-text-tertiary focus:ring-input-focus"
           />
           <span className="text-xs text-text-secondary">
-            Autorizo o uso das minhas imagens e conteudo publicados nas redes sociais para
-            divulgacao da marca nos canais oficiais.
+            Autorizo o uso das minhas imagens e conteúdo publicados nas redes sociais para
+            divulgação da marca nos canais oficiais.
           </span>
         </label>
 

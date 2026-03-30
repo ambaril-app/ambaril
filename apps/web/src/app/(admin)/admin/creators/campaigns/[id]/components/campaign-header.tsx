@@ -59,7 +59,7 @@ export function CampaignHeader({
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
-          <h1 className="text-lg font-medium text-text-bright">{name}</h1>
+          <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">{name}</h1>
           <Badge variant="secondary">
             {CAMPAIGN_TYPE_LABELS[campaignType] ?? campaignType}
           </Badge>

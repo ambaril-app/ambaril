@@ -39,7 +39,14 @@
   --info: #2563EB;
   --info-muted: rgba(37,99,235,0.08);
 
+  /* Accent — âmbar (uso cirúrgico: btn-primary + nav active) */
+  --accent: oklch(65% 0.12 60);
+  --accent-hover: oklch(60% 0.13 60);
+  --accent-muted: oklch(65% 0.12 60 / 0.10);
+  --accent-text: #FFFFFF;
+
   /* Typography */
+  --font-display: 'Bricolage Grotesque', 'DM Sans', -apple-system, sans-serif;
   --font: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: 'DM Mono', 'SF Mono', 'Fira Code', monospace;
 
@@ -59,8 +66,9 @@
   --sidebar-border: rgba(15,23,42,0.08);
 
   /* Buttons */
-  --btn-primary-bg: #0F172A;
-  --btn-primary-text: #FFFFFF;
+  --btn-primary-bg: var(--accent);
+  --btn-primary-text: var(--accent-text);
+  --btn-primary-hover: var(--accent-hover);
   --btn-secondary-bg: #FFFFFF;
   --btn-secondary-text: #334155;
   --btn-secondary-border: rgba(15,23,42,0.15);
@@ -157,9 +165,7 @@
   --sidebar-item-active-text: #E8EAF0;
   --sidebar-border: #1E2129;
 
-  /* Buttons */
-  --btn-primary-bg: #E8EAF0;
-  --btn-primary-text: #0C0E13;
+  /* Buttons (--accent uniforme em ambos os temas) */
   --btn-secondary-bg: transparent;
   --btn-secondary-text: #D0D4DE;
   --btn-secondary-border: #262A34;
@@ -229,8 +235,15 @@
   --color-info-muted: var(--info-muted);
 
   /* Fonts */
+  --font-display: var(--font-display);
   --font-sans: var(--font);
   --font-mono: var(--font-mono);
+
+  /* Accent */
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-muted: var(--accent-muted);
+  --color-accent-text: var(--accent-text);
 
   /* Input tokens (for unambiguous border/ring utilities in Tailwind v4) */
   --color-input-bg: var(--input-bg);
@@ -240,6 +253,7 @@
   /* Button tokens (for border contexts) */
   --color-btn-primary-bg: var(--btn-primary-bg);
   --color-btn-primary-text: var(--btn-primary-text);
+  --color-btn-primary-hover: var(--btn-primary-hover);
   --color-btn-secondary-bg: var(--btn-secondary-bg);
   --color-btn-secondary-text: var(--btn-secondary-text);
   --color-btn-secondary-border: var(--btn-secondary-border);

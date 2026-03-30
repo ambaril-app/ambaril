@@ -129,7 +129,7 @@ export default async function CreatorDashboardPage() {
   if (!creator) {
     return (
       <div className="flex flex-col items-center justify-center py-20">
-        <p className="text-sm text-text-secondary">Creator nao encontrado.</p>
+        <p className="text-sm text-text-secondary">Creator não encontrado.</p>
       </div>
     );
   }

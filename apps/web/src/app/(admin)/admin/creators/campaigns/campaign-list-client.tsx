@@ -172,7 +172,7 @@ export function CampaignListClient({
     <>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-medium text-text-bright">Campanhas</h1>
+          <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Campanhas</h1>
           <p className="text-sm text-text-secondary">
             Gerencie campanhas de creators
           </p>

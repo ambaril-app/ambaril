@@ -16,7 +16,7 @@ export default async function ProfilePage() {
   if (creatorResult.error || !creatorResult.data) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-sm text-danger">{creatorResult.error ?? "Creator nao encontrado"}</p>
+        <p className="text-sm text-danger">{creatorResult.error ?? "Creator não encontrado"}</p>
       </div>
     );
   }
@@ -26,9 +26,9 @@ export default async function ProfilePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-lg font-medium text-text-bright">Meu Perfil</h1>
+        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Meu Perfil</h1>
         <p className="text-sm text-text-secondary">
-          Gerencie suas informacoes pessoais, redes sociais e dados fiscais.
+          Gerencie suas informações pessoais, redes sociais e dados fiscais.
         </p>
       </div>
 

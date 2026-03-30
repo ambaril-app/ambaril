@@ -56,7 +56,7 @@ function CreatorSummaryCards({ stats }: CreatorSummaryCardsProps) {
               </div>
             </CardHeader>
             <CardContent>
-              <span className="font-mono text-2xl font-semibold text-text-bright">
+              <span className="font-display text-2xl font-semibold text-text-bright">
                 {stats[card.key]}
               </span>
             </CardContent>

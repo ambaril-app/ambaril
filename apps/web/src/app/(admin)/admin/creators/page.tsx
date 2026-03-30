@@ -3,6 +3,7 @@ import { getTenantSession } from "@/lib/tenant";
 import { listCreators } from "@/app/actions/creators/crud";
 import { listTiers } from "@/app/actions/creators/tiers";
 import { Plus } from "lucide-react";
+import { Button } from "@ambaril/ui/components/button";
 import { db } from "@ambaril/db";
 import { eq, and } from "drizzle-orm";
 import { moduleSetupState } from "@ambaril/db/schema";
@@ -93,37 +94,35 @@ export default async function CreatorsPage() {
     <div className="space-y-6">
       {/* Setup banner */}
       {!isSetupComplete && (
-        <div className="flex items-center justify-between rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
+        <div className="flex items-center justify-between rounded-lg border border-warning/30 bg-warning-muted px-4 py-3">
           <div>
-            <p className="text-sm font-medium text-text-bright">Configuracao pendente</p>
+            <p className="text-sm font-medium text-text-bright">Configuração pendente</p>
             <p className="text-xs text-text-secondary">
-              Configure as integracoes e importe dados existentes para ativar o programa.
+              Configure as integrações e importe dados existentes para ativar o programa.
             </p>
           </div>
-          <Link
-            href="/admin/creators/setup"
-            className="rounded-lg bg-text-white px-3 py-1.5 text-sm font-medium text-bg-void transition-opacity hover:opacity-90"
-          >
-            Configurar
-          </Link>
+          <Button size="sm" asChild>
+            <Link href="/admin/creators/setup">
+              Configurar
+            </Link>
+          </Button>
         </div>
       )}
 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-medium text-text-bright">Creators</h1>
+          <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Creators</h1>
           <p className="text-sm text-text-secondary">
-            Gerencie os creators e seus perfis, vendas e comissoes.
+            Gerencie os creators e seus perfis, vendas e comissões.
           </p>
         </div>
-        <Link
-          href="/admin/creators/new"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-text-white px-4 py-2 text-sm font-medium text-bg-void transition-opacity hover:opacity-90"
-        >
-          <Plus className="h-4 w-4" />
-          Novo Creator
-        </Link>
+        <Button asChild>
+          <Link href="/admin/creators/new">
+            <Plus className="h-4 w-4" />
+            Novo Creator
+          </Link>
+        </Button>
       </div>
 
       {/* Client-side interactive table */}

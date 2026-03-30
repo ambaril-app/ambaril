@@ -345,8 +345,8 @@ function CreatorsTable({ initialData, tiers, stats }: CreatorsTableProps) {
       >
         <div className="space-y-4">
           <p className="text-sm text-text-secondary">
-            Confirma a aprovacao de {selectedKeys.size} creator(s)? Cada um
-            recebera um cupom e sera ativado automaticamente.
+            Confirma a aprovação de {selectedKeys.size} creator(s)? Cada um
+            receberá um cupom e será ativado automaticamente.
           </p>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onPress={() => setBulkAction(null)}>
@@ -377,7 +377,7 @@ function CreatorsTable({ initialData, tiers, stats }: CreatorsTableProps) {
             Suspender {selectedKeys.size} creator(s). Informe o motivo:
           </p>
           <FormTextarea
-            label="Motivo da suspensao"
+            label="Motivo da suspensão"
             placeholder="Descreva o motivo..."
             value={suspendReason}
             onChange={(e) => setSuspendReason(e.target.value)}

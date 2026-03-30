@@ -193,7 +193,7 @@ export function ChallengesPageClient({
           isLoading={isLoadingSubmissions}
           emptyState={
             <div className="flex flex-col items-center justify-center py-8 text-text-muted">
-              <p className="text-sm">Nenhuma submissao enviada ainda.</p>
+              <p className="text-sm">Nenhuma submissão enviada ainda.</p>
             </div>
           }
         />

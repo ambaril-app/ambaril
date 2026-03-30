@@ -224,7 +224,7 @@ export function TiersClient({ initialTiers, initialError }: TiersClientProps) {
         <EmptyState
           icon={Layers}
           title="Nenhum tier configurado"
-          description="Crie o primeiro tier de comissao para os creators"
+          description="Crie o primeiro tier de comissão para os creators"
           action={{ label: "Criar Tier", onPress: handleCreate }}
         />
       ) : (

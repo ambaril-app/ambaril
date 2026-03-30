@@ -91,7 +91,7 @@ export function CampaignCreatorsTable({
 
   const handleAdd = useCallback(async () => {
     if (!newCreatorId.trim()) {
-      setAddError("ID do creator e obrigatorio");
+      setAddError("ID do creator é obrigatório");
       return;
     }
     setIsAdding(true);

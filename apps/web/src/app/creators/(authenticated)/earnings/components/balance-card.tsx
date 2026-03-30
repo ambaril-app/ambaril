@@ -36,28 +36,28 @@ function BalanceCard({ grossAmount, irrfWithheld, issWithheld, netAmount }: Bala
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div className="space-y-1">
             <p className="text-xs text-text-muted">Bruto</p>
-            <p className="font-['DM_Mono',monospace] text-xl font-medium text-text-bright">
+            <p className="font-display text-xl font-medium text-text-bright">
               R$ {formatCurrency(grossAmount)}
             </p>
           </div>
 
           <div className="space-y-1">
             <p className="text-xs text-text-muted">IRRF retido</p>
-            <p className="font-['DM_Mono',monospace] text-xl font-medium text-warning">
+            <p className="font-display text-xl font-medium text-warning">
               - R$ {formatCurrency(irrfWithheld)}
             </p>
           </div>
 
           <div className="space-y-1">
             <p className="text-xs text-text-muted">ISS retido</p>
-            <p className="font-['DM_Mono',monospace] text-xl font-medium text-warning">
+            <p className="font-display text-xl font-medium text-warning">
               - R$ {formatCurrency(issWithheld)}
             </p>
           </div>
 
           <div className="space-y-1">
             <p className="text-xs text-text-muted">Liquido</p>
-            <p className="font-['DM_Mono',monospace] text-2xl font-medium text-success">
+            <p className="font-display text-2xl font-medium text-success">
               R$ {formatCurrency(netAmount)}
             </p>
           </div>

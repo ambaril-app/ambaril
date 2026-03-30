@@ -227,7 +227,7 @@ function EarningsPageClient({
             <EmptyState
               icon={Wallet}
               title="Nenhum ganho registrado"
-              description="Seus ganhos aparecerao quando vendas forem confirmadas."
+              description="Seus ganhos aparecerão quando vendas forem confirmadas."
             />
           }
         />

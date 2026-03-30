@@ -54,26 +54,26 @@ export function TierFormModal({ isOpen, onClose, tier, onSubmit }: TierFormModal
 
     // Client-side validation
     const errors: Record<string, string> = {};
-    if (!name.trim()) errors.name = "Nome e obrigatorio";
-    if (!slug.trim()) errors.slug = "Slug e obrigatorio";
-    if (!commissionRate.trim()) errors.commissionRate = "Taxa de comissao e obrigatoria";
+    if (!name.trim()) errors.name = "Nome é obrigatório";
+    if (!slug.trim()) errors.slug = "Slug é obrigatório";
+    if (!commissionRate.trim()) errors.commissionRate = "Taxa de comissão é obrigatória";
     if (!/^\d+\.\d{2}$/.test(commissionRate)) errors.commissionRate = "Use formato 0.00";
 
     let parsedBenefits: Record<string, unknown> = {};
     try {
       parsedBenefits = JSON.parse(benefits) as Record<string, unknown>;
     } catch {
-      errors.benefits = "JSON invalido";
+      errors.benefits = "JSON inválido";
     }
 
     const parsedMinFollowers = parseInt(minFollowers, 10);
     if (isNaN(parsedMinFollowers) || parsedMinFollowers < 0) {
-      errors.minFollowers = "Valor invalido";
+      errors.minFollowers = "Valor inválido";
     }
 
     const parsedSortOrder = parseInt(sortOrder, 10);
     if (isNaN(parsedSortOrder) || parsedSortOrder < 0) {
-      errors.sortOrder = "Valor invalido";
+      errors.sortOrder = "Valor inválido";
     }
 
     if (Object.keys(errors).length > 0) {

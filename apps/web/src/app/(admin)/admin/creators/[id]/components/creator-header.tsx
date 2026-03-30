@@ -219,12 +219,12 @@ function CreatorHeader({ creator }: CreatorHeaderProps) {
           {/* Confirm message for simple actions */}
           {actionType === "approve" && (
             <p className="text-sm text-text-secondary">
-              Confirma a aprovacao de <strong>{creator.name}</strong>? Um cupom sera gerado automaticamente e o creator sera ativado.
+              Confirma a aprovação de <strong>{creator.name}</strong>? Um cupom será gerado automaticamente e o creator será ativado.
             </p>
           )}
           {actionType === "reactivate" && (
             <p className="text-sm text-text-secondary">
-              Confirma a reativacao de <strong>{creator.name}</strong>? O status voltara para ativo.
+              Confirma a reativação de <strong>{creator.name}</strong>? O status voltará para ativo.
             </p>
           )}
 

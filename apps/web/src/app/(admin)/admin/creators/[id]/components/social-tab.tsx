@@ -56,7 +56,7 @@ function SocialTab({ socialAccounts }: SocialTabProps) {
       <EmptyState
         icon={Share2}
         title="Nenhuma conta social cadastrada"
-        description="As contas sociais do creator aparecerao aqui."
+        description="As contas sociais do creator aparecerão aqui."
       />
     );
   }

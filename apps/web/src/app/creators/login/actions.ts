@@ -35,12 +35,12 @@ export async function requestLoginCodeAction(
   try {
     // Validate email
     if (!email || typeof email !== "string") {
-      return { error: "Email e obrigatorio" };
+      return { error: "Email é obrigatório" };
     }
 
     const normalizedEmail = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      return { error: "Email invalido" };
+      return { error: "Email inválido" };
     }
 
     // Find creator by email (any tenant — login is cross-tenant by email)
@@ -108,22 +108,22 @@ export async function verifyLoginCodeAction(
   try {
     // Validate inputs
     if (!code || typeof code !== "string") {
-      return { error: "Codigo e obrigatorio" };
+      return { error: "Código é obrigatório" };
     }
 
     if (!verificationToken || typeof verificationToken !== "string") {
-      return { error: "Token de verificacao invalido" };
+      return { error: "Token de verificação inválido" };
     }
 
     const normalizedCode = code.trim();
     if (!/^\d{6}$/.test(normalizedCode)) {
-      return { error: "Codigo deve ter 6 digitos" };
+      return { error: "Código deve ter 6 dígitos" };
     }
 
     // Verify the code
     const verified = verifyLoginCode(normalizedCode, verificationToken);
     if (!verified) {
-      return { error: "Codigo invalido ou expirado" };
+      return { error: "Código inválido ou expirado" };
     }
 
     // Find the creator to get their ID (we need it for the session)
@@ -139,17 +139,17 @@ export async function verifyLoginCodeAction(
 
     const creator = result[0];
     if (!creator) {
-      return { error: "Conta nao encontrada" };
+      return { error: "Conta não encontrada" };
     }
 
     if (creator.status !== "active") {
       const statusMessages: Record<string, string> = {
-        pending: "Sua candidatura ainda esta em analise",
-        suspended: "Sua conta esta temporariamente suspensa",
-        inactive: "Sua conta esta inativa",
+        pending: "Sua candidatura ainda está em análise",
+        suspended: "Sua conta está temporariamente suspensa",
+        inactive: "Sua conta está inativa",
       };
       return {
-        error: statusMessages[creator.status] ?? "Conta nao disponivel",
+        error: statusMessages[creator.status] ?? "Conta não disponível",
       };
     }
 

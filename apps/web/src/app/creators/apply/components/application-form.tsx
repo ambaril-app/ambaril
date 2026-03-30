@@ -357,10 +357,10 @@ export function ApplicationForm() {
           <CheckCircle2 size={48} className="text-success" />
         </div>
         <h2 className="text-xl font-medium text-text-bright">
-          Aplicacao enviada!
+          Aplicação enviada!
         </h2>
         <p className="text-sm text-text-secondary">
-          Sua aplicacao foi enviada com sucesso. Voce recebera um email quando
+          Sua aplicação foi enviada com sucesso. Você receberá um email quando
           for aprovada.
         </p>
       </Card>
