@@ -18,9 +18,9 @@
 
 | Phase | Semanas | Foco | Entregaveis |
 |-------|---------|------|-------------|
-| **1A** | 1-12 | Core CRM + WA + Email | Contact CRUD, CPF dedup, WA Engine completo (Meta Cloud API), transacional (T1-T3), cart recovery (CR1-CR4), welcome (L1), review (L2), email via Resend, campaigns (WA+email), UTM capture, LGPD consent (R31-R34) |
-| **1B** | 10-16 | Scoring + Segmentos | RFM engine + Grid UI, Custom Segment Builder (incl. product/SKU), Automation Editor, Birthday/Reactivation/Repurchase/VIP Welcome (L3-L6), Attribution Report |
-| **2** | 14-20 | Checkout Premium + Inbox + On-Site + Automations R1-R5 | Checkout Premium (VIP, order bump, A/B), Inbox unificado (WA+email), **On-Site Widget Engine** (popups, banners, sliders, social proof, widget builder, targeting, Shopify theme app extension), **5 novas automacoes (R1-R5):** Product Recommendations, Cross-sell, Upsell, Price Drop Alert, Back in Stock |
+| **1A** | 1-12 | Core CRM + WA + Email | Contact CRUD, CPF dedup, WA Engine completo (Meta Cloud API), transacional (T1-T3), cart recovery (CR1-CR4), welcome (L1), review (L2), email via Resend, campaigns (WA+email), UTM capture, LGPD consent (R31-R34), **Ambaril Tracker MVP** (cookie `_amb_vid`, page views, passive matching `_fbp`/`_ga`, Liquid `{{ customer }}`) |
+| **1B** | 10-16 | Scoring + Segmentos | RFM engine + Grid UI, Custom Segment Builder (incl. product/SKU), Automation Editor, Birthday/Reactivation/Repurchase/VIP Welcome (L3-L6), Attribution Report, **Tracker v2** (ThumbmarkJS fingerprint, identity injection em links, retroactive attribution, multi-layer persistence) |
+| **2** | 14-20 | Checkout Premium + Inbox + On-Site + Automations R1-R5 | Checkout Premium (VIP, order bump, A/B), Inbox unificado (WA+email), **On-Site Widget Engine** (popups, banners, sliders, social proof, widget builder, targeting, Shopify theme app extension), **5 novas automacoes (R1-R5):** Product Recommendations, Cross-sell, Upsell, Price Drop Alert, Back in Stock, **Shopify Web Pixel** (checkout events), **signal fusion**, **confidence decay** |
 | **3+** | 18+ | Analytics + ML + Compliance | Cohort analytics (data-dependent, requires 3+ months), LGPD full erasure R35 (requires legal review), RFM history purge, lead scoring preditivo, predicao de recompra |
 
 ---
@@ -1105,6 +1105,8 @@ These are internal endpoints called by other modules (not exposed to external cl
 | **Creators** | Coupon usage | Override attribution to creator source |
 | **Creators** | Creator application approved | When a customer applies as creator and is approved, CRM contact is linked automatically via CPF/email match. CRM contact gains `creator` tag and `creator_id` reference. |
 | **B2B** | Marketplace insert scan | QR code from B2B insert kit scanned → landing page visit with UTM `source=marketplace` → contact registered with `acquisition_source = 'marketplace'` (see R8b). |
+| **Ambaril Tracker** | Visitor identified (passive match) | Link visitor to contact, merge browsing history. See [section 15A](#15a-ambaril-tracker--passive-visitor-identification) |
+| **Ambaril Tracker** | Page view on product | Feed product interest data to CRM (enables R4 Price Drop, R5 Back in Stock) |
 
 ### 7.2 Outbound (CRM dispatches TO other modules/services)
 
@@ -1608,5 +1610,591 @@ All endpoints follow [API.md](../../architecture/API.md) patterns. Module prefix
 - [ ] Exit intent trigger fires on desktop (mouse leave) and mobile (scroll-up)
 
 ---
+
+## 14. Server-Side Analytics Integrations
+
+> **Phase:** 1A (Meta CAPI), 1B (GA4 MP + Enhanced Conversions), 2 (Server-Side GTM)
+
+### 14.1 Architecture Overview
+
+```
+[Browser] → [Next.js on Vercel] → [API Route /api/v1/events]
+                                         │
+                          ┌──────────────┼──────────────┐
+                          ▼              ▼              ▼
+                    [Meta CAPI]   [GA4 MP API]   [Ambaril DB]
+```
+
+- Consent verified server-side BEFORE forwarding to any third-party
+- PII hashing (SHA-256) happens on the server — never sent in clear text
+- No third-party scripts loaded without explicit LGPD consent
+
+### 14.2 Meta Conversions API (CAPI)
+
+| Property | Value |
+|----------|-------|
+| **Purpose** | Server-to-server conversion tracking for Meta Ads optimization |
+| **Integration pattern** | `packages/integrations/meta-capi/client.ts` |
+| **Auth** | System User Access Token (permanent, stored in env) |
+| **API version** | v21.0 (March 2026) |
+| **Rate limits** | 2,000 events/second per pixel |
+| **Retry** | Exponential backoff (1s, 2s, 4s), max 3 retries |
+
+**Events sent to Meta CAPI:**
+
+| Event | Trigger | Hashed Data Sent | Phase |
+|-------|---------|-----------------|-------|
+| `PageView` | Checkout page loaded | ip, user_agent, fbp, fbc | 1A |
+| `AddToCart` | Item added to cart | + item data (content_id, price) | 1A |
+| `InitiateCheckout` | Checkout started (CPF entered) | + hashed email, phone | 1A |
+| `Purchase` | Order confirmed (order.paid) | + hashed email, phone, order_value, currency=BRL | 1A |
+| `Lead` | Creator application submitted | + hashed email, phone | 1A |
+
+**Deduplication:** Each event includes `event_id = {session_id}_{event_type}_{timestamp_ms}` to prevent double-counting with browser pixel events.
+
+**Consent gate:** Events are ONLY sent if `crm.contacts.consent_tracking = TRUE` or if the visitor accepted tracking cookies. Server checks consent status before forwarding.
+
+### 14.3 GA4 Measurement Protocol
+
+| Property | Value |
+|----------|-------|
+| **Purpose** | Server-side event tracking for Google Analytics 4 |
+| **Integration pattern** | `packages/integrations/ga4/client.ts` |
+| **Auth** | API Secret + Measurement ID (stored in env) |
+| **Endpoint** | `POST https://www.google-analytics.com/mp/collect` |
+| **Rate limits** | 25 events per request batch |
+| **Retry** | Exponential backoff, max 2 retries |
+
+**Events sent to GA4:**
+
+| Event | Trigger | Parameters | Phase |
+|-------|---------|-----------|-------|
+| `purchase` | order.paid | transaction_id, value, currency, items[], coupon | 1B |
+| `begin_checkout` | Checkout started | value, currency, items[] | 1B |
+| `add_to_cart` | Item added | value, currency, items[] | 1B |
+| `sign_up` | Creator application | method='creator_form' | 1B |
+
+### 14.4 GA4 Enhanced Conversions
+
+Hashed first-party data sent with purchase events for improved cross-device matching:
+- `sha256(email)` — from checkout identification step
+- `sha256(phone)` — E.164 format before hashing
+- `sha256(address.street + address.city + address.state + address.zip)` — normalized
+
+Enabled per-event when contact has `consent_tracking = TRUE`.
+
+### 14.5 Server-Side GTM (Phase 2)
+
+| Property | Value |
+|----------|-------|
+| **Purpose** | Proxy all tracking through first-party domain, bypassing ad blockers |
+| **Setup** | Google Tag Manager Server Container on Cloud Run (~$100-200/mês) |
+| **Domain** | `metrics.{tenant_domain}` (e.g., `metrics.cienalab.com.br`) |
+| **Benefit** | +40-50% data recovery vs client-side only |
+
+**Flow:** Browser → `metrics.cienalab.com.br` (first-party) → GTM Server → Meta CAPI + GA4 + Ambaril DB
+
+**Phase 2 because:** Requires additional infrastructure (Cloud Run container), DNS configuration per tenant. Not critical for MVP but significantly improves data quality.
+
+---
+
+## 15. Ambaril Identity Graph
+
+> **Phase:** 1A (core graph + Ambaril Tracker MVP), 1B (progressive profiling + Tracker v2), 2 (Web Pixel + signal fusion + cross-device stitching)
+> **Technical subsystem:** See [section 15A](#15a-ambaril-tracker--passive-visitor-identification) for the Ambaril Tracker — passive visitor identification pipeline, data model, APIs, and background jobs.
+
+### 15.1 Purpose
+
+First-party identity resolution that is LGPD-compliant. No US-based de-anonymization tools (RB2B, Leadpipe, Capturify) — these have ~5-15% match rate for BR traffic and are likely illegal under LGPD.
+
+The Identity Graph combines **deterministic signals** (CPF, email, phone) with **passive/probabilistic signals** (cookies, fingerprints, ad platform IDs) captured by the Ambaril Tracker (section 15A) to build a unified customer profile. The Tracker handles anonymous visitor identification; this section describes the overall identity model and resolution strategy.
+
+### 15.2 Identity Graph Structure
+
+Each contact in `crm.contacts` has multiple identity signals stitched together. Passive identifiers from the Ambaril Tracker (section 15A) are stored in `identity.passive_identifiers` and linked to contacts upon identification.
+
+| Signal | Source | Match Priority | Confidence | Storage |
+|--------|--------|---------------|------------|---------|
+| **CPF** | Checkout / PIX payment | 1 (strongest — unique per person) | 0.99 | `crm.contacts.cpf` |
+| **Email (verified)** | Checkout, popup, quiz, creator form | 2 | 0.95 | `crm.contacts.email` |
+| **Liquid {{ customer }}** | Shopify logged-in user (Ambaril Tracker) | 2 | 1.00 (deterministic) | `identity.passive_identifiers` |
+| **Link injection (_cid)** | Email/WA links sent by Ambaril | 2 | 0.95 | `identity.passive_identifiers` |
+| **Phone** | Checkout, WhatsApp opt-in | 3 | 0.90 | `crm.contacts.phone` |
+| **_amb_vid cookie** | Ambaril Tracker (server-set, 2yr) | 4 | 0.85 | `identity.passive_identifiers` |
+| **IG Handle** | Creator form, UGC detection | 5 | 0.80 | `crm.contacts` metadata |
+| **_fbp cookie** | Meta Pixel / Ambaril Tracker | 6 | 0.40 | `identity.passive_identifiers` |
+| **_ga cookie** | Google Analytics / Ambaril Tracker | 6 | 0.35 | `identity.passive_identifiers` |
+| **shopify_client_id** | Shopify Web Pixel | 7 | 0.30 | `identity.passive_identifiers` |
+| **Browser fingerprint** | Ambaril Tracker (ThumbmarkJS) | 8 | 0.20 | `identity.passive_identifiers` |
+| **ETag** | Ambaril Tracker (HTTP cache trick) | 9 (weakest) | 0.15 | `identity.passive_identifiers` |
+
+**Stitching logic:** When a new signal arrives (e.g., email from popup), the system checks all existing contacts for a match on any higher-priority signal. If match found → merge. If no match → create new contact. Passive signals (priority 4+) are resolved by the Ambaril Tracker's identity resolution pipeline (section 15A) and linked to contacts via `identity.visitors.contact_id`.
+
+### 15.3 Visitor Reengagement Strategy
+
+| Visitor Type | Detection | Action |
+|-------------|-----------|--------|
+| **Returning customer** (identified by Tracker) | `identity.visitors.contact_id IS NOT NULL` → lookup contact | Reengagement via WA/email (channels with consent). Browsing history available via `identity.page_views` |
+| **Anonymous returning** (has `_amb_vid`) | `identity.visitors` exists but `contact_id IS NULL` | Meta CAPI retargeting (Meta does the match via hashed signals). On-site widget targeting (section 13) |
+| **Captured lead** (email from popup/quiz) | Email matches contact without purchase | Nurture automation sequence (CRM). Ambaril Tracker retroactively links all anonymous page views to this contact |
+| **Creator follower** (UTM from creator link) | UTM `source=creator` | Track attribution, offer creator discount at checkout |
+
+### 15.4 Progressive Profiling
+
+Collect data incrementally in exchange for value:
+
+| Trigger | Data Collected | Value Offered |
+|---------|---------------|---------------|
+| First visit popup | Email | 10% first purchase coupon |
+| Post-purchase | Phone (WhatsApp opt-in) | Order tracking via WA |
+| Quiz (size recommendation) | Height, weight, style preference | Personalized size recommendation |
+| Creator application | Full profile (name, CPF, IG, bio) | Access to creator program |
+| VIP invitation | Birthday, preferences | VIP early access to drops |
+
+---
+
+## 15A. Ambaril Tracker — Passive Visitor Identification
+
+> **Subsystem name:** Ambaril Tracker
+> **Schema:** `identity`
+> **Phase:** 1A (MVP), 1B (v2), 2 (Web Pixel + fusion)
+> **Depends on:** CRM module (crm.contacts), Shopify Theme App Extension
+> **References:** [section 15](#15-ambaril-identity-graph), [BRAZIL-IDENTITY-RESOLUTION.md](../../research/BRAZIL-IDENTITY-RESOLUTION.md)
+
+Script not-sandboxed injected into the Shopify storefront via Theme App Extension (App Embed Block) that tracks ALL visitors, stores behavioral data, and performs passive matching against the customer base.
+
+**Projected identification rate:** 17-30% of anonymous visitors passively identified (based on Edrone benchmarks for similar e-commerce scale).
+
+### 15A.1 Data Model — 4 new tables in schema `identity`
+
+#### New Enums
+
+```sql
+CREATE TYPE identity.identification_method AS ENUM (
+    'cookie_match', 'fbp_match', 'ga_match', 'fingerprint_match',
+    'liquid_customer', 'link_injection', 'checkout', 'form_capture',
+    'shopify_client_id', 'etag_match', 'signal_fusion'
+);
+
+CREATE TYPE identity.page_type AS ENUM (
+    'home', 'product', 'collection', 'cart', 'checkout',
+    'search', 'account', 'blog', 'other'
+);
+```
+
+#### identity.visitors (~100k+/month)
+
+```sql
+CREATE TABLE identity.visitors (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES global.tenants(id),
+    amb_vid         VARCHAR(64) NOT NULL,
+    fingerprint_hash VARCHAR(64),
+    first_seen_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    total_sessions  INTEGER NOT NULL DEFAULT 0,
+    total_page_views INTEGER NOT NULL DEFAULT 0,
+    contact_id      UUID REFERENCES crm.contacts(id),
+    identified_at   TIMESTAMPTZ,
+    identification_method identity.identification_method,
+    device_type     VARCHAR(20),   -- desktop, mobile, tablet
+    browser         VARCHAR(50),
+    os              VARCHAR(50),
+    city            VARCHAR(100),  -- from IP geolocation
+    state           VARCHAR(2),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at      TIMESTAMPTZ,
+    UNIQUE(tenant_id, amb_vid)
+);
+
+CREATE INDEX idx_visitors_tenant_contact ON identity.visitors(tenant_id, contact_id) WHERE contact_id IS NOT NULL;
+CREATE INDEX idx_visitors_tenant_last_seen ON identity.visitors(tenant_id, last_seen_at DESC);
+CREATE INDEX idx_visitors_unidentified ON identity.visitors(tenant_id, last_seen_at DESC) WHERE contact_id IS NULL;
+```
+
+#### identity.passive_identifiers (~500k+)
+
+```sql
+CREATE TABLE identity.passive_identifiers (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES global.tenants(id),
+    visitor_id      UUID NOT NULL REFERENCES identity.visitors(id),
+    contact_id      UUID REFERENCES crm.contacts(id),
+    identifier_type VARCHAR(30) NOT NULL, -- 'amb_vid', 'fbp', 'ga', 'fingerprint', 'shopify_client_id', 'etag'
+    identifier_value VARCHAR(255) NOT NULL,
+    confidence      NUMERIC(3,2) NOT NULL DEFAULT 0.50,
+    first_seen_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(tenant_id, identifier_type, identifier_value)
+);
+
+CREATE INDEX idx_passive_ids_visitor ON identity.passive_identifiers(visitor_id);
+CREATE INDEX idx_passive_ids_contact ON identity.passive_identifiers(contact_id) WHERE contact_id IS NOT NULL;
+CREATE INDEX idx_passive_ids_lookup ON identity.passive_identifiers(tenant_id, identifier_type, identifier_value);
+```
+
+**Confidence by signal type:**
+
+| Signal | Base Confidence | Decay Half-Life |
+|--------|----------------|-----------------|
+| CPF (purchase) | 0.99 | ~3 years |
+| Email (verified) | 0.95 | ~3 years |
+| Liquid {{ customer }} | 1.00 | Session (deterministic) |
+| Link injection (_cid) | 0.95 | ~1 year |
+| Phone (WhatsApp) | 0.90 | ~1.4 years |
+| _amb_vid cookie match | 0.85 | ~1 year |
+| _fbp cookie match | 0.40 | ~50 days |
+| _ga cookie match | 0.35 | ~50 days |
+| shopify_client_id | 0.30 | ~50 days |
+| Fingerprint match | 0.20 | ~25 days |
+| ETag match | 0.15 | ~25 days |
+
+#### identity.page_views (~500k+/month, partitioned by month)
+
+```sql
+CREATE TABLE identity.page_views (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES global.tenants(id),
+    visitor_id      UUID NOT NULL REFERENCES identity.visitors(id),
+    session_id      VARCHAR(64) NOT NULL,
+    page_url        TEXT NOT NULL,
+    page_type       identity.page_type,
+    product_id      VARCHAR(100),  -- Shopify product ID if page_type = 'product'
+    referrer        TEXT,
+    duration_seconds INTEGER,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+) PARTITION BY RANGE (created_at);
+
+CREATE INDEX idx_page_views_visitor ON identity.page_views(visitor_id, created_at DESC);
+CREATE INDEX idx_page_views_session ON identity.page_views(session_id);
+CREATE INDEX idx_page_views_product ON identity.page_views(tenant_id, product_id, created_at DESC) WHERE product_id IS NOT NULL;
+```
+
+#### identity.visitor_sessions (~50k+/month)
+
+```sql
+CREATE TABLE identity.visitor_sessions (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID NOT NULL REFERENCES global.tenants(id),
+    visitor_id      UUID NOT NULL REFERENCES identity.visitors(id),
+    session_id      VARCHAR(64) NOT NULL,
+    started_at      TIMESTAMPTZ NOT NULL,
+    ended_at        TIMESTAMPTZ,
+    page_view_count INTEGER NOT NULL DEFAULT 0,
+    cart_value_cents BIGINT,
+    utm_source      VARCHAR(100),
+    utm_medium      VARCHAR(100),
+    utm_campaign    VARCHAR(255),
+    device_type     VARCHAR(20),
+    landing_page    TEXT,
+    exit_page       TEXT,
+    converted       BOOLEAN NOT NULL DEFAULT FALSE,
+    order_id        UUID,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(tenant_id, session_id)
+);
+
+CREATE INDEX idx_sessions_visitor ON identity.visitor_sessions(visitor_id, started_at DESC);
+CREATE INDEX idx_sessions_tenant_date ON identity.visitor_sessions(tenant_id, started_at DESC);
+```
+
+### 15A.2 Shopify Integration Architecture
+
+```
+VISITOR → Shopify Storefront
+    │
+    ├── [Theme App Extension — App Embed Block] (not-sandboxed)
+    │   ├── Reads {{ customer }} via Liquid (if logged in → conf 1.0)
+    │   ├── Reads _fbp, _ga, _amb_vid via document.cookie
+    │   ├── Generates fingerprint (ThumbmarkJS, MIT license, ~97% accuracy)
+    │   ├── Tracks: URL, product, time on page, scroll depth
+    │   ├── Respawn: if _amb_vid cookie cleared → restore from localStorage/IndexedDB
+    │   └── POST /api/v1/public/identity/trace (batch, debounced 3s)
+    │
+    ├── [Shopify Web Pixel — App Pixel] (sandboxed, Phase 2)
+    │   ├── Receives: checkout_started, checkout_completed (email, phone, order)
+    │   ├── Uses browser.cookie.get('_amb_vid') to correlate
+    │   ├── Required: ScriptTag blocked in checkout (Aug 2026)
+    │   └── POST /api/v1/public/identity/checkout-event
+    │
+    └── [Shopify Admin API — Server-side]
+        ├── Sync: customers (email, phone, orders)
+        ├── Webhooks: orders/create (coupon → attribution)
+        └── Protected Customer Data scopes: read_customer_email, read_customer_phone
+```
+
+### 15A.3 Identity Resolution Pipeline
+
+```
+NEW SIGNAL ARRIVES (page view with cookies/fingerprint)
+    │
+    ├─ 1. Lookup _amb_vid in identity.visitors
+    │     ├── Found → visitor exists, UPDATE last_seen_at
+    │     └── Not found → CREATE visitor + generate _amb_vid
+    │
+    ├─ 2. Passive matching (no user action required)
+    │     ├── _amb_vid → identity.passive_identifiers → contact_id? → IDENTIFIED
+    │     ├── _fbp → identity.passive_identifiers → contact_id? → IDENTIFIED
+    │     ├── _ga → identity.passive_identifiers → contact_id? → IDENTIFIED
+    │     ├── fingerprint → identity.passive_identifiers → contact_id? → IDENTIFIED
+    │     ├── Liquid {{ customer.email }} → crm.contacts → IDENTIFIED (conf 1.0)
+    │     └── No match → stays anonymous
+    │
+    ├─ 3. Retroactive attribution (when identification occurs)
+    │     └── UPDATE identity.visitors SET contact_id = X
+    │         WHERE amb_vid = 'abc' AND contact_id IS NULL
+    │         → All previous page_views now linked to the customer
+    │
+    └─ 4. Signal fusion (combine multiple weak signals)
+          └── If fingerprint(0.20) + _ga(0.35) + IP similar(0.10) > 0.65
+              → consider as same visitor (merge visitors)
+```
+
+### 15A.4 Identity Injection in Links (Tier S)
+
+All links in emails and WhatsApp messages sent by Ambaril include encrypted `_cid`:
+
+```
+https://cienalab.com.br/products/camiseta-x?_cid=enc(contact_id)
+```
+
+When the visitor clicks:
+1. Next.js middleware detects `_cid` in URL
+2. Decrypts → `contact_id`
+3. Sets `_amb_vid` cookie (server-set, 2 years)
+4. Creates `identity.passive_identifiers` record with type `'link_injection'`, confidence 0.95
+5. Visitor passively identified on all future navigation
+
+**Important:** `_cid` is encrypted with AES-256-GCM, not just encoded. Includes expiry of 90 days.
+
+### 15A.5 Business Rules (R-ID.1 to R-ID.12)
+
+| # | Rule | Detail |
+|---|------|--------|
+| R-ID.1 | **Server-set cookie** | `_amb_vid` is set via `Set-Cookie` HTTP header (not JS), bypassing Safari ITP 7-day limit → lasts 2 years |
+| R-ID.2 | **Multi-layer persistence** | Visitor ID stored in 4 layers: cookie, localStorage, IndexedDB, Service Worker cache. If any layer is cleared, respawn from the others |
+| R-ID.3 | **Retroactive attribution** | When a visitor is identified, ALL anonymous history (page views, sessions) is retroactively attributed to the contact |
+| R-ID.4 | **Signal merge threshold** | For merge of anonymous visitors based on combined signals, minimum threshold: 0.65 combined confidence |
+| R-ID.5 | **Confidence decay** | Confidence decays over time. Recently verified cookies/fingerprints > old signals. Formula: `conf_effective = conf_base * 2^(-days_since_seen / half_life)` |
+| R-ID.6 | **One contact per CPF** | CPF remains the definitive dedup key. Identity graph does NOT create duplicates — merges when CPF confirms |
+| R-ID.7 | **Consent tracking gate** | Page views are stored ALWAYS (server-side data, no consent required). Fingerprinting + cookie matching require `consent_tracking = TRUE` |
+| R-ID.8 | **Rate limiting** | Trace endpoint: 120 req/min per IP. Checkout event: 30 req/min per IP |
+| R-ID.9 | **Data retention** | page_views: 90 days (partitioned, auto-drop). visitor_sessions: 1 year. visitors: indefinite (but anonymized on LGPD erasure) |
+| R-ID.10 | **Link injection opt-out** | If contact revokes `consent_tracking`, future links do NOT include `_cid` |
+| R-ID.11 | **Shopify customer auto-identification** | If `{{ customer }}` is available via Liquid (customer logged into Shopify), identification is deterministic (conf 1.0) — independent of cookies/consent |
+| R-ID.12 | **Fingerprint renewal** | Fingerprint is recalculated on every visit and compared with stored hash. If diff > threshold (browser update, etc.), creates new `passive_identifier` maintaining link to visitor |
+
+### 15A.6 API Endpoints
+
+#### Public (3 new — no auth, tenant resolved by domain)
+
+| Method | Path | Description | Rate Limit |
+|--------|------|-------------|-----------|
+| POST | `/api/v1/public/identity/trace` | Batch page views + signals from Tracker | 120/min/IP |
+| POST | `/api/v1/public/identity/checkout-event` | Checkout event from Web Pixel | 30/min/IP |
+| GET | `/api/v1/public/identity/config` | Tracker config (version, features enabled) | 10/min/IP |
+
+#### Internal (4 new — requires auth)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/identity/visitors` | List visitors (paginated, filterable) |
+| GET | `/api/v1/identity/visitors/:id` | Visitor detail + page views + sessions |
+| GET | `/api/v1/identity/contacts/:contactId/browsing` | Browsing history of an identified contact |
+| GET | `/api/v1/identity/analytics/overview` | Metrics: visitors/day, identification rate, top pages |
+
+### 15A.7 Background Jobs
+
+All jobs run via PostgreSQL job queue (`FOR UPDATE SKIP LOCKED`) + Vercel Cron.
+
+| Job | Schedule | Priority | Description |
+|-----|----------|----------|-------------|
+| `identity:passive-match` | Every 5 min (poll) | High | Attempts passive matching for recently unidentified visitors (last 5 min) |
+| `identity:page-views-partition` | Monthly 1st 02:00 BRT | Low | Creates new monthly partition, drops partitions > 90 days |
+| `identity:confidence-decay` | Daily 04:00 BRT | Low | Recalculates confidence scores based on decay formula |
+| `identity:visitor-merge` | Daily 04:30 BRT | Medium | Detects and merges visitors that are likely the same person (multi-signal fusion) |
+
+### 15A.8 Theme App Extension — JavaScript Bundle
+
+File: `packages/shopify-tracker/src/tracker.ts` (~15KB gzipped)
+
+**Responsibilities:**
+1. Read `{{ customer }}` from Liquid (injected as data attribute by the Liquid block)
+2. Read/set `_amb_vid` cookie (fallback: localStorage, IndexedDB)
+3. Generate fingerprint via ThumbmarkJS
+4. Track page views with debounce (3s)
+5. Detect viewed products (parse URL `/products/{handle}`)
+6. Send batch of events to `/api/v1/public/identity/trace`
+7. Respawn identifiers if any storage layer was cleared
+
+**Does NOT:**
+- Render UI (that is the On-Site Widget Engine, section 13)
+- Intercept forms (the Widget Engine does that)
+- Access checkout (the Web Pixel does that)
+
+### 15A.9 Permissions
+
+| Permission | admin | pm | creative | operations | support |
+|-----------|-------|-----|----------|-----------|---------|
+| `identity:visitors:read` | Y | Y | -- | -- | -- |
+| `identity:analytics:read` | Y | Y | -- | -- | -- |
+
+### 15A.10 Testing Checklist
+
+**Unit:**
+- [ ] `_amb_vid` cookie set/get/respawn
+- [ ] Fingerprint matching (exact + fuzzy)
+- [ ] Confidence decay calculation
+- [ ] Signal merge threshold evaluation
+- [ ] Identity injection encrypt/decrypt
+- [ ] Retroactive attribution (visitor → contact merge)
+
+**Integration:**
+- [ ] Trace endpoint: send batch, verify page_views created
+- [ ] Cookie matching: create known identifier, send matching cookie, verify identification
+- [ ] Liquid customer: send customer data, verify immediate identification
+- [ ] Link injection: click link with `_cid`, verify cookie set + identification
+- [ ] Shopify Web Pixel event: `checkout_completed`, verify contact created/updated
+
+**E2E:**
+- [ ] Full flow: anonymous visit → browse products → identify via popup email → verify retroactive attribution
+- [ ] Full flow: anonymous visit → click email link with `_cid` → browse → verify identified
+- [ ] Full flow: logged-in Shopify customer → visit → verify immediate identification via Liquid
+
+**Performance:**
+- [ ] Trace endpoint: 1000 concurrent requests, p99 < 100ms
+- [ ] page_views query for 1M+ rows (with partition): < 200ms
+- [ ] Passive matching job: 10k new visitors, < 30 seconds
+
+---
+
+## 16. Jornada dos 100 Dias — Automation Template
+
+> **Phase:** 1B (pre-built template, activatable per tenant with 1 click)
+> **Based on:** Framework de Antonio Carlos Nogueira, adapted for fashion/streetwear
+
+### 16.1 Overview
+
+Pre-configured omnichannel customer journey from first purchase to brand advocate. 6 marcos (milestones), ~20 touchpoints across WhatsApp, email, and retargeting.
+
+**Activation:** Tenant activates with 1 click in CRM > Automations > Templates > "Jornada 100 Dias". Each step is customizable (message content, timing, channel). Metrics tracked per step.
+
+### 16.2 Journey Steps
+
+**MARCO 1 — COMPRA REALIZADA** (Dia 0)
+
+| # | Canal | Trigger | Delay | Mensagem | Automation ID |
+|---|-------|---------|-------|----------|---------------|
+| 1.1 | Email | `order.confirmed` | Imediato | Confirmação do pedido + detalhes + rastreamento + cupom próxima compra | `j100_m1_email_confirmation` |
+| 1.2 | WhatsApp | `order.confirmed` | Imediato | Agradecimento personalizado + link suporte | `j100_m1_wa_thanks` |
+
+**MARCO 2 — PEDIDO A CAMINHO** (Dia 3-7)
+
+| # | Canal | Trigger | Delay | Mensagem | Automation ID |
+|---|-------|---------|-------|----------|---------------|
+| 2.1 | Email | `order.shipped` | Imediato | Tracking + dicas de uso/styling | `j100_m2_email_shipped` |
+| 2.2 | WhatsApp | `order.shipped` | Imediato | "Seu pedido está a caminho!" + link tracking | `j100_m2_wa_shipped` |
+| 2.3 | Email | `order.shipped` | +2 dias | Conteúdo educativo: como usar/combinar o produto | `j100_m2_email_styling` |
+
+**MARCO 3 — ENTREGA E PRIMEIRA EXPERIÊNCIA** (Dia 8-15)
+
+| # | Canal | Trigger | Delay | Mensagem | Automation ID |
+|---|-------|---------|-------|----------|---------------|
+| 3.1 | WhatsApp | `order.delivered` | Imediato | "Recebeu? Precisa de ajuda?" | `j100_m3_wa_delivered` |
+| 3.2 | Email | `order.delivered` | +3 dias | Review request (link para E11 Reviews) | `j100_m3_email_review` |
+| 3.3 | Email | `order.delivered` | +5 dias | Cross-sell: produtos complementares com desconto | `j100_m3_email_crosssell` |
+
+**MARCO 4 — ENGAJAMENTO** (Dia 16-30)
+
+| # | Canal | Trigger | Delay | Mensagem | Automation ID |
+|---|-------|---------|-------|----------|---------------|
+| 4.1 | Email | `order.delivered` | +16 dias | Storytelling: história da marca + bastidores | `j100_m4_email_story` |
+| 4.2 | WhatsApp | `order.delivered` | +20 dias | "Como foi sua experiência?" (feedback survey) | `j100_m4_wa_feedback` |
+| 4.3 | Email | `order.delivered` | +25 dias | Convite programa de indicação (referral) | `j100_m4_email_referral` |
+
+**MARCO 5 — INCENTIVO À RECOMPRA** (Dia 31-60)
+
+| # | Canal | Trigger | Delay | Mensagem | Automation ID |
+|---|-------|---------|-------|----------|---------------|
+| 5.1 | Email | `purchase_date` | +31 dias | Cupom exclusivo recompra + recomendações personalizadas | `j100_m5_email_repurchase` |
+| 5.2 | WhatsApp | `purchase_date` | +35 dias | "Desconto especial para sua próxima compra" | `j100_m5_wa_discount` |
+| 5.3 | Email | `purchase_date` | +45 dias | Pesquisa NPS | `j100_m5_email_nps` |
+| 5.4 | Email | `purchase_date` | +55 dias | Novos produtos/categorias + conteúdo aprofundado | `j100_m5_email_newproducts` |
+
+**MARCO 6 — TRANSFORMAÇÃO EM FÃS** (Dia 61-100)
+
+| # | Canal | Trigger | Delay | Mensagem | Automation ID |
+|---|-------|---------|-------|----------|---------------|
+| 6.1 | Email | `purchase_date` | +61 dias | Convite grupo VIP WhatsApp / comunidade exclusiva | `j100_m6_email_vip` |
+| 6.2 | WhatsApp | `purchase_date` | +65 dias | "Quer fazer parte da comunidade exclusiva?" | `j100_m6_wa_community` |
+| 6.3 | Email | `purchase_date` | +75 dias | UGC incentive: "Poste com #{brand}lab e ganhe destaque + desconto" | `j100_m6_email_ugc` |
+| 6.4 | Email | `purchase_date` | +85 dias | Convite para ser Creator (se perfil qualifica) | `j100_m6_email_creator` |
+| 6.5 | WhatsApp | `purchase_date` | +95 dias | Pesquisa + presente especial (desconto aniversário) | `j100_m6_wa_gift` |
+
+### 16.3 Implementation
+
+- Each step is a `crm.automations` row with `trigger_type='custom'` and delay in `trigger_config`
+- Template activation creates all 20 automations with `status=draft`
+- Tenant reviews and activates each step (or all at once)
+- A/B test support: each step can have 2 message variants
+- Metrics per step: `sent`, `delivered`, `opened`, `clicked`, `converted` (tracked via `automation_runs`)
+- Stop condition: if contact purchases again, Marco 5-6 steps are skipped and journey restarts from Marco 1
+
+### 16.4 Business Rules
+
+| # | Rule | Detail |
+|---|------|--------|
+| R-J100.1 | **One active journey per contact** | A contact can only be in one Jornada 100 Dias instance at a time. New purchase restarts the journey. |
+| R-J100.2 | **Consent required per channel** | Each step checks `consent_whatsapp` or `consent_email` before sending. Steps for non-consented channels are skipped (not failed). |
+| R-J100.3 | **Step cancellation on recompra** | If a contact places a new order during Marcos 5-6, remaining steps are cancelled and a new journey starts from Marco 1. |
+| R-J100.4 | **Retargeting steps** | Marcos 1, 4, and 5 include retargeting segments. Steps 1.3, 4.4, and 5.5 create/update Meta Custom Audiences via CAPI for retargeting campaigns. These are segment-based (not individual sends). |
+| R-J100.5 | **Template customization** | All message content is editable per tenant. Default messages use {brand} placeholder (replaced with tenant brand name). PM/admin customizes before activation. |
+
+---
+
+## 17. Future Evolutions (Roadmap)
+
+> Not part of v1. Planned for future phases.
+
+| # | Evolution | Description | Dependencies |
+|---|----------|-------------|-------------|
+| R1 | Predictive Churn | ML model predicting which customers will churn based on RFM trajectory, engagement patterns, and purchase intervals. | 6+ months data, Astro |
+| R2 | Next-Purchase Prediction | Predict when and what a customer will buy next. Powers proactive outreach. | 6+ months data, Astro |
+| R3 | Zero-Party Data Engine | Structured collection of explicit customer preferences (style, size, budget, occasions) via quizzes, surveys, and progressive profiling. Feeds all personalization. | CRM 1B+ |
+| R4 | Customer Health Score | Composite score (0-100) combining RFM, engagement, NPS, support tickets, and return rate. Single metric for relationship health. | CRM 1B, Trocas, Inbox |
+| R5 | Revenue Forecasting | Monthly revenue prediction based on customer base composition, seasonal patterns, and planned campaigns. | 12+ months data, Astro |
+| R6 | Dynamic Segments | Segments that auto-update in real-time as contact data changes (vs. current batch recalculation). | CRM 2 |
+| R7 | Win-Back Inteligente | AI-powered reactivation campaigns with personalized offers based on customer's purchase history, preferred categories, and optimal discount level. | Astro, CRM 2 |
+
+---
+
+---
+
+## Princípios de UX
+
+> Referência: `DS.md` seções 4 (ICP & Filosofia), 6 (Formulários), 7 (Dashboards), 8 (Charts)
+
+### Personalização por Role
+- **Dashboard CRM por role (DS.md 7, regra 5):** Caio (pm) vê analytics + performance de campanhas + segmentos. Slimgust (support) vê tickets + últimas interações + automações de suporte.
+- **Conduza para ação (DS.md 7, regra 6):** só exibir métricas acionáveis pelo role. Support não precisa ver ROAS. PM não precisa ver tempo de resposta de ticket.
+
+### Dados Enquadrados
+- **Contextualização (DS.md 8):** LTV com enquadramento: "R$ 2.400 — Top 10% dos clientes". Churn rate com delta: "3.2% (+0.5% vs mês passado)". RFM score com significado: "Score 5 — cliente ideal, comprando frequentemente".
+- **Números em DM Mono, deltas em cor semântica:** `--success` para melhoria, `--danger` para deterioração.
+
+### Progressive Disclosure em Filtros
+- **Filtros básicos visíveis (DS.md 6.5):** segmento, status, período. Sempre visíveis no topo da lista.
+- **Filtros avançados em expand:** RFM score range, canal de aquisição, tags custom, valor de LTV range — expandíveis sob "Mais filtros".
+- **Evite digitação (DS.md 6.2):** filtros por seleção (dropdown, chips, toggles), não por texto livre.
+
+### Empty States
+- **Lista de contatos (DS.md 11.3):** "Nenhum cliente cadastrado. Conecte o checkout para importar automaticamente."
+- **Segmentos (DS.md 11.3):** "Nenhum segmento criado. Segmentos RFM são gerados automaticamente após as primeiras vendas."
+- **Automações (DS.md 11.3):** "Nenhuma automação ativa. Comece com 'Boas-vindas' — ativa em 2 cliques."
+- **Módulo não ativado (DS.md 11.4):** "CRM disponível. Unifique sua base de clientes em um lugar." + preview + CTA "Ativar".
 
 *This module spec is the source of truth for CRM implementation. All development, review, and QA should reference this document. Changes require review from Marcus (admin) or Caio (pm).*

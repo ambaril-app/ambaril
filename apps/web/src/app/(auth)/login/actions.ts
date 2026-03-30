@@ -68,5 +68,5 @@ export async function login(
   // Create session with tenant context
   await createSession(user.id, defaultTenant.tenantId, defaultTenant.role, remember);
 
-  redirect("/admin/creators");
+  redirect("/admin");
 }

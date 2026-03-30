@@ -24,49 +24,34 @@ export const INTERNAL_ROLES: readonly RoleCode[] = [
   "commercial",
 ] as const;
 
-// Module registry — sidebar renders this
-// Each module adds its own entry. Only Creators for now.
+// Module registry — single source of truth for sidebar, home page, and catch-all routes.
+// When a module is implemented, change its status from "coming_soon" to "active" here.
+// Sidebar, home page, and catch-all placeholder all react automatically.
 export const MODULES: ModuleConfig[] = [
   {
     id: "creators",
     label: "Creators",
+    description: "Programa de influenciadores e embaixadores",
     icon: "Users",
     basePath: "/admin/creators",
+    status: "active",
     requiredRoles: ["admin", "pm"],
     subroutes: [
-      { id: "creators-list", label: "Lista", path: "/admin/creators" },
-      {
-        id: "creators-challenges",
-        label: "Desafios",
-        path: "/admin/creators/challenges",
-        requiredPermission: "creators:challenges:read",
-      },
-      {
-        id: "creators-campaigns",
-        label: "Campanhas",
-        path: "/admin/creators/campaigns",
-        requiredPermission: "creators:campaigns:read",
-      },
-      {
-        id: "creators-payouts",
-        label: "Pagamentos",
-        path: "/admin/creators/payouts",
-        requiredPermission: "creators:payouts:read",
-      },
-      {
-        id: "creators-analytics",
-        label: "Analytics",
-        path: "/admin/creators/analytics",
-        requiredPermission: "creators:analytics:read",
-      },
+      { id: "creators-setup", label: "Configuracao", path: "/admin/creators/setup", showOnlyBeforeSetup: true },
+      { id: "creators-list", label: "Lista", path: "/admin/creators", showOnlyAfterSetup: true },
+      { id: "creators-challenges", label: "Desafios", path: "/admin/creators/challenges", requiredPermission: "creators:challenges:read", showOnlyAfterSetup: true },
+      { id: "creators-campaigns", label: "Campanhas", path: "/admin/creators/campaigns", requiredPermission: "creators:campaigns:read", showOnlyAfterSetup: true },
+      { id: "creators-payouts", label: "Pagamentos", path: "/admin/creators/payouts", requiredPermission: "creators:payouts:read", showOnlyAfterSetup: true },
+      { id: "creators-analytics", label: "Analytics", path: "/admin/creators/analytics", requiredPermission: "creators:analytics:read", showOnlyAfterSetup: true },
     ],
   },
-  // Checkout module
   {
     id: "checkout",
     label: "Checkout",
+    description: "Pedidos, carrinhos e testes A/B",
     icon: "ShoppingCart",
     basePath: "/admin/checkout",
+    status: "coming_soon",
     requiredRoles: ["admin", "pm"],
     subroutes: [
       { id: "checkout-orders", label: "Pedidos", path: "/admin/checkout/orders" },
@@ -75,26 +60,28 @@ export const MODULES: ModuleConfig[] = [
       { id: "checkout-ab-tests", label: "Testes A/B", path: "/admin/checkout/ab-tests", requiredPermission: "checkout:ab_tests:read" },
     ],
   },
-  // CRM module
   {
     id: "crm",
     label: "CRM",
+    description: "Contatos, segmentos e automacoes",
     icon: "Users",
     basePath: "/admin/crm",
+    status: "coming_soon",
     requiredRoles: ["admin", "pm", "support"],
     subroutes: [
       { id: "crm-contacts", label: "Contatos", path: "/admin/crm/contacts" },
       { id: "crm-segments", label: "Segmentos", path: "/admin/crm/segments", requiredPermission: "crm:segments:read" },
-      { id: "crm-automations", label: "Automações", path: "/admin/crm/automations", requiredPermission: "crm:automations:read" },
+      { id: "crm-automations", label: "Automacoes", path: "/admin/crm/automations", requiredPermission: "crm:automations:read" },
       { id: "crm-campaigns", label: "Campanhas", path: "/admin/crm/campaigns", requiredPermission: "crm:campaigns:read" },
     ],
   },
-  // ERP module
   {
     id: "erp",
     label: "ERP",
+    description: "Produtos, estoque, notas fiscais e frete",
     icon: "Package",
     basePath: "/admin/erp",
+    status: "coming_soon",
     requiredRoles: ["admin", "operations", "finance"],
     subroutes: [
       { id: "erp-products", label: "Produtos", path: "/admin/erp/products" },
@@ -104,12 +91,13 @@ export const MODULES: ModuleConfig[] = [
       { id: "erp-shipping", label: "Frete", path: "/admin/erp/shipping", requiredPermission: "erp:shipping:read" },
     ],
   },
-  // WhatsApp module
   {
     id: "whatsapp",
     label: "WhatsApp",
+    description: "Conversas, templates e grupos",
     icon: "MessageCircle",
     basePath: "/admin/whatsapp",
+    status: "coming_soon",
     requiredRoles: ["admin", "pm", "support"],
     subroutes: [
       { id: "whatsapp-conversations", label: "Conversas", path: "/admin/whatsapp/conversations" },
@@ -117,15 +105,16 @@ export const MODULES: ModuleConfig[] = [
       { id: "whatsapp-groups", label: "Grupos", path: "/admin/whatsapp/groups", requiredPermission: "whatsapp:groups:read" },
     ],
   },
-  // Dashboard module
   {
     id: "dashboard",
     label: "Dashboard",
+    description: "Visao geral e War Room",
     icon: "LayoutDashboard",
     basePath: "/admin/dashboard",
+    status: "coming_soon",
     requiredRoles: ["admin", "pm", "creative", "operations", "finance"],
     subroutes: [
-      { id: "dashboard-overview", label: "Visão Geral", path: "/admin/dashboard" },
+      { id: "dashboard-overview", label: "Visao Geral", path: "/admin/dashboard" },
       { id: "dashboard-war-room", label: "War Room", path: "/admin/dashboard/war-room", requiredPermission: "dashboard:war_room:read" },
     ],
   },

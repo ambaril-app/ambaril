@@ -481,7 +481,7 @@ CREATE TABLE platform.webhook_events (
 
 #### Async Processing
 
-Webhooks are acknowledged with `200` immediately. Heavy processing happens in BullMQ jobs:
+Webhooks are acknowledged with `200` immediately. Heavy processing happens in PostgreSQL background jobs (triggered by Vercel Cron):
 
 ```typescript
 // Webhook handler (fast - <100ms)
@@ -592,9 +592,10 @@ export async function GET(req: Request, { params }: { params: { sessionId: strin
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
       };
 
-      // Subscribe to Redis pub/sub for this War Room session
-      const subscriber = redisSubscribe(`war-room:${params.sessionId}`, (message) => {
-        sendEvent(message.event, message.data);
+      // Subscribe to SSE stream for this War Room session (ADR-013)
+      // Events stored in PostgreSQL for replay on reconnect — no Redis pub/sub needed
+      const poller = pollWarRoomEvents(params.sessionId, (event) => {
+        sendEvent(event.type, event.data);
       });
 
       // Heartbeat every 30s to keep connection alive
@@ -605,7 +606,7 @@ export async function GET(req: Request, { params }: { params: { sessionId: strin
       // Cleanup on disconnect
       req.signal.addEventListener('abort', () => {
         clearInterval(heartbeat);
-        subscriber.unsubscribe();
+        poller.stop();
       });
     },
   });
@@ -653,7 +654,7 @@ data: {"id": "...", "type": "exchange_requested", "title": "Troca solicitada", "
 
 - Client uses `EventSource` API with automatic reconnection.
 - Server sends `id:` field with each event. On reconnect, client sends `Last-Event-ID` header.
-- Server replays missed events from Redis (events cached for 5 minutes).
+- Server replays missed events from PostgreSQL event log (events retained for 5 minutes).
 
 ```typescript
 // Client-side
@@ -681,7 +682,7 @@ es.onerror = () => {
 
 ## 9. Rate Limiting
 
-Rate limiting is enforced by middleware using Redis counters (sliding window algorithm).
+Rate limiting is enforced by middleware using PostgreSQL counters (sliding window algorithm, cleaned by Vercel Cron).
 
 ### Default Limits
 
@@ -1136,7 +1137,7 @@ Content-Type: application/json
 | `GET` | `/api/v1/whatsapp/broadcasts` | List broadcast campaigns. Filter: `?status=`, `?createdAfter=`. | Bearer | `whatsapp:broadcasts:read` |
 | `POST` | `/api/v1/whatsapp/broadcasts` | Create a broadcast campaign. Body: `{ "template_id": "...", "segment_id": "...", "scheduled_at": "..." }`. | Bearer | `whatsapp:broadcasts:write` |
 | `GET` | `/api/v1/whatsapp/broadcasts/{id}` | Get broadcast detail (stats: sent, delivered, read, replied) | Bearer | `whatsapp:broadcasts:read` |
-| `POST` | `/api/v1/whatsapp/broadcasts/{id}/actions/send` | Dispatch broadcast (queue all messages via BullMQ) | Bearer | `whatsapp:broadcasts:write` |
+| `POST` | `/api/v1/whatsapp/broadcasts/{id}/actions/send` | Dispatch broadcast (queue all messages via PostgreSQL job queue) | Bearer | `whatsapp:broadcasts:write` |
 | `POST` | `/api/v1/whatsapp/broadcasts/{id}/actions/cancel` | Cancel scheduled broadcast | Bearer | `whatsapp:broadcasts:write` |
 
 ---

@@ -15,7 +15,7 @@
 |----------|-------|
 | Login method | Email + password |
 | Session type | httpOnly cookie (session-based) |
-| Session store | Redis (`internal:session:{sessionId}`) |
+| Session store | PostgreSQL (`global.sessions` table, `user_type = 'internal'`) |
 | Session TTL | 7 days, sliding window (refreshed on each request) |
 | "Remember me" | Extends session TTL to 30 days |
 | Password hashing | Argon2id |
@@ -28,9 +28,9 @@
 ```
 1. User submits email + password
 2. Server verifies password against Argon2id hash
-3. On success: create Redis session, set httpOnly cookie
+3. On success: insert session row in `global.sessions` (with `user_type = 'internal'`), set httpOnly cookie
 4. On failure: increment failed attempt counter (see brute force protection)
-5. Subsequent requests: middleware reads cookie → fetches session from Redis → attaches to request context
+5. Subsequent requests: middleware reads cookie → fetches session from `global.sessions` via token → attaches to request context
 ```
 
 ### 1.2 B2B Retailers (external)
@@ -39,7 +39,7 @@
 |----------|-------|
 | Registration | Manual — created by Guilherme (`commercial` role). **No self-registration.** |
 | Login method | Email + password |
-| Session namespace | `b2b:session:{sessionId}` |
+| Session store | PostgreSQL (`global.sessions` table, `user_type = 'b2b'`) |
 | Session TTL | 7 days, sliding window |
 | Account status | Must be `approved` to login |
 | Access scope | B2B portal routes only (`(b2b)/*`) |
@@ -60,7 +60,7 @@ created (by Guilherme) → approved → active login allowed
 | Registration | Self-registration |
 | Required fields | Name, email, Instagram handle, CPF, PIX key |
 | Email verification | Required before account activation |
-| Session namespace | `creator:session:{sessionId}` |
+| Session store | PostgreSQL (`global.sessions` table, `user_type = 'creator'`) |
 | Session TTL | 7 days, sliding window |
 | Access scope | Creators portal routes only (`(creators)/*`) |
 
@@ -93,32 +93,49 @@ No login wall. No account creation required. The checkout must be as frictionles
 | Rate limiting | 10 attempts per IP per hour |
 | Data returned | Order status, tracking info, items — read-only |
 
-**Rate limit implementation:** Redis counter keyed on `meu_pedido:ratelimit:{ip}` with 1-hour TTL. On 11th attempt, return `429 Too Many Requests`.
+**Rate limit implementation:** In-memory counter (per-process `Map<ip, { count, resetAt }>`) with 1-hour window. On serverless (Vercel), each cold start resets counters — this is acceptable for a low-traffic public page. For stricter enforcement, a `global.rate_limits` table can be used with a periodic cleanup cron. On 11th attempt, return `429 Too Many Requests`.
 
 ---
 
 ## 2. Session Management
 
-### 2.1 Redis Session Store
+### 2.1 PostgreSQL Session Store
 
-All sessions are stored in Redis with the following structure:
+All sessions are stored in the `global.sessions` PostgreSQL table (per ADR-012 — no Redis). The `user_type` column differentiates between internal, B2B, and creator sessions within the same table.
+
+**Table: `global.sessions`**
+
+```sql
+-- Columns (from Drizzle schema: packages/db/src/schema/global.ts)
+id            UUID PRIMARY KEY DEFAULT gen_random_uuid()
+user_id       UUID NOT NULL REFERENCES global.users(id) ON DELETE CASCADE
+tenant_id     UUID REFERENCES global.tenants(id)
+token         VARCHAR(64) NOT NULL UNIQUE     -- cryptographically random hex token
+user_role     user_role NOT NULL              -- enum: admin | pm | creative | operations | support | finance | commercial
+user_type     VARCHAR(20) NOT NULL DEFAULT 'internal'  -- 'internal' | 'b2b' | 'creator'
+expires_at    TIMESTAMPTZ NOT NULL
+last_active_at TIMESTAMPTZ NOT NULL DEFAULT now()
+ip_address    INET
+user_agent    TEXT
+created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+```
+
+**Session data returned to request context (resolved at read time, not stored):**
 
 ```typescript
-// Session key format per user type
-// internal:session:{sessionId}
-// b2b:session:{sessionId}
-// creator:session:{sessionId}
-
-interface SessionData {
+// Returned by getSession() after joining sessions + users + tenants + permissions
+interface TenantSessionData {
   userId: string;          // UUID
-  role: RoleCode;          // 'admin' | 'pm' | 'creative' | 'operations' | 'support' | 'finance' | 'commercial' | 'b2b_retailer' | 'creator'
-  permissions: string[];   // ['erp:orders:read', 'erp:orders:write', ...]
-  name: string;
-  email: string;
-  createdAt: string;       // ISO 8601
-  lastActiveAt: string;    // ISO 8601 — updated on each request (sliding window)
+  role: RoleCode;          // 'admin' | 'pm' | 'creative' | 'operations' | 'support' | 'finance' | 'commercial'
+  permissions: string[];   // ['erp:orders:read', 'erp:orders:write', ...] — resolved from global.permissions table
+  name: string;            // from global.users
+  email: string;           // from global.users
+  tenantId: string;        // from global.tenants
+  tenantSlug: string;      // from global.tenants
 }
 ```
+
+> **Note:** Permissions are NOT stored in the session row. They are fetched fresh from `global.permissions` on each `getSession()` call, joined via `global.roles`. This means permission changes take effect immediately without requiring re-login.
 
 ### 2.2 Cookie Configuration
 
@@ -137,26 +154,38 @@ const SESSION_COOKIE_OPTIONS = {
 
 ```typescript
 // Pseudocode — runs on every request to protected routes
+// Actual implementation: apps/web/src/lib/auth.ts → getSession()
 async function sessionMiddleware(req: NextRequest) {
-  const sessionId = req.cookies.get('ambaril_session')?.value;
+  const token = req.cookies.get('ambaril_session')?.value;
 
-  if (!sessionId) {
+  if (!token) {
     return redirectToLogin(req);
   }
 
-  // Determine namespace from route group
-  const namespace = getSessionNamespace(req.pathname);
-  const session = await redis.get(`${namespace}:session:${sessionId}`);
+  // Fetch session from PostgreSQL, joining users + tenants
+  // WHERE token = :token AND expires_at > now()
+  const session = await db
+    .select({ /* sessionId, userId, userRole, userName, userEmail, tenantId, tenantSlug */ })
+    .from(sessions)
+    .innerJoin(users, eq(sessions.userId, users.id))
+    .innerJoin(tenants, eq(sessions.tenantId, tenants.id))
+    .where(and(eq(sessions.token, token), gt(sessions.expiresAt, now)))
+    .limit(1);
 
-  if (!session) {
+  if (!session || !session.userIsActive) {
     return redirectToLogin(req);
   }
 
-  // Sliding window: reset TTL on each request
-  await redis.expire(`${namespace}:session:${sessionId}`, SESSION_TTL);
+  // Sliding window: update last_active_at on each request
+  await db.update(sessions)
+    .set({ lastActiveAt: new Date() })
+    .where(eq(sessions.id, session.sessionId));
+
+  // Fetch permissions from global.roles + global.permissions
+  const permissions = await resolvePermissions(session.userRole);
 
   // Attach session to request context
-  req.session = JSON.parse(session);
+  req.session = { ...session, permissions };
 
   return NextResponse.next();
 }
@@ -172,10 +201,11 @@ async function sessionMiddleware(req: NextRequest) {
 
 | Trigger | Action |
 |---------|--------|
-| Logout | Delete session from Redis, clear cookie |
-| Password change | Delete ALL sessions for that user |
-| Account suspended/deactivated | Delete ALL sessions for that user |
-| Admin force-logout | Delete specific session by ID |
+| Logout | `DELETE FROM global.sessions WHERE token = :token`, clear cookie |
+| Password change | `DELETE FROM global.sessions WHERE user_id = :userId` |
+| Account suspended/deactivated | `DELETE FROM global.sessions WHERE user_id = :userId` |
+| Admin force-logout | `DELETE FROM global.sessions WHERE id = :sessionId` |
+| Expired session cleanup | Vercel Cron (daily): `DELETE FROM global.sessions WHERE expires_at < now()` |
 
 ---
 
@@ -964,28 +994,34 @@ const ARGON2_OPTIONS = {
 | Max failed attempts | 5 |
 | Lockout duration | 15 minutes |
 | Lockout scope | Per IP **and** per email (both tracked independently) |
-| Implementation | Redis counters: `auth:failed:ip:{ip}` and `auth:failed:email:{email}` with 15-minute TTL |
+| Implementation | PostgreSQL table `global.login_attempts` with columns: `id`, `identifier` (IP or email), `identifier_type` ('ip' \| 'email'), `attempted_at`. Cleanup cron deletes rows older than 15 minutes. |
 
 **Flow on failed login:**
 
 ```
-1. Increment auth:failed:ip:{ip} (TTL 15min)
-2. Increment auth:failed:email:{email} (TTL 15min)
-3. If either counter >= 5, block login attempt
-4. Return generic error: "Email ou senha incorretos" (never reveal which is wrong)
-5. On successful login: delete both counters
+1. INSERT INTO global.login_attempts (identifier, identifier_type, attempted_at) VALUES (:ip, 'ip', now())
+2. INSERT INTO global.login_attempts (identifier, identifier_type, attempted_at) VALUES (:email, 'email', now())
+3. SELECT COUNT(*) FROM global.login_attempts WHERE identifier = :ip AND attempted_at > now() - interval '15 minutes'
+4. SELECT COUNT(*) FROM global.login_attempts WHERE identifier = :email AND attempted_at > now() - interval '15 minutes'
+5. If either count >= 5, block login attempt
+6. Return generic error: "Email ou senha incorretos" (never reveal which is wrong)
+7. On successful login: DELETE FROM global.login_attempts WHERE identifier IN (:ip, :email)
 ```
+
+> **Cleanup:** A Vercel Cron job (runs every 15 minutes) executes `DELETE FROM global.login_attempts WHERE attempted_at < now() - interval '15 minutes'` to prevent table bloat.
 
 ### 6.4 Password Reset
 
 | Step | Detail |
 |------|--------|
 | 1. Request | User submits email on `/forgot-password` |
-| 2. Token generation | Generate cryptographically random token, store in Redis with 1-hour TTL: `password_reset:{token} → userId` |
+| 2. Token generation | Generate cryptographically random token, insert into `global.password_reset_tokens` table with columns: `id`, `user_id`, `token` (unique), `expires_at` (1 hour from now), `created_at` |
 | 3. Email | Send reset email via Resend with link: `https://app.ambaril.app/reset-password?token={token}` |
 | 4. Validation | User clicks link, frontend sends token + new password |
-| 5. Reset | Verify token exists in Redis, hash new password, update user record, delete token, invalidate all existing sessions |
+| 5. Reset | `SELECT * FROM global.password_reset_tokens WHERE token = :token AND expires_at > now()`. If found: hash new password, update user record, delete token row, invalidate all existing sessions (`DELETE FROM global.sessions WHERE user_id = :userId`) |
 | 6. Confirmation | Send confirmation email, redirect to login |
+
+> **Cleanup:** Expired tokens are deleted by the same Vercel Cron that cleans up `login_attempts`: `DELETE FROM global.password_reset_tokens WHERE expires_at < now()`.
 
 > The reset email is sent regardless of whether the email exists in the system (prevents email enumeration).
 
@@ -1064,7 +1100,7 @@ Audit logs are immutable (insert-only, no updates or deletes). Admin can read an
 
 | # | Task | Priority | Module |
 |---|------|----------|--------|
-| 1 | Set up Redis session store with namespace separation | P0 | Auth |
+| 1 | ~~PostgreSQL session store (`global.sessions`) — DONE (session 18)~~ | P0 | Auth |
 | 2 | Implement Argon2id password hashing | P0 | Auth |
 | 3 | Build login page + session creation flow | P0 | Auth |
 | 4 | Implement Next.js middleware for route-group-level auth | P0 | Auth |
@@ -1073,8 +1109,8 @@ Audit logs are immutable (insert-only, no updates or deletes). Admin can read an
 | 7 | Build `withAuth()` wrapper for API routes | P0 | RBAC |
 | 8 | Implement data scoping for `b2b_retailer`, `creator`, `creative` | P0 | RBAC |
 | 9 | Build sidebar permission filtering | P1 | UI |
-| 10 | Implement brute force protection (Redis counters) | P1 | Auth |
-| 11 | Build password reset flow (Resend email + Redis token) | P1 | Auth |
+| 10 | Implement brute force protection (`global.login_attempts` table + cleanup cron) | P1 | Auth |
+| 11 | Build password reset flow (Resend email + `global.password_reset_tokens` table) | P1 | Auth |
 | 12 | Implement B2B retailer account creation by commercial role | P1 | Auth |
 | 13 | Implement Creator self-registration + approval flow | P1 | Auth |
 | 14 | Add webhook signature verification per provider | P1 | Webhooks |

@@ -467,7 +467,7 @@ tarefas.project_templates.created_by    ──► global.users(id)
 
 ## 4. Screens & Wireframes
 
-All screens follow the Ambaril Design System: dark mode default, DM Sans, HeroUI components, Lucide React. Tarefas uses blue accent for in-progress items, green for completed, yellow for review, gray for todo, and red for overdue badges.
+All screens follow the Ambaril Design System: light mode default (dark opt-in), DM Sans, shadcn/ui components, Lucide React. Tarefas uses blue accent for in-progress items, green for completed, yellow for review, gray for todo, and red for overdue badges.
 
 ### 4.1 Gantt View (Primary — Default Landing)
 

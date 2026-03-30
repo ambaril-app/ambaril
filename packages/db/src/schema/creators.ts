@@ -52,6 +52,11 @@ export const paymentPreferenceEnum = creatorsSchema.enum(
   ["pix", "store_credit", "product"],
 );
 
+export const discountTypeEnum = creatorsSchema.enum("discount_type", [
+  "percent",
+  "fixed",
+]);
+
 export const socialPlatformEnum = creatorsSchema.enum("social_platform", [
   "instagram",
   "tiktok",
@@ -62,44 +67,49 @@ export const socialPlatformEnum = creatorsSchema.enum("social_platform", [
 ]);
 
 export const contentPostTypeEnum = creatorsSchema.enum("content_post_type", [
-  "post",
+  "image",
+  "video",
+  "carousel",
   "story",
   "reel",
-  "tiktok",
-  "youtube",
-  "live",
+  "short",
 ]);
 
 export const pointsActionEnum = creatorsSchema.enum("points_action", [
   "sale",
-  "post",
-  "challenge",
+  "post_detected",
+  "challenge_completed",
   "referral",
   "engagement",
   "manual_adjustment",
   "tier_bonus",
   "hashtag_detected",
   "creator_of_month",
+  "product_redemption",
 ]);
 
+export const attributionStatusEnum = creatorsSchema.enum(
+  "attribution_status",
+  ["pending", "confirmed", "adjusted", "cancelled"],
+);
+
 export const payoutStatusEnum = creatorsSchema.enum("payout_status", [
+  "calculating",
   "pending",
   "processing",
   "paid",
   "failed",
 ]);
 
-export const challengeTypeEnum = creatorsSchema.enum("challenge_type", [
-  "drop",
-  "style",
-  "community",
-  "viral",
-  "surprise",
-]);
+export const challengeCategoryEnum = creatorsSchema.enum(
+  "challenge_category",
+  ["drop", "style", "community", "viral", "surprise"],
+);
 
 export const challengeStatusEnum = creatorsSchema.enum("challenge_status", [
   "draft",
   "active",
+  "judging",
   "completed",
   "cancelled",
 ]);
@@ -108,6 +118,14 @@ export const submissionStatusEnum = creatorsSchema.enum("submission_status", [
   "pending",
   "approved",
   "rejected",
+]);
+
+export const proofTypeEnum = creatorsSchema.enum("proof_type", [
+  "instagram_post",
+  "instagram_story",
+  "tiktok",
+  "youtube",
+  "other",
 ]);
 
 export const couponTypeEnum = creatorsSchema.enum("coupon_type", [
@@ -134,13 +152,40 @@ export const deliveryStatusEnum = creatorsSchema.enum("delivery_status", [
   "pending",
   "shipped",
   "delivered",
-  "returned",
+  "content_posted",
+]);
+
+export const referralStatusEnum = creatorsSchema.enum("referral_status", [
+  "pending",
+  "active",
+  "expired",
+]);
+
+export const taxpayerTypeEnum = creatorsSchema.enum("taxpayer_type", [
+  "pf",
+  "mei",
+  "pj",
+]);
+
+export const fiscalDocTypeEnum = creatorsSchema.enum("fiscal_doc_type", [
+  "rpa",
+  "nfse",
+  "none",
+]);
+
+export const giftingStatusEnum = creatorsSchema.enum("gifting_status", [
+  "suggested",
+  "approved",
+  "rejected",
+  "ordered",
+  "shipped",
+  "delivered",
 ]);
 
 // ─── Tables ─────────────────────────────────────────────
 
 // 0. creators.creator_tiers — configurable per tenant (session 17 decision)
-// CIENA seed: seed (8%), grow (10%), bloom (12%), core (15%)
+// CIENA seed: ambassador (0%), seed (8%), grow (10%), bloom (12%), core (15%)
 export const creatorTiers = creatorsSchema.table(
   "creator_tiers",
   {
@@ -183,15 +228,23 @@ export const coupons = creatorsSchema.table(
       .primaryKey()
       .default(sql`gen_random_uuid()`),
     tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+    creatorId: uuid("creator_id"), // FK to creators.creators — no formal ref (circular dependency)
     code: varchar("code", { length: 50 }).notNull(),
     type: couponTypeEnum("type").notNull(),
+    discountType: discountTypeEnum("discount_type").notNull().default("percent"),
     discountPercent: numeric("discount_percent", {
       precision: 5,
       scale: 2,
     }),
     discountAmount: numeric("discount_amount", { precision: 12, scale: 2 }),
     maxUses: integer("max_uses"),
-    currentUses: integer("current_uses").notNull().default(0),
+    usageCount: integer("usage_count").notNull().default(0),
+    totalRevenueGenerated: numeric("total_revenue_generated", {
+      precision: 12,
+      scale: 2,
+    })
+      .notNull()
+      .default("0"),
     minOrderValue: numeric("min_order_value", { precision: 12, scale: 2 }),
     validFrom: timestamp("valid_from", { withTimezone: true })
       .notNull()
@@ -208,6 +261,8 @@ export const coupons = creatorsSchema.table(
   (table) => [
     uniqueIndex("idx_coupons_code_tenant").on(table.tenantId, table.code),
     index("idx_coupons_type").on(table.type),
+    index("idx_coupons_creator").on(table.creatorId),
+    index("idx_coupons_active").on(table.isActive),
     index("idx_coupons_tenant").on(table.tenantId),
     pgPolicy("tenant_isolation", {
       as: "permissive",
@@ -237,10 +292,8 @@ export const creators = creatorsSchema.table(
     tierId: uuid("tier_id").references(() => creatorTiers.id),
     commissionRate: numeric("commission_rate", { precision: 5, scale: 2 })
       .notNull()
-      .default("8.00"),
-    couponId: uuid("coupon_id")
-      .notNull()
-      .references(() => coupons.id),
+      .default("0.00"),
+    couponId: uuid("coupon_id").references(() => coupons.id),
     totalSalesAmount: numeric("total_sales_amount", {
       precision: 12,
       scale: 2,
@@ -249,17 +302,18 @@ export const creators = creatorsSchema.table(
       .default("0"),
     totalSalesCount: integer("total_sales_count").notNull().default(0),
     totalPoints: integer("total_points").notNull().default(0),
-    currentMonthSales: numeric("current_month_sales", {
+    currentMonthSalesAmount: numeric("current_month_sales_amount", {
       precision: 12,
       scale: 2,
     })
       .notNull()
       .default("0"),
+    currentMonthSalesCount: integer("current_month_sales_count")
+      .notNull()
+      .default(0),
     status: creatorStatusEnum("status").notNull().default("pending"),
     managedByStaff: boolean("managed_by_staff").notNull().default(false),
-    paymentPreference: paymentPreferenceEnum("payment_preference")
-      .notNull()
-      .default("pix"),
+    paymentPreference: paymentPreferenceEnum("payment_preference"),
     pixKey: varchar("pix_key", { length: 255 }),
     pixKeyType: pixKeyTypeEnum("pix_key_type"),
     clothingSize: varchar("clothing_size", { length: 5 }),
@@ -275,6 +329,7 @@ export const creators = creatorsSchema.table(
     monthlyCap: numeric("monthly_cap", { precision: 12, scale: 2 })
       .notNull()
       .default("3000"),
+    suspensionReason: varchar("suspension_reason", { length: 500 }),
     referredByCreatorId: uuid("referred_by_creator_id"),
     joinedAt: timestamp("joined_at", { withTimezone: true }),
     lastSaleAt: timestamp("last_sale_at", { withTimezone: true }),
@@ -292,7 +347,9 @@ export const creators = creatorsSchema.table(
     index("idx_creators_tier").on(table.tierId),
     index("idx_creators_status").on(table.status),
     index("idx_creators_coupon").on(table.couponId),
-    index("idx_creators_total_sales").on(table.totalSalesAmount),
+    index("idx_creators_total_sales").on(table.totalSalesCount),
+    index("idx_creators_total_points").on(table.totalPoints),
+    index("idx_creators_current_month").on(table.currentMonthSalesAmount),
     index("idx_creators_referred_by").on(table.referredByCreatorId),
     index("idx_creators_managed").on(table.managedByStaff),
     index("idx_creators_tenant").on(table.tenantId),
@@ -322,11 +379,11 @@ export const salesAttributions = creatorsSchema.table(
       .notNull()
       .references(() => coupons.id),
     orderTotal: numeric("order_total", { precision: 12, scale: 2 }).notNull(),
-    discountGiven: numeric("discount_given", {
+    discountAmount: numeric("discount_amount", {
       precision: 12,
       scale: 2,
     }).notNull(),
-    commissionBase: numeric("commission_base", {
+    netRevenue: numeric("net_revenue", {
       precision: 12,
       scale: 2,
     }).notNull(),
@@ -338,20 +395,31 @@ export const salesAttributions = creatorsSchema.table(
       precision: 12,
       scale: 2,
     }).notNull(),
-    buyerCpfHash: varchar("buyer_cpf_hash", { length: 64 }).notNull(),
-    isValid: boolean("is_valid").notNull().default(true),
-    validatedAt: timestamp("validated_at", { withTimezone: true }),
-    invalidationReason: text("invalidation_reason"),
+    status: attributionStatusEnum("status").notNull().default("pending"),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    exchangeWindowEndsAt: timestamp("exchange_window_ends_at", {
+      withTimezone: true,
+    }).notNull(),
+    exchangeAdjusted: boolean("exchange_adjusted").notNull().default(false),
+    adjustmentReason: varchar("adjustment_reason", { length: 500 }),
+    buyerCpfHash: varchar("buyer_cpf_hash", { length: 64 }),
     createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (table) => [
-    index("idx_sales_attr_creator").on(table.creatorId),
-    index("idx_sales_attr_order").on(table.orderId),
-    index("idx_sales_attr_valid").on(table.isValid, table.validatedAt),
-    index("idx_sales_attr_created").on(table.createdAt),
-    index("idx_sales_attr_tenant").on(table.tenantId),
+    uniqueIndex("idx_attributions_order").on(table.tenantId, table.orderId),
+    index("idx_attributions_creator").on(table.creatorId),
+    index("idx_attributions_status").on(table.status),
+    index("idx_attributions_pending_window").on(table.exchangeWindowEndsAt),
+    index("idx_attributions_creator_month").on(
+      table.creatorId,
+      table.createdAt,
+    ),
+    index("idx_attributions_tenant").on(table.tenantId),
     pgPolicy("tenant_isolation", {
       as: "permissive",
       for: "all",
@@ -385,6 +453,10 @@ export const pointsLedger = creatorsSchema.table(
   (table) => [
     index("idx_points_ledger_creator").on(table.creatorId),
     index("idx_points_ledger_action").on(table.actionType),
+    index("idx_points_ledger_reference").on(
+      table.referenceType,
+      table.referenceId,
+    ),
     index("idx_points_ledger_created").on(table.createdAt),
     index("idx_points_ledger_tenant").on(table.tenantId),
     pgPolicy("tenant_isolation", {
@@ -407,13 +479,18 @@ export const challenges = creatorsSchema.table(
     tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
     name: varchar("name", { length: 255 }).notNull(),
     description: text("description").notNull(),
-    type: challengeTypeEnum("type").notNull(),
+    category: challengeCategoryEnum("category").notNull(),
+    month: integer("month").notNull(),
+    year: integer("year").notNull(),
     status: challengeStatusEnum("status").notNull().default("draft"),
     pointsReward: integer("points_reward").notNull(),
     requirements: jsonb("requirements").notNull(),
+    maxParticipants: integer("max_participants"),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
     endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
-    maxWinners: integer("max_winners"),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -423,6 +500,7 @@ export const challenges = creatorsSchema.table(
   },
   (table) => [
     index("idx_challenges_status").on(table.status),
+    index("idx_challenges_month_year").on(table.year, table.month),
     index("idx_challenges_dates").on(table.startsAt, table.endsAt),
     index("idx_challenges_tenant").on(table.tenantId),
     pgPolicy("tenant_isolation", {
@@ -449,13 +527,14 @@ export const challengeSubmissions = creatorsSchema.table(
     creatorId: uuid("creator_id")
       .notNull()
       .references(() => creators.id),
-    status: submissionStatusEnum("status").notNull().default("pending"),
     proofUrl: text("proof_url").notNull(),
-    proofMetadata: jsonb("proof_metadata"),
+    proofType: proofTypeEnum("proof_type").notNull(),
+    caption: text("caption"),
+    status: submissionStatusEnum("status").notNull().default("pending"),
     reviewedBy: uuid("reviewed_by").references(() => users.id),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
-    pointsAwarded: integer("points_awarded").notNull().default(0),
-    notes: text("notes"),
+    pointsAwarded: integer("points_awarded"),
+    rejectionReason: varchar("rejection_reason", { length: 500 }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -497,16 +576,27 @@ export const payouts = creatorsSchema.table(
     periodStart: date("period_start").notNull(),
     periodEnd: date("period_end").notNull(),
     grossAmount: numeric("gross_amount", { precision: 12, scale: 2 }).notNull(),
-    deductions: jsonb("deductions").notNull().default("{}"),
+    irrfWithheld: numeric("irrf_withheld", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    issWithheld: numeric("iss_withheld", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    deductions: jsonb("deductions"),
     netAmount: numeric("net_amount", { precision: 12, scale: 2 }).notNull(),
+    fiscalDocType: fiscalDocTypeEnum("fiscal_doc_type")
+      .notNull()
+      .default("none"),
+    fiscalDocId: varchar("fiscal_doc_id", { length: 255 }),
+    fiscalDocVerified: boolean("fiscal_doc_verified").notNull().default(false),
     paymentMethod: paymentMethodEnum("payment_method")
       .notNull()
       .default("pix"),
-    status: payoutStatusEnum("status").notNull().default("pending"),
+    status: payoutStatusEnum("status").notNull().default("calculating"),
     pixKey: varchar("pix_key", { length: 255 }),
     pixKeyType: pixKeyTypeEnum("pix_key_type"),
     pixTransactionId: varchar("pix_transaction_id", { length: 255 }),
-    storeCreditCode: varchar("store_credit_code", { length: 50 }),
+    storeCreditCode: varchar("store_credit_code", { length: 100 }),
     storeCreditAmount: numeric("store_credit_amount", {
       precision: 12,
       scale: 2,
@@ -517,7 +607,7 @@ export const payouts = creatorsSchema.table(
       scale: 2,
     }),
     paidAt: timestamp("paid_at", { withTimezone: true }),
-    notes: text("notes"),
+    failureReason: varchar("failure_reason", { length: 500 }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -562,8 +652,11 @@ export const referrals = creatorsSchema.table(
       .notNull()
       .references(() => creators.id),
     referralCode: varchar("referral_code", { length: 50 }).notNull(),
-    status: varchar("status", { length: 20 }).notNull().default("pending"),
-    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    status: referralStatusEnum("status").notNull().default("pending"),
+    pointsAwarded: boolean("points_awarded").notNull().default(false),
+    referredFirstSaleAt: timestamp("referred_first_sale_at", {
+      withTimezone: true,
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -571,7 +664,12 @@ export const referrals = creatorsSchema.table(
   (table) => [
     index("idx_referrals_referrer").on(table.referrerId),
     index("idx_referrals_referred").on(table.referredId),
-    uniqueIndex("idx_referrals_unique").on(table.tenantId, table.referrerId, table.referredId),
+    uniqueIndex("idx_referrals_unique").on(
+      table.tenantId,
+      table.referrerId,
+      table.referredId,
+    ),
+    index("idx_referrals_pending").on(table.status),
     index("idx_referrals_tenant").on(table.tenantId),
     pgPolicy("tenant_isolation", {
       as: "permissive",
@@ -645,10 +743,10 @@ export const contentDetections = creatorsSchema.table(
     comments: integer("comments").default(0),
     shares: integer("shares").default(0),
     hashtagMatched: varchar("hashtag_matched", { length: 100 }),
+    pointsAwarded: boolean("points_awarded").notNull().default(false),
     detectedAt: timestamp("detected_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
-    postedAt: timestamp("posted_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -661,6 +759,7 @@ export const contentDetections = creatorsSchema.table(
     ),
     index("idx_content_detect_creator").on(table.creatorId),
     index("idx_content_detect_platform").on(table.platform, table.detectedAt),
+    index("idx_content_detect_hashtag").on(table.hashtagMatched),
     index("idx_content_detect_tenant").on(table.tenantId),
     pgPolicy("tenant_isolation", {
       as: "permissive",
@@ -684,7 +783,7 @@ export const campaigns = creatorsSchema.table(
     campaignType: campaignTypeEnum("campaign_type").notNull(),
     status: campaignStatusEnum("status").notNull().default("draft"),
     brief: jsonb("brief"),
-    startDate: date("start_date"),
+    startDate: date("start_date").notNull(),
     endDate: date("end_date"),
     totalProductCost: numeric("total_product_cost", {
       precision: 12,
@@ -745,13 +844,9 @@ export const campaignCreators = creatorsSchema.table(
       .references(() => creators.id),
     productId: uuid("product_id"), // FK to erp.products (created later)
     deliveryStatus: deliveryStatusEnum("delivery_status").default("pending"),
-    productCost: numeric("product_cost", { precision: 12, scale: 2 }).default(
-      "0",
-    ),
-    shippingCost: numeric("shipping_cost", { precision: 12, scale: 2 }).default(
-      "0",
-    ),
-    feeAmount: numeric("fee_amount", { precision: 12, scale: 2 }).default("0"),
+    productCost: numeric("product_cost", { precision: 12, scale: 2 }),
+    shippingCost: numeric("shipping_cost", { precision: 12, scale: 2 }),
+    feeAmount: numeric("fee_amount", { precision: 12, scale: 2 }),
     notes: text("notes"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -770,6 +865,167 @@ export const campaignCreators = creatorsSchema.table(
     index("idx_campaign_creators_creator").on(table.creatorId),
     index("idx_campaign_creators_delivery").on(table.deliveryStatus),
     index("idx_campaign_creators_tenant").on(table.tenantId),
+    pgPolicy("tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "public",
+      using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+      withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+    }),
+  ],
+).enableRLS();
+
+// 13. creators.campaign_briefs — structured content guidelines for creators
+export const campaignBriefs = creatorsSchema.table(
+  "campaign_briefs",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => campaigns.id),
+    title: varchar("title", { length: 255 }).notNull(),
+    contentMd: text("content_md").notNull(),
+    hashtags: text("hashtags").array(),
+    deadline: timestamp("deadline", { withTimezone: true }),
+    examplesJson: jsonb("examples_json"),
+    targetTiers: varchar("target_tiers", { length: 50 }).array(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_campaign_briefs_campaign").on(table.campaignId),
+    index("idx_campaign_briefs_deadline").on(table.deadline),
+    index("idx_campaign_briefs_tenant").on(table.tenantId),
+    pgPolicy("tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "public",
+      using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+      withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+    }),
+  ],
+).enableRLS();
+
+// 14. creators.gifting_log — tracks gifting decisions and deliveries
+export const giftingLog = creatorsSchema.table(
+  "gifting_log",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+    creatorId: uuid("creator_id")
+      .notNull()
+      .references(() => creators.id),
+    campaignId: uuid("campaign_id").references(() => campaigns.id),
+    productId: uuid("product_id"), // FK to erp.products (created later)
+    productName: varchar("product_name", { length: 255 }).notNull(),
+    productCost: numeric("product_cost", { precision: 12, scale: 2 }).notNull(),
+    shippingCost: numeric("shipping_cost", { precision: 12, scale: 2 })
+      .notNull()
+      .default("0"),
+    reason: text("reason").notNull(),
+    status: giftingStatusEnum("status").notNull().default("suggested"),
+    erpOrderId: uuid("erp_order_id"), // FK to erp.orders (created later)
+    approvedBy: uuid("approved_by").references(() => users.id),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_gifting_log_creator").on(table.creatorId),
+    index("idx_gifting_log_campaign").on(table.campaignId),
+    index("idx_gifting_log_status").on(table.status),
+    index("idx_gifting_log_created").on(table.createdAt),
+    index("idx_gifting_log_tenant").on(table.tenantId),
+    pgPolicy("tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "public",
+      using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+      withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+    }),
+  ],
+).enableRLS();
+
+// 15. creators.creator_kit_downloads — tracks asset downloads from Creator Kit
+export const creatorKitDownloads = creatorsSchema.table(
+  "creator_kit_downloads",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+    creatorId: uuid("creator_id")
+      .notNull()
+      .references(() => creators.id),
+    assetId: uuid("asset_id").notNull(), // FK to dam.assets (created later)
+    assetName: varchar("asset_name", { length: 255 }).notNull(),
+    downloadedAt: timestamp("downloaded_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("idx_kit_downloads_creator").on(table.creatorId),
+    index("idx_kit_downloads_asset").on(table.assetId),
+    index("idx_kit_downloads_date").on(table.downloadedAt),
+    index("idx_kit_downloads_tenant").on(table.tenantId),
+    pgPolicy("tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "public",
+      using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+      withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+    }),
+  ],
+).enableRLS();
+
+// 16. creators.tax_profiles — fiscal compliance data per creator
+export const taxProfiles = creatorsSchema.table(
+  "tax_profiles",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id").notNull().references(() => tenants.id),
+    creatorId: uuid("creator_id")
+      .notNull()
+      .references(() => creators.id),
+    taxpayerType: taxpayerTypeEnum("taxpayer_type").notNull().default("pf"),
+    cpf: varchar("cpf", { length: 14 }).notNull(),
+    cnpj: varchar("cnpj", { length: 18 }),
+    meiActive: boolean("mei_active"),
+    meiValidatedAt: timestamp("mei_validated_at", { withTimezone: true }),
+    municipalityCode: varchar("municipality_code", { length: 10 }),
+    municipalityName: varchar("municipality_name", { length: 255 }),
+    issRate: numeric("iss_rate", { precision: 5, scale: 2 }),
+    hasNfCapability: boolean("has_nf_capability").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_tax_profiles_creator").on(table.tenantId, table.creatorId),
+    index("idx_tax_profiles_type").on(table.taxpayerType),
+    index("idx_tax_profiles_cnpj").on(table.cnpj),
+    index("idx_tax_profiles_tenant").on(table.tenantId),
     pgPolicy("tenant_isolation", {
       as: "permissive",
       for: "all",

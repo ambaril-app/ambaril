@@ -368,6 +368,8 @@ CREATE TYPE creators.content_post_type AS ENUM ('image', 'video', 'carousel', 's
 CREATE TYPE creators.campaign_type AS ENUM ('seeding', 'paid', 'gifting', 'reward');
 CREATE TYPE creators.campaign_status AS ENUM ('draft', 'active', 'completed', 'cancelled');
 CREATE TYPE creators.delivery_status AS ENUM ('pending', 'shipped', 'delivered', 'content_posted');
+CREATE TYPE creators.taxpayer_type AS ENUM ('pf', 'mei', 'pj');
+CREATE TYPE creators.fiscal_doc_type AS ENUM ('rpa', 'nfse', 'none');
 ```
 
 ---
@@ -592,7 +594,12 @@ CREATE INDEX idx_submissions_status ON creators.challenge_submissions (status) W
 | period_end | DATE | NOT NULL | End of payout period (last day of previous month) |
 | gross_amount | NUMERIC(12,2) | NOT NULL | Total confirmed commission for the period |
 | deductions | JSONB | NULL | Any deductions: `{ "reason": "...", "amount": 0.00 }[]` |
-| net_amount | NUMERIC(12,2) | NOT NULL | gross_amount - sum(deductions) |
+| net_amount | NUMERIC(12,2) | NOT NULL | gross_amount - irrf_withheld - iss_withheld - sum(deductions) |
+| irrf_withheld | NUMERIC(12,2) | NOT NULL DEFAULT 0 | IRRF amount withheld (for PF/MEI above threshold) |
+| iss_withheld | NUMERIC(12,2) | NOT NULL DEFAULT 0 | ISS amount withheld |
+| fiscal_doc_type | creators.fiscal_doc_type | NOT NULL DEFAULT 'none' | rpa, nfse, or none |
+| fiscal_doc_id | VARCHAR(255) | NULL | RPA number or NF-e key |
+| fiscal_doc_verified | BOOLEAN | NOT NULL DEFAULT FALSE | Whether fiscal document was verified |
 | payment_method | creators.payment_method | NOT NULL DEFAULT 'pix' | pix, store_credit, or product |
 | pix_key | VARCHAR(255) | NULL | PIX key snapshot (only if payment_method = 'pix') |
 | pix_key_type | creators.pix_key_type | NULL | PIX key type snapshot |
@@ -615,6 +622,32 @@ CREATE INDEX idx_payouts_status ON creators.payouts (status);
 CREATE INDEX idx_payouts_period ON creators.payouts (period_start, period_end);
 CREATE INDEX idx_payouts_method ON creators.payouts (payment_method);
 CREATE UNIQUE INDEX idx_payouts_creator_period ON creators.payouts (creator_id, period_start, period_end);
+```
+
+#### 3.3.7b creators.tax_profiles
+
+| Column | Type | Constraints | Description |
+|--------|------|-------------|-------------|
+| id | UUID | PK, DEFAULT gen_random_uuid() | |
+| creator_id | UUID | NOT NULL, UNIQUE, FK creators.creators(id) | One tax profile per creator |
+| taxpayer_type | creators.taxpayer_type | NOT NULL DEFAULT 'pf' | pf (CPF), mei (MEI), pj (CNPJ) |
+| cpf | VARCHAR(14) | NOT NULL | Brazilian CPF (same as creators.creators.cpf) |
+| cnpj | VARCHAR(18) | NULL | CNPJ for MEI or PJ creators |
+| mei_active | BOOLEAN | NULL | Last MEI validation result |
+| mei_validated_at | TIMESTAMPTZ | NULL | Last MEI validation timestamp |
+| municipality_code | VARCHAR(10) | NULL | IBGE municipality code for ISS |
+| municipality_name | VARCHAR(255) | NULL | Municipality name |
+| iss_rate | NUMERIC(5,2) | NULL | ISS rate for this municipality (2-5%) |
+| has_nf_capability | BOOLEAN | NOT NULL DEFAULT FALSE | Whether creator can issue NF-e de servico |
+| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+
+**Indexes:**
+
+```sql
+CREATE UNIQUE INDEX idx_tax_profiles_creator ON creators.tax_profiles (creator_id);
+CREATE INDEX idx_tax_profiles_type ON creators.tax_profiles (taxpayer_type);
+CREATE INDEX idx_tax_profiles_cnpj ON creators.tax_profiles (cnpj) WHERE cnpj IS NOT NULL;
 ```
 
 #### 3.3.8 creators.referrals
@@ -965,6 +998,23 @@ Full automated onboarding flow reduces PM workload. Each step is tracked in the 
 | 6. Promotion Nudge | At 7/10 confirmed sales toward SEED threshold | Send WA: "Faltam apenas {N} vendas para voce se tornar Creator SEED e comecar a ganhar comissao!" | Yes |
 
 > **PM workload reduction:** For ambassadors, the only manual intervention is if the auto-approval threshold is not met (low follower count), in which case the application goes to the standard PM review queue. This allows the ambassador tier to scale to thousands while PM focus remains on SEED+ creator quality.
+
+### 4.10 Fiscal Compliance
+
+> **Phase:** v1.0 — mandatory before first payout
+
+| # | Rule | Detail |
+|---|------|--------|
+| R-FISCAL.1 | **Taxpayer classification** | Every creator must have a `tax_profiles` record before receiving their first payout. Classification: PF (pessoa fisica, CPF only), MEI (microempreendedor individual, CNPJ), PJ (pessoa juridica, CNPJ). Creators fill this during onboarding step 1 or later in profile settings. |
+| R-FISCAL.2 | **MEI validation** | For creators declaring MEI: validate CNPJ via public API (ReceitaWS or similar). Check that CNPJ is active and registered as MEI. Store validation result and timestamp. Re-validate monthly. If MEI is inactive, downgrade to PF classification and notify creator. |
+| R-FISCAL.3 | **IRRF calculation (PF only)** | For PF creators (no MEI/PJ), withhold IRRF on payouts above the monthly exemption limit (R$ 2.259,20 as of 2026 — configurable). Progressive table: up to R$ 2.259,20 = exempt; R$ 2.259,21 – R$ 2.826,65 = 7.5%; R$ 2.826,66 – R$ 3.751,05 = 15%; R$ 3.751,06 – R$ 4.664,68 = 22.5%; above R$ 4.664,68 = 27.5%. Deduction per dependent: R$ 189,59. IRRF table values are configurable by tenant (updated annually by government). |
+| R-FISCAL.4 | **ISS calculation** | ISS (Imposto Sobre Servicos) applies to all payout types. Rate varies by municipality (2-5%, stored in `tax_profiles.iss_rate`). Default: 5% (Sao Paulo). ISS is withheld at source by the contracting company (tenant). |
+| R-FISCAL.5 | **RPA emission (PF without MEI)** | For PF creators: the tenant must emit an RPA (Recibo de Pagamento Autonomo) for each payout. RPA includes: creator name, CPF, service description ("Servicos de divulgacao e marketing digital"), gross amount, IRRF withheld, ISS withheld, INSS (11% capped at ceiling — configurable), net amount. RPA generation is automated via template. `fiscal_doc_type = 'rpa'`, `fiscal_doc_id = RPA number`. |
+| R-FISCAL.6 | **NF-e de servico requirement (PJ/MEI)** | For PJ and MEI creators: they must submit a NF-e de servico BEFORE the payout is released. Payout status stays at `pending` until NF-e is verified. Creator uploads NF-e PDF in portal (or sends via WA). PM verifies: NF-e CNPJ matches creator CNPJ, service description matches, value matches gross_amount. On verification: `fiscal_doc_verified = true`, payout advances to `processing`. |
+| R-FISCAL.7 | **Payout net amount calculation** | `net_amount = gross_amount - irrf_withheld - iss_withheld - sum(deductions)`. All fiscal withholdings are calculated BEFORE the payout is finalized. Creator portal shows breakdown: gross → IRRF → ISS → deductions → net. |
+| R-FISCAL.8 | **Annual income report** | System generates annual summary per creator for tax declaration: total gross earnings, total IRRF withheld, total ISS withheld, payout count. Available in portal > Earnings > "Informe de Rendimentos {year}" (PDF download). Tenant must provide this by end of February for previous year. |
+| R-FISCAL.9 | **Fiscal doc types per taxpayer** | PF: RPA emitted by tenant (automatic). MEI: NF-e de servico emitted by creator (upload required). PJ: NF-e de servico emitted by creator (upload required). |
+| R-FISCAL.10 | **Tax profile incomplete blocks payout** | If a creator's `tax_profiles` record is missing or incomplete (missing municipality for ISS, missing CNPJ for MEI/PJ), payouts are blocked with status `pending_fiscal_data`. Creator receives WA notification: "Complete seus dados fiscais para receber seu pagamento." |
 
 ---
 
@@ -2277,3 +2327,2052 @@ If critical issues arise during migration, revert to Moneri by re-enabling Moner
 ---
 
 *This module spec is the source of truth for CIENA Creators implementation. All development, review, and QA should reference this document. Changes require review from Marcus (admin) or Caio (pm).*
+
+---
+
+## 15. Zod Schemas
+
+Shared validation schemas used by both frontend (React Hook Form) and backend (Server Actions / API route handlers). These schemas formalize the business rules from section 4 into type-safe runtime validators.
+
+> **File location:** `packages/shared/src/schemas/creators.ts`
+> **Import:** `import { creatorApplyStep1Schema, ... } from "@ambaril/shared/schemas/creators"`
+> **Convention:** All schemas export their inferred TypeScript types via `z.infer<typeof schema>`.
+
+### 15.1 Helpers
+
+```typescript
+import { z } from "zod";
+
+// ─── CPF Validation ────────────────────────────────────────
+// Brazilian CPF: 11 digits, with check-digit algorithm.
+// Accepts digits only (no dots/dashes — formatting is UI-layer).
+
+function isValidCpf(cpf: string): boolean {
+  if (cpf.length !== 11) return false;
+  // Reject all-same-digit CPFs (e.g., 111.111.111-11)
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+
+  // First check digit
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    sum += parseInt(cpf.charAt(i)) * (10 - i);
+  }
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10) remainder = 0;
+  if (remainder !== parseInt(cpf.charAt(9))) return false;
+
+  // Second check digit
+  sum = 0;
+  for (let i = 0; i < 10; i++) {
+    sum += parseInt(cpf.charAt(i)) * (11 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10) remainder = 0;
+  if (remainder !== parseInt(cpf.charAt(10))) return false;
+
+  return true;
+}
+
+const cpfSchema = z
+  .string()
+  .length(11, "CPF deve ter 11 digitos")
+  .regex(/^\d{11}$/, "CPF deve conter apenas numeros")
+  .refine(isValidCpf, { message: "CPF invalido" });
+
+const brazilianPhoneSchema = z
+  .string()
+  .min(12, "Telefone invalido")
+  .max(13, "Telefone invalido")
+  .regex(/^\+55\d{10,11}$/, "Formato: +5511999999999");
+
+const moneySchema = z
+  .number()
+  .nonnegative("Valor nao pode ser negativo")
+  .multipleOf(0.01, "Maximo 2 casas decimais");
+
+const uuidSchema = z.string().uuid("ID invalido");
+
+const urlSchema = z.string().url("URL invalida");
+
+const dateStringSchema = z.string().regex(
+  /^\d{4}-\d{2}-\d{2}$/,
+  "Formato de data: YYYY-MM-DD"
+);
+
+const isoDatetimeSchema = z.string().datetime({ offset: true });
+```
+
+### 15.2 Enums
+
+```typescript
+// Mirror DB enums — keep in sync with packages/db/src/schema/creators.ts
+export const creatorStatusValues = [
+  "pending", "active", "suspended", "inactive",
+] as const;
+export const creatorStatusSchema = z.enum(creatorStatusValues);
+
+export const pixKeyTypeValues = ["cpf", "email", "phone", "random"] as const;
+export const pixKeyTypeSchema = z.enum(pixKeyTypeValues);
+
+export const paymentMethodValues = [
+  "pix", "store_credit", "product",
+] as const;
+export const paymentMethodSchema = z.enum(paymentMethodValues);
+
+export const paymentPreferenceValues = [
+  "pix", "store_credit", "product",
+] as const;
+export const paymentPreferenceSchema = z.enum(paymentPreferenceValues);
+
+export const socialPlatformValues = [
+  "instagram", "tiktok", "youtube", "pinterest", "twitter", "other",
+] as const;
+export const socialPlatformSchema = z.enum(socialPlatformValues);
+
+export const challengeTypeValues = [
+  "drop", "style", "community", "viral", "surprise",
+] as const;
+export const challengeTypeSchema = z.enum(challengeTypeValues);
+
+export const challengeStatusValues = [
+  "draft", "active", "completed", "cancelled",
+] as const;
+export const challengeStatusSchema = z.enum(challengeStatusValues);
+
+export const submissionStatusValues = [
+  "pending", "approved", "rejected",
+] as const;
+export const submissionStatusSchema = z.enum(submissionStatusValues);
+
+export const payoutStatusValues = [
+  "pending", "processing", "paid", "failed",
+] as const;
+export const payoutStatusSchema = z.enum(payoutStatusValues);
+
+export const campaignTypeValues = [
+  "seeding", "paid", "gifting", "reward",
+] as const;
+export const campaignTypeSchema = z.enum(campaignTypeValues);
+
+export const campaignStatusValues = [
+  "draft", "active", "completed", "cancelled",
+] as const;
+export const campaignStatusSchema = z.enum(campaignStatusValues);
+
+export const deliveryStatusValues = [
+  "pending", "shipped", "delivered", "returned",
+] as const;
+export const deliveryStatusSchema = z.enum(deliveryStatusValues);
+
+export const proofTypeValues = [
+  "instagram_post", "instagram_story", "tiktok", "youtube", "other",
+] as const;
+export const proofTypeSchema = z.enum(proofTypeValues);
+
+export const contentNicheValues = [
+  "streetwear", "lifestyle", "musica", "skate", "arte", "fitness",
+  "moda", "cultura", "games", "tech", "culinaria", "viagem",
+] as const;
+
+export const contentTypeValues = [
+  "reels", "stories", "feed", "tiktok", "youtube", "live", "shorts",
+] as const;
+
+export const clothingSizeValues = [
+  "PP", "P", "M", "G", "GG",
+] as const;
+export const clothingSizeSchema = z.enum(clothingSizeValues);
+
+export const discoverySourceValues = [
+  "instagram", "tiktok", "amigo", "evento", "google", "outro",
+] as const;
+```
+
+### 15.3 Creator Registration (3-Step Public Form)
+
+```typescript
+// ─── Step 1: Personal Data ─────────────────────────────────
+// Rules: R33 (public registration flow)
+export const creatorApplyStep1Schema = z.object({
+  name: z
+    .string()
+    .min(3, "Nome deve ter pelo menos 3 caracteres")
+    .max(255, "Nome muito longo"),
+  email: z
+    .string()
+    .email("Email invalido")
+    .max(255, "Email muito longo"),
+  phone: brazilianPhoneSchema,
+  cpf: cpfSchema,
+  birthDate: dateStringSchema.refine(
+    (val) => {
+      const birth = new Date(val);
+      const today = new Date();
+      const age = today.getFullYear() - birth.getFullYear();
+      return age >= 16 && age <= 100;
+    },
+    { message: "Idade deve ser entre 16 e 100 anos" },
+  ),
+  city: z.string().min(2, "Cidade obrigatoria").max(100),
+  state: z
+    .string()
+    .length(2, "Use a sigla do estado (ex: SP)")
+    .regex(/^[A-Z]{2}$/, "Sigla do estado invalida"),
+});
+
+// ─── Step 2: Social Networks ───────────────────────────────
+// Rules: R33 — Instagram + TikTok required
+export const socialAccountEntrySchema = z.object({
+  platform: socialPlatformSchema,
+  handle: z
+    .string()
+    .min(1, "Handle obrigatorio")
+    .max(100, "Handle muito longo")
+    .regex(/^[a-zA-Z0-9._]+$/, "Handle invalido (sem @, apenas letras, numeros, . e _)"),
+  url: urlSchema.optional(),
+  isPrimary: z.boolean().optional().default(false),
+});
+
+export const creatorApplyStep2Schema = z
+  .object({
+    socialAccounts: z
+      .array(socialAccountEntrySchema)
+      .min(2, "Instagram e TikTok sao obrigatorios")
+      .max(10, "Maximo de 10 redes sociais"),
+  })
+  .refine(
+    (data) =>
+      data.socialAccounts.some((a) => a.platform === "instagram"),
+    { message: "Instagram e obrigatorio", path: ["socialAccounts"] },
+  )
+  .refine(
+    (data) =>
+      data.socialAccounts.some((a) => a.platform === "tiktok"),
+    { message: "TikTok e obrigatorio", path: ["socialAccounts"] },
+  );
+
+// ─── Step 3: About ─────────────────────────────────────────
+// Rules: R33 — bio, motivation, niches, content types, terms
+export const addressSchema = z.object({
+  street: z.string().min(1).max(255),
+  number: z.string().min(1).max(20),
+  complement: z.string().max(100).optional(),
+  neighborhood: z.string().min(1).max(100),
+  city: z.string().min(1).max(100),
+  state: z.string().length(2),
+  zip: z
+    .string()
+    .length(8, "CEP deve ter 8 digitos")
+    .regex(/^\d{8}$/, "CEP deve conter apenas numeros"),
+});
+
+export const creatorApplyStep3Schema = z.object({
+  bio: z
+    .string()
+    .min(10, "Bio deve ter pelo menos 10 caracteres")
+    .max(280, "Bio deve ter no maximo 280 caracteres"),
+  motivation: z
+    .string()
+    .min(20, "Conte um pouco mais sobre sua motivacao")
+    .max(1000, "Motivacao muito longa"),
+  contentNiches: z
+    .array(z.enum(contentNicheValues))
+    .min(1, "Selecione pelo menos 1 nicho")
+    .max(5, "Maximo de 5 nichos"),
+  contentTypes: z
+    .array(z.enum(contentTypeValues))
+    .min(1, "Selecione pelo menos 1 tipo de conteudo")
+    .max(6),
+  discoverySource: z.enum(discoverySourceValues),
+  clothingSize: clothingSizeSchema,
+  address: addressSchema.optional(),
+  contentRightsAccepted: z.literal(true, {
+    errorMap: () => ({
+      message: "Voce deve aceitar a cessao de direitos de imagem",
+    }),
+  }),
+  termsAccepted: z.literal(true, {
+    errorMap: () => ({
+      message: "Voce deve aceitar os termos do programa",
+    }),
+  }),
+  referralCode: z.string().max(50).optional(),
+});
+
+// ─── Full Application (merge of 3 steps) ──────────────────
+export const creatorApplyFullSchema = creatorApplyStep1Schema
+  .merge(creatorApplyStep2Schema.innerType())
+  .merge(creatorApplyStep3Schema);
+
+export type CreatorApplyStep1 = z.infer<typeof creatorApplyStep1Schema>;
+export type CreatorApplyStep2 = z.infer<typeof creatorApplyStep2Schema>;
+export type CreatorApplyStep3 = z.infer<typeof creatorApplyStep3Schema>;
+export type CreatorApplyFull = z.infer<typeof creatorApplyFullSchema>;
+```
+
+### 15.4 Admin Operations
+
+```typescript
+// ─── Creator Approve ───────────────────────────────────────
+// Rules: R34 (approval flow), R8 (default tier)
+export const creatorApproveSchema = z.object({
+  creatorId: uuidSchema,
+  tierId: uuidSchema,
+  customCommissionRate: z
+    .number()
+    .min(0, "Comissao nao pode ser negativa")
+    .max(50, "Comissao maxima: 50%")
+    .multipleOf(0.01)
+    .optional(),
+});
+
+// ─── Creator Reject ────────────────────────────────────────
+export const creatorRejectSchema = z.object({
+  creatorId: uuidSchema,
+  rejectionReason: z
+    .string()
+    .min(5, "Informe o motivo da rejeicao")
+    .max(500, "Motivo muito longo"),
+});
+
+// ─── Creator Suspend ───────────────────────────────────────
+// Rules: R35 (suspension flow)
+export const creatorSuspendSchema = z.object({
+  creatorId: uuidSchema,
+  reason: z
+    .string()
+    .min(5, "Informe o motivo da suspensao")
+    .max(500, "Motivo muito longo"),
+});
+
+// ─── Creator Update (Admin / White-Glove) ──────────────────
+// Partial update — all fields optional
+export const creatorUpdateSchema = z.object({
+  name: z.string().min(3).max(255).optional(),
+  email: z.string().email().max(255).optional(),
+  phone: brazilianPhoneSchema.optional(),
+  bio: z.string().max(2000).optional(),
+  profileImageUrl: urlSchema.optional(),
+  pixKey: z.string().max(255).optional(),
+  pixKeyType: pixKeyTypeSchema.optional(),
+  paymentPreference: paymentPreferenceSchema.optional(),
+  clothingSize: clothingSizeSchema.optional(),
+  address: addressSchema.optional(),
+  motivation: z.string().max(1000).optional(),
+  contentNiches: z.array(z.enum(contentNicheValues)).max(5).optional(),
+  contentTypes: z.array(z.enum(contentTypeValues)).max(6).optional(),
+  managedByStaff: z.boolean().optional(),
+});
+
+// ─── Creator Profile Update (Portal — Self-Service) ────────
+// Rules: limited to Own* fields (see section 9 permissions)
+export const creatorProfileUpdateSchema = z.object({
+  name: z.string().min(3).max(255).optional(),
+  bio: z.string().max(2000).optional(),
+  profileImageUrl: urlSchema.optional(),
+  pixKey: z.string().max(255).optional(),
+  pixKeyType: pixKeyTypeSchema.optional(),
+  paymentPreference: paymentPreferenceSchema.optional(),
+  clothingSize: clothingSizeSchema.optional(),
+  address: addressSchema.optional(),
+});
+
+// ─── Social Accounts Update ────────────────────────────────
+export const socialAccountsUpdateSchema = z.object({
+  accounts: z
+    .array(socialAccountEntrySchema)
+    .min(2, "Instagram e TikTok sao obrigatorios")
+    .max(10),
+});
+
+// ─── Manual Points Adjustment ──────────────────────────────
+// Rules: R24 (manual adjustment — mandatory reason)
+export const pointsAdjustmentSchema = z.object({
+  creatorId: uuidSchema,
+  points: z.number().int("Pontos devem ser inteiros").refine(
+    (val) => val !== 0,
+    { message: "Pontos nao podem ser zero" },
+  ),
+  reason: z
+    .string()
+    .min(5, "Informe o motivo do ajuste")
+    .max(500, "Motivo muito longo"),
+});
+
+export type CreatorApprove = z.infer<typeof creatorApproveSchema>;
+export type CreatorReject = z.infer<typeof creatorRejectSchema>;
+export type CreatorSuspend = z.infer<typeof creatorSuspendSchema>;
+export type CreatorUpdate = z.infer<typeof creatorUpdateSchema>;
+export type CreatorProfileUpdate = z.infer<typeof creatorProfileUpdateSchema>;
+export type SocialAccountsUpdate = z.infer<typeof socialAccountsUpdateSchema>;
+export type PointsAdjustment = z.infer<typeof pointsAdjustmentSchema>;
+```
+
+### 15.5 Tier Management
+
+```typescript
+// ─── Tier Create ───────────────────────────────────────────
+// Rules: Configurable per tenant (session 17 decision)
+export const tierCreateSchema = z.object({
+  name: z
+    .string()
+    .min(2, "Nome do tier deve ter pelo menos 2 caracteres")
+    .max(100, "Nome muito longo"),
+  slug: z
+    .string()
+    .min(2)
+    .max(50)
+    .regex(
+      /^[a-z0-9-]+$/,
+      "Slug deve conter apenas letras minusculas, numeros e hifens",
+    ),
+  commissionRate: z
+    .number()
+    .min(0, "Comissao minima: 0%")
+    .max(50, "Comissao maxima: 50%")
+    .multipleOf(0.01, "Maximo 2 casas decimais"),
+  minFollowers: z
+    .number()
+    .int("Deve ser numero inteiro")
+    .nonnegative("Nao pode ser negativo")
+    .default(0),
+  benefits: z.record(z.unknown()).default({}),
+  sortOrder: z.number().int().nonnegative().default(0),
+});
+
+// ─── Tier Update ───────────────────────────────────────────
+export const tierUpdateSchema = tierCreateSchema.partial();
+
+export type TierCreate = z.infer<typeof tierCreateSchema>;
+export type TierUpdate = z.infer<typeof tierUpdateSchema>;
+```
+
+### 15.6 Challenge Management
+
+```typescript
+// ─── Challenge Requirements JSONB ──────────────────────────
+const challengeRequirementsSchema = z.object({
+  type: z.string().min(1),
+  description: z.string().min(10).max(1000),
+  rules: z.array(z.string().min(5)).min(1).max(10),
+  hashtagsRequired: z.array(z.string().startsWith("#")).optional(),
+  minimumLikes: z.number().int().nonnegative().optional(),
+  proofType: proofTypeSchema.optional(),
+});
+
+// ─── Challenge Create ──────────────────────────────────────
+// Rules: R15-R16 (challenges section 3.3.5)
+export const challengeCreateSchema = z
+  .object({
+    name: z.string().min(3, "Nome muito curto").max(255),
+    description: z.string().min(20, "Descricao muito curta").max(2000),
+    type: challengeTypeSchema,
+    pointsReward: z
+      .number()
+      .int()
+      .min(50, "Recompensa minima: 50 pontos")
+      .max(500, "Recompensa maxima: 500 pontos"),
+    requirements: challengeRequirementsSchema,
+    maxWinners: z.number().int().positive().optional(),
+    startsAt: isoDatetimeSchema,
+    endsAt: isoDatetimeSchema,
+  })
+  .refine(
+    (data) => new Date(data.endsAt) > new Date(data.startsAt),
+    {
+      message: "Data de fim deve ser posterior a data de inicio",
+      path: ["endsAt"],
+    },
+  )
+  .refine(
+    (data) => new Date(data.startsAt) >= new Date(),
+    {
+      message: "Data de inicio deve ser futura",
+      path: ["startsAt"],
+    },
+  );
+
+// ─── Challenge Update ──────────────────────────────────────
+export const challengeUpdateSchema = z.object({
+  name: z.string().min(3).max(255).optional(),
+  description: z.string().min(20).max(2000).optional(),
+  type: challengeTypeSchema.optional(),
+  pointsReward: z.number().int().min(50).max(500).optional(),
+  requirements: challengeRequirementsSchema.optional(),
+  maxWinners: z.number().int().positive().nullable().optional(),
+  status: challengeStatusSchema.optional(),
+  startsAt: isoDatetimeSchema.optional(),
+  endsAt: isoDatetimeSchema.optional(),
+});
+
+// ─── Challenge Submission ──────────────────────────────────
+// Rules: US-08 (submit proof)
+export const challengeSubmissionSchema = z.object({
+  challengeId: uuidSchema,
+  proofUrl: urlSchema,
+  proofType: proofTypeSchema,
+  caption: z.string().max(500).optional(),
+});
+
+// ─── Challenge Submission Review ───────────────────────────
+export const challengeSubmissionApproveSchema = z.object({
+  pointsAwarded: z.number().int().min(0).max(500).optional(),
+});
+
+export const challengeSubmissionRejectSchema = z.object({
+  rejectionReason: z
+    .string()
+    .min(5, "Informe o motivo da rejeicao")
+    .max(500),
+});
+
+export type ChallengeCreate = z.infer<typeof challengeCreateSchema>;
+export type ChallengeUpdate = z.infer<typeof challengeUpdateSchema>;
+export type ChallengeSubmission = z.infer<typeof challengeSubmissionSchema>;
+```
+
+### 15.7 Payout Schemas
+
+```typescript
+// ─── Payout Request (not directly user-triggered — system-generated) ───
+// These schemas validate admin actions on payouts.
+
+// Rules: R15-R17 (payout calculation, PIX processing, minimum threshold)
+export const payoutCalculateSchema = z.object({
+  periodStart: dateStringSchema,
+  periodEnd: dateStringSchema,
+}).refine(
+  (data) => new Date(data.periodEnd) > new Date(data.periodStart),
+  { message: "Periodo invalido", path: ["periodEnd"] },
+);
+
+export const payoutApproveSchema = z.object({
+  payoutId: uuidSchema,
+});
+
+export const payoutBulkApproveSchema = z.object({
+  payoutIds: z
+    .array(uuidSchema)
+    .min(1, "Selecione pelo menos 1 pagamento")
+    .max(100, "Maximo de 100 pagamentos por lote"),
+});
+
+export const payoutMethodUpdateSchema = z
+  .object({
+    paymentMethod: paymentMethodSchema,
+    pixKey: z.string().max(255).optional(),
+    pixKeyType: pixKeyTypeSchema.optional(),
+    storeCreditAmount: moneySchema.optional(),
+    productItems: z
+      .array(
+        z.object({
+          productId: uuidSchema,
+          variantId: uuidSchema.optional(),
+          name: z.string().min(1).max(255),
+          qty: z.number().int().positive(),
+          cost: moneySchema,
+        }),
+      )
+      .optional(),
+  })
+  // Rules: R17 — PIX requires pix_key
+  .refine(
+    (data) =>
+      data.paymentMethod !== "pix" || (data.pixKey && data.pixKeyType),
+    {
+      message: "Chave PIX e tipo sao obrigatorios para pagamento via PIX",
+      path: ["pixKey"],
+    },
+  )
+  // Product method requires items
+  .refine(
+    (data) =>
+      data.paymentMethod !== "product" ||
+      (data.productItems && data.productItems.length > 0),
+    {
+      message: "Selecione os produtos para pagamento",
+      path: ["productItems"],
+    },
+  );
+
+export const payoutMarkPaidSchema = z.object({
+  pixTransactionId: z.string().max(255).optional(),
+  storeCreditCode: z.string().max(100).optional(),
+  productItems: z
+    .array(
+      z.object({
+        productId: uuidSchema,
+        variantId: uuidSchema.optional(),
+        name: z.string().min(1).max(255),
+        qty: z.number().int().positive(),
+        cost: moneySchema,
+      }),
+    )
+    .optional(),
+});
+
+export type PayoutCalculate = z.infer<typeof payoutCalculateSchema>;
+export type PayoutApprove = z.infer<typeof payoutApproveSchema>;
+export type PayoutBulkApprove = z.infer<typeof payoutBulkApproveSchema>;
+export type PayoutMethodUpdate = z.infer<typeof payoutMethodUpdateSchema>;
+export type PayoutMarkPaid = z.infer<typeof payoutMarkPaidSchema>;
+```
+
+### 15.8 Campaign Schemas
+
+```typescript
+// ─── Campaign Create ───────────────────────────────────────
+// Rules: US-25 (campaign ROI tracking)
+export const campaignCreateSchema = z
+  .object({
+    name: z.string().min(3, "Nome muito curto").max(255),
+    campaignType: campaignTypeSchema,
+    brief: z
+      .object({
+        deadline: isoDatetimeSchema.optional(),
+        format: z.string().max(500).optional(),
+        hashtags: z.array(z.string().startsWith("#")).optional(),
+        dos: z.array(z.string()).optional(),
+        donts: z.array(z.string()).optional(),
+        notes: z.string().max(2000).optional(),
+      })
+      .optional(),
+    startDate: dateStringSchema,
+    endDate: dateStringSchema.optional(),
+    totalProductCost: moneySchema.default(0),
+    totalShippingCost: moneySchema.default(0),
+    totalFeeCost: moneySchema.default(0),
+    totalRewardCost: moneySchema.default(0),
+  })
+  .refine(
+    (data) =>
+      !data.endDate ||
+      new Date(data.endDate) > new Date(data.startDate),
+    {
+      message: "Data de fim deve ser posterior a data de inicio",
+      path: ["endDate"],
+    },
+  );
+
+// ─── Campaign Update ───────────────────────────────────────
+export const campaignUpdateSchema = z.object({
+  name: z.string().min(3).max(255).optional(),
+  campaignType: campaignTypeSchema.optional(),
+  status: campaignStatusSchema.optional(),
+  brief: z.record(z.unknown()).optional(),
+  startDate: dateStringSchema.optional(),
+  endDate: dateStringSchema.nullable().optional(),
+  totalProductCost: moneySchema.optional(),
+  totalShippingCost: moneySchema.optional(),
+  totalFeeCost: moneySchema.optional(),
+  totalRewardCost: moneySchema.optional(),
+});
+
+// ─── Campaign Creator (add creator to campaign) ────────────
+export const campaignCreatorAddSchema = z.object({
+  creatorId: uuidSchema,
+  productId: uuidSchema.optional(),
+  productCost: moneySchema.optional(),
+  shippingCost: moneySchema.optional(),
+  feeAmount: moneySchema.optional(),
+  notes: z.string().max(500).optional(),
+});
+
+// ─── Campaign Creator Update ───────────────────────────────
+export const campaignCreatorUpdateSchema = z.object({
+  deliveryStatus: deliveryStatusSchema.optional(),
+  notes: z.string().max(500).optional(),
+});
+
+// ─── Campaign Brief Create ─────────────────────────────────
+// Rules: US-NEW3 (campaign briefs)
+export const campaignBriefCreateSchema = z.object({
+  campaignId: uuidSchema,
+  title: z.string().min(3, "Titulo muito curto").max(255),
+  contentMd: z.string().min(20, "Conteudo do briefing muito curto").max(10000),
+  hashtags: z.array(z.string().startsWith("#").max(100)).max(20).optional(),
+  deadline: isoDatetimeSchema.optional(),
+  examplesJson: z
+    .array(
+      z.object({
+        type: z.enum(["image", "video"]),
+        url: urlSchema,
+        caption: z.string().max(500).optional(),
+      }),
+    )
+    .max(10)
+    .optional(),
+  targetTiers: z.array(z.string().max(50)).optional(),
+});
+
+// ─── Campaign Brief Update ─────────────────────────────────
+export const campaignBriefUpdateSchema = campaignBriefCreateSchema
+  .omit({ campaignId: true })
+  .partial();
+
+export type CampaignCreate = z.infer<typeof campaignCreateSchema>;
+export type CampaignUpdate = z.infer<typeof campaignUpdateSchema>;
+export type CampaignCreatorAdd = z.infer<typeof campaignCreatorAddSchema>;
+export type CampaignCreatorUpdate = z.infer<typeof campaignCreatorUpdateSchema>;
+export type CampaignBriefCreate = z.infer<typeof campaignBriefCreateSchema>;
+export type CampaignBriefUpdate = z.infer<typeof campaignBriefUpdateSchema>;
+```
+
+### 15.9 Sales Attribution (Internal)
+
+```typescript
+// ─── Sales Attribution (from Checkout → Creators) ──────────
+// Rules: R9, R10 (attribution on order, commission formula)
+export const salesAttributionCreateSchema = z.object({
+  orderId: uuidSchema,
+  couponId: uuidSchema,
+  orderTotal: moneySchema.positive("Total do pedido deve ser positivo"),
+  discountAmount: moneySchema,
+  buyerCpfHash: z.string().length(64, "Hash SHA-256 esperado"),
+});
+
+// ─── Commission Adjustment (from Trocas → Creators) ────────
+// Rules: R13, R14 (exchange within window)
+export const commissionAdjustSchema = z.object({
+  orderId: uuidSchema,
+  newNetRevenue: moneySchema.optional(),
+  fullRefund: z.boolean(),
+}).refine(
+  (data) => data.fullRefund || data.newNetRevenue !== undefined,
+  {
+    message: "Informe o novo valor liquido ou marque como reembolso total",
+    path: ["newNetRevenue"],
+  },
+);
+
+// ─── Coupon Validation (from Checkout → Creators) ──────────
+// Rules: R25 (self-purchase CPF block)
+export const couponValidationSchema = z.object({
+  couponCode: z
+    .string()
+    .min(1, "Codigo do cupom obrigatorio")
+    .max(50)
+    .transform((val) => val.toUpperCase().trim()),
+  buyerCpf: cpfSchema.optional(),
+});
+
+export type SalesAttributionCreate = z.infer<typeof salesAttributionCreateSchema>;
+export type CommissionAdjust = z.infer<typeof commissionAdjustSchema>;
+export type CouponValidation = z.infer<typeof couponValidationSchema>;
+```
+
+### 15.10 Gifting Schemas
+
+```typescript
+// ─── Gifting Configuration ─────────────────────────────────
+// Rules: R-GIFTING.2 (budget configuration)
+export const giftingConfigSchema = z.object({
+  monthlyBudget: moneySchema.positive("Orcamento deve ser positivo"),
+  productPool: z.object({
+    skuIds: z.array(uuidSchema).optional(),
+    categoryIds: z.array(uuidSchema).optional(),
+  }),
+  topN: z
+    .number()
+    .int()
+    .min(1, "Minimo 1 creator")
+    .max(50, "Maximo 50 creators")
+    .default(10),
+});
+
+// ─── Gifting Approve / Reject ──────────────────────────────
+// Rules: R-GIFTING.4 (PM review and approval)
+export const giftingBulkApproveSchema = z.object({
+  giftingIds: z
+    .array(uuidSchema)
+    .min(1, "Selecione pelo menos 1 sugestao"),
+});
+
+export const giftingBulkRejectSchema = z.object({
+  giftingIds: z
+    .array(uuidSchema)
+    .min(1, "Selecione pelo menos 1 sugestao"),
+  reason: z.string().max(500).optional(),
+});
+
+export type GiftingConfig = z.infer<typeof giftingConfigSchema>;
+export type GiftingBulkApprove = z.infer<typeof giftingBulkApproveSchema>;
+export type GiftingBulkReject = z.infer<typeof giftingBulkRejectSchema>;
+```
+
+### 15.11 Coupon Schemas
+
+```typescript
+// ─── Coupon Create (Admin) ─────────────────────────────────
+export const couponCreateSchema = z
+  .object({
+    code: z
+      .string()
+      .min(2, "Codigo muito curto")
+      .max(50, "Codigo muito longo")
+      .regex(
+        /^[A-Z0-9_-]+$/,
+        "Codigo deve conter apenas letras maiusculas, numeros, _ e -",
+      )
+      .transform((val) => val.toUpperCase().trim()),
+    discountPercent: z
+      .number()
+      .min(1, "Desconto minimo: 1%")
+      .max(50, "Desconto maximo: 50%")
+      .multipleOf(0.01)
+      .optional(),
+    discountAmount: moneySchema.positive().optional(),
+    maxUses: z.number().int().positive().optional(),
+    minOrderValue: moneySchema.optional(),
+  })
+  .refine(
+    (data) =>
+      (data.discountPercent !== undefined) !==
+      (data.discountAmount !== undefined),
+    {
+      message:
+        "Informe desconto percentual OU valor fixo (nao ambos)",
+      path: ["discountPercent"],
+    },
+  );
+
+// ─── Coupon Update ─────────────────────────────────────────
+export const couponUpdateSchema = z.object({
+  isActive: z.boolean().optional(),
+  maxUses: z.number().int().positive().nullable().optional(),
+});
+
+export type CouponCreate = z.infer<typeof couponCreateSchema>;
+export type CouponUpdate = z.infer<typeof couponUpdateSchema>;
+```
+
+### 15.12 Query / Filter Schemas
+
+```typescript
+// Shared pagination cursor schema
+export const cursorPaginationSchema = z.object({
+  cursor: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+});
+
+// Creator list filters (admin)
+export const creatorListFilterSchema = cursorPaginationSchema.extend({
+  status: creatorStatusSchema.optional(),
+  tierId: uuidSchema.optional(),
+  managed: z.enum(["true", "false"]).optional(),
+  search: z.string().max(200).optional(),
+  sort: z
+    .enum([
+      "totalSalesCount",
+      "-totalSalesCount",
+      "totalPoints",
+      "-totalPoints",
+      "createdAt",
+      "-createdAt",
+      "name",
+      "-name",
+    ])
+    .default("-totalSalesCount"),
+});
+
+// Sales list filters (portal)
+export const salesListFilterSchema = cursorPaginationSchema.extend({
+  status: z.enum(["pending", "confirmed", "adjusted", "cancelled"]).optional(),
+  dateFrom: dateStringSchema.optional(),
+  dateTo: dateStringSchema.optional(),
+});
+
+// Analytics date range
+export const analyticsDateRangeSchema = z.object({
+  dateFrom: dateStringSchema,
+  dateTo: dateStringSchema,
+}).refine(
+  (data) => new Date(data.dateTo) >= new Date(data.dateFrom),
+  { message: "Data final deve ser igual ou posterior a data inicial", path: ["dateTo"] },
+);
+
+export type CursorPagination = z.infer<typeof cursorPaginationSchema>;
+export type CreatorListFilter = z.infer<typeof creatorListFilterSchema>;
+export type SalesListFilter = z.infer<typeof salesListFilterSchema>;
+export type AnalyticsDateRange = z.infer<typeof analyticsDateRangeSchema>;
+```
+
+---
+
+## 16. Shopify Integration Spec
+
+This section details the Shopify integration used by the Creators module for discount code management and order attribution. Shopify is the storefront platform — the coupon/discount codes that creators share with followers are synced to Shopify as discount codes.
+
+> **Reference:** Shopify API version `2025-01`. GraphQL Admin API.
+> **Auth:** OAuth Client Credentials (mandatory since Jan 2026 for new apps).
+> **File location:** `apps/web/src/lib/shopify/client.ts`
+> **Env vars:** `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_CLIENT_ID`, `SHOPIFY_CLIENT_SECRET`, `SHOPIFY_LEGACY_ACCESS_TOKEN` (optional fallback)
+
+### 16.1 Authentication — OAuth Client Credentials
+
+Since January 2026, Shopify no longer issues permanent `shpat_*` access tokens for new custom apps. All new integrations must use the **OAuth Client Credentials** flow, which issues short-lived tokens (24h expiry).
+
+**Flow:**
+
+```
+┌─────────────────────────┐
+│  Ambaril Server Action  │
+│  (needs Shopify access)  │
+└────────────┬────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────────────────────┐
+│  1. Check token cache (in-memory + DB fallback)              │
+│     - If valid token exists and expires_at > NOW() + 5min   │
+│       → use cached token                                     │
+│     - Otherwise → request new token                          │
+└────────────┬────────────────────────────────────────────────┘
+             │ (cache miss or expired)
+             ▼
+┌─────────────────────────────────────────────────────────────┐
+│  2. POST https://{store}.myshopify.com/admin/oauth/          │
+│     access_token                                             │
+│                                                              │
+│     Headers:                                                 │
+│       Content-Type: application/json                         │
+│                                                              │
+│     Body:                                                    │
+│       {                                                      │
+│         "client_id": "{SHOPIFY_CLIENT_ID}",                 │
+│         "client_secret": "{SHOPIFY_CLIENT_SECRET}",         │
+│         "grant_type": "client_credentials"                  │
+│       }                                                      │
+│                                                              │
+│     Response (200 OK):                                       │
+│       {                                                      │
+│         "access_token": "shpca_xxxxxxxxxxxxxxxxxxxx",       │
+│         "scope": "read_orders,write_price_rules,...",       │
+│         "expires_in": 86400                                  │
+│       }                                                      │
+└────────────┬────────────────────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────────────────────┐
+│  3. Cache token:                                             │
+│     - In-memory: Map<tenantId, { token, expiresAt }>        │
+│     - DB fallback: global.settings key                       │
+│       "shopify_access_token_{tenant_id}"                     │
+│     - Set expiresAt = NOW() + expires_in - 300s (5min buffer)│
+└────────────┬────────────────────────────────────────────────┘
+             │
+             ▼
+┌─────────────────────────────────────────────────────────────┐
+│  4. Use token in all subsequent Shopify API requests:        │
+│     Headers:                                                 │
+│       X-Shopify-Access-Token: {access_token}                │
+│       Content-Type: application/json                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Token caching implementation:**
+
+```typescript
+// apps/web/src/lib/shopify/auth.ts
+
+interface CachedToken {
+  accessToken: string;
+  expiresAt: Date; // token expiry minus 5-minute buffer
+}
+
+// In-memory cache per tenant (survives within Vercel function lifetime)
+const tokenCache = new Map<string, CachedToken>();
+
+const TOKEN_BUFFER_SECONDS = 300; // refresh 5 minutes before expiry
+
+export async function getShopifyAccessToken(
+  tenantId: string,
+  storeDomain: string,
+): Promise<string> {
+  // 1. Check in-memory cache
+  const cached = tokenCache.get(tenantId);
+  if (cached && cached.expiresAt > new Date()) {
+    return cached.accessToken;
+  }
+
+  // 2. Check DB cache (survives cold starts)
+  const dbToken = await getSettingValue(
+    tenantId,
+    `shopify_access_token`,
+  );
+  if (dbToken && new Date(dbToken.expiresAt) > new Date()) {
+    tokenCache.set(tenantId, {
+      accessToken: dbToken.value,
+      expiresAt: new Date(dbToken.expiresAt),
+    });
+    return dbToken.value;
+  }
+
+  // 3. Request new token via OAuth Client Credentials
+  const response = await fetch(
+    `https://${storeDomain}/admin/oauth/access_token`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: process.env.SHOPIFY_CLIENT_ID,
+        client_secret: process.env.SHOPIFY_CLIENT_SECRET,
+        grant_type: "client_credentials",
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new ShopifyAuthError(
+      `Token request failed: ${response.status} ${error}`,
+    );
+  }
+
+  const data = await response.json();
+  const expiresAt = new Date(
+    Date.now() + (data.expires_in - TOKEN_BUFFER_SECONDS) * 1000,
+  );
+
+  // 4. Cache in memory + DB
+  tokenCache.set(tenantId, {
+    accessToken: data.access_token,
+    expiresAt,
+  });
+
+  await upsertSetting(tenantId, "shopify_access_token", {
+    value: data.access_token,
+    expiresAt: expiresAt.toISOString(),
+  });
+
+  return data.access_token;
+}
+```
+
+**Legacy fallback:** For stores that still have a custom app with a permanent `shpat_*` token, the env var `SHOPIFY_LEGACY_ACCESS_TOKEN` can be set. If present and no `SHOPIFY_CLIENT_ID` is configured, the system uses the legacy token directly (no refresh needed). This is a transitional measure until all stores migrate to OAuth.
+
+```typescript
+export async function getShopifyToken(
+  tenantId: string,
+  storeDomain: string,
+): Promise<string> {
+  // Legacy fallback
+  if (
+    process.env.SHOPIFY_LEGACY_ACCESS_TOKEN &&
+    !process.env.SHOPIFY_CLIENT_ID
+  ) {
+    return process.env.SHOPIFY_LEGACY_ACCESS_TOKEN;
+  }
+
+  return getShopifyAccessToken(tenantId, storeDomain);
+}
+```
+
+### 16.2 GraphQL Client
+
+All Shopify operations use the GraphQL Admin API (`2025-01` version).
+
+```typescript
+// apps/web/src/lib/shopify/client.ts
+
+const SHOPIFY_API_VERSION = "2025-01";
+
+interface ShopifyGraphQLResponse<T> {
+  data?: T;
+  errors?: Array<{
+    message: string;
+    locations?: Array<{ line: number; column: number }>;
+    path?: string[];
+    extensions?: {
+      code: string;
+      typeName?: string;
+      fieldName?: string;
+    };
+  }>;
+  extensions?: {
+    cost: {
+      requestedQueryCost: number;
+      actualQueryCost: number;
+      throttleStatus: {
+        maximumAvailable: number;
+        currentlyAvailable: number;
+        restoreRate: number;
+      };
+    };
+  };
+}
+
+export async function shopifyGraphQL<T>(
+  tenantId: string,
+  storeDomain: string,
+  query: string,
+  variables?: Record<string, unknown>,
+): Promise<ShopifyGraphQLResponse<T>> {
+  const token = await getShopifyToken(tenantId, storeDomain);
+
+  const response = await fetch(
+    `https://${storeDomain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": token,
+      },
+      body: JSON.stringify({ query, variables }),
+    },
+  );
+
+  // Handle rate limiting (HTTP 429 or Shopify throttling)
+  if (response.status === 429) {
+    const retryAfter = parseInt(
+      response.headers.get("Retry-After") || "2",
+      10,
+    );
+    await sleep(retryAfter * 1000);
+    // Retry once
+    return shopifyGraphQL<T>(tenantId, storeDomain, query, variables);
+  }
+
+  if (!response.ok) {
+    throw new ShopifyAPIError(
+      `Shopify API error: ${response.status}`,
+      response.status,
+    );
+  }
+
+  const result: ShopifyGraphQLResponse<T> = await response.json();
+
+  // Check for GraphQL-level errors
+  if (result.errors && result.errors.length > 0) {
+    const isThrottled = result.errors.some(
+      (e) => e.extensions?.code === "THROTTLED",
+    );
+    if (isThrottled) {
+      await sleep(1000);
+      return shopifyGraphQL<T>(tenantId, storeDomain, query, variables);
+    }
+    throw new ShopifyGraphQLError(result.errors);
+  }
+
+  return result;
+}
+```
+
+### 16.3 Discount Code Operations
+
+#### 16.3.1 Create Discount Code (Creator Coupon)
+
+Called when a creator is approved (R34) or when admin manually creates a coupon.
+
+**Mutation:**
+
+```graphql
+mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
+  discountCodeBasicCreate(basicCodeDiscount: $basicCodeDiscount) {
+    codeDiscountNode {
+      id
+      codeDiscount {
+        ... on DiscountCodeBasic {
+          title
+          status
+          codes(first: 1) {
+            edges {
+              node {
+                code
+              }
+            }
+          }
+          customerGets {
+            value {
+              ... on DiscountPercentage {
+                percentage
+              }
+              ... on DiscountAmount {
+                amount {
+                  amount
+                  currencyCode
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+      code
+    }
+  }
+}
+```
+
+**Variables (percentage discount — most common for creators):**
+
+```json
+{
+  "basicCodeDiscount": {
+    "title": "Creator: IGUIN10",
+    "code": "IGUIN10",
+    "startsAt": "2026-03-01T00:00:00Z",
+    "endsAt": null,
+    "usageLimit": null,
+    "appliesOncePerCustomer": false,
+    "customerSelection": {
+      "all": true
+    },
+    "customerGets": {
+      "items": {
+        "all": true
+      },
+      "value": {
+        "percentage": 0.10
+      }
+    },
+    "combinesWith": {
+      "orderDiscounts": false,
+      "productDiscounts": false,
+      "shippingDiscounts": true
+    }
+  }
+}
+```
+
+**Response (success):**
+
+```json
+{
+  "data": {
+    "discountCodeBasicCreate": {
+      "codeDiscountNode": {
+        "id": "gid://shopify/DiscountCodeNode/123456789",
+        "codeDiscount": {
+          "title": "Creator: IGUIN10",
+          "status": "ACTIVE",
+          "codes": {
+            "edges": [
+              { "node": { "code": "IGUIN10" } }
+            ]
+          },
+          "customerGets": {
+            "value": { "percentage": 0.10 }
+          }
+        }
+      },
+      "userErrors": []
+    }
+  }
+}
+```
+
+**Implementation:**
+
+```typescript
+// apps/web/src/lib/shopify/discount-codes.ts
+
+interface CreateDiscountCodeParams {
+  tenantId: string;
+  storeDomain: string;
+  code: string;
+  title: string;
+  discountPercent?: number;  // 0.10 for 10%
+  discountAmount?: number;   // fixed amount in BRL
+  usageLimit?: number | null;
+  startsAt?: string;
+  endsAt?: string | null;
+}
+
+export async function createShopifyDiscountCode(
+  params: CreateDiscountCodeParams,
+): Promise<{ shopifyDiscountId: string; code: string }> {
+  const {
+    tenantId,
+    storeDomain,
+    code,
+    title,
+    discountPercent,
+    discountAmount,
+    usageLimit = null,
+    startsAt = new Date().toISOString(),
+    endsAt = null,
+  } = params;
+
+  const customerGetsValue = discountPercent
+    ? { percentage: discountPercent }
+    : {
+        discountAmount: {
+          amount: discountAmount!.toString(),
+          appliesOnEachItem: false,
+        },
+      };
+
+  const result = await shopifyGraphQL<{
+    discountCodeBasicCreate: {
+      codeDiscountNode: { id: string } | null;
+      userErrors: Array<{ field: string[]; message: string; code: string }>;
+    };
+  }>(tenantId, storeDomain, DISCOUNT_CODE_BASIC_CREATE_MUTATION, {
+    basicCodeDiscount: {
+      title,
+      code,
+      startsAt,
+      endsAt,
+      usageLimit,
+      appliesOncePerCustomer: false,
+      customerSelection: { all: true },
+      customerGets: {
+        items: { all: true },
+        value: customerGetsValue,
+      },
+      combinesWith: {
+        orderDiscounts: false,
+        productDiscounts: false,
+        shippingDiscounts: true,
+      },
+    },
+  });
+
+  const { codeDiscountNode, userErrors } =
+    result.data!.discountCodeBasicCreate;
+
+  if (userErrors.length > 0) {
+    throw new ShopifyDiscountError(
+      `Failed to create discount code: ${userErrors.map((e) => e.message).join(", ")}`,
+      userErrors,
+    );
+  }
+
+  return {
+    shopifyDiscountId: codeDiscountNode!.id,
+    code,
+  };
+}
+```
+
+#### 16.3.2 Deactivate Discount Code
+
+Called when a creator is suspended (R35) or coupon is manually deactivated.
+
+```graphql
+mutation discountCodeDeactivate($id: ID!) {
+  discountCodeDeactivate(id: $id) {
+    codeDiscountNode {
+      id
+      codeDiscount {
+        ... on DiscountCodeBasic {
+          status
+        }
+      }
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+```
+
+#### 16.3.3 Query Discount Codes
+
+Used for coupon validation and sync verification.
+
+```graphql
+query getDiscountByCode($query: String!) {
+  codeDiscountNodes(first: 1, query: $query) {
+    edges {
+      node {
+        id
+        codeDiscount {
+          ... on DiscountCodeBasic {
+            title
+            status
+            usageLimit
+            codes(first: 1) {
+              edges {
+                node {
+                  code
+                  usageCount: asyncUsageCount
+                }
+              }
+            }
+            customerGets {
+              value {
+                ... on DiscountPercentage {
+                  percentage
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Variables:**
+
+```json
+{ "query": "code:IGUIN10" }
+```
+
+#### 16.3.4 Create Store Credit Coupon (for Payout)
+
+Called when a payout is processed via `store_credit` method (US-26). Generates a single-use Shopify discount code for the creator's payout amount.
+
+```typescript
+export async function createStoreCreditCoupon(
+  tenantId: string,
+  storeDomain: string,
+  creatorName: string,
+  amount: number,
+): Promise<{ code: string; shopifyDiscountId: string }> {
+  const code = `CREDIT-${creatorName.toUpperCase().replace(/\s+/g, "")}-${Math.round(amount)}`;
+
+  return createShopifyDiscountCode({
+    tenantId,
+    storeDomain,
+    code,
+    title: `Store Credit: ${creatorName} (R$ ${amount.toFixed(2)})`,
+    discountAmount: amount,
+    usageLimit: 1,
+    endsAt: new Date(
+      Date.now() + 90 * 24 * 60 * 60 * 1000, // 90-day expiry
+    ).toISOString(),
+  });
+}
+```
+
+### 16.4 Order Query (Sales Attribution)
+
+Orders with creator coupons are primarily attributed via the Yever API (section 7.1 of this spec) or Checkout webhooks. However, Shopify order data is queried for verification and reconciliation.
+
+```graphql
+query getOrdersByDiscount($query: String!, $first: Int!) {
+  orders(first: $first, query: $query, sortKey: CREATED_AT, reverse: true) {
+    edges {
+      node {
+        id
+        name
+        createdAt
+        totalPriceSet {
+          shopMoney { amount currencyCode }
+        }
+        discountApplications(first: 5) {
+          edges {
+            node {
+              ... on DiscountCodeApplication {
+                code
+                value {
+                  ... on PricingPercentageValue { percentage }
+                  ... on MoneyV2 { amount currencyCode }
+                }
+              }
+            }
+          }
+        }
+        customer {
+          id
+          email
+        }
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+```
+
+**Variables (query orders by discount code):**
+
+```json
+{
+  "query": "discount_code:IGUIN10 created_at:>2026-03-01",
+  "first": 50
+}
+```
+
+### 16.5 Error Handling
+
+| Error Scenario | Detection | Recovery |
+|---------------|-----------|----------|
+| **Token expired (401)** | HTTP 401 response | Clear cache, request new token, retry once |
+| **Rate limited (429)** | HTTP 429 or `THROTTLED` GraphQL error | Wait `Retry-After` header seconds (or 1s default), retry |
+| **GraphQL user errors** | `userErrors[]` in mutation response | Log errors, throw `ShopifyDiscountError` with details |
+| **Network timeout** | fetch timeout (10s) | Retry once with exponential backoff |
+| **Duplicate discount code** | `userErrors` with code `TAKEN` | Append random suffix to code (e.g., `IGUIN10-2`), retry |
+| **Invalid scopes** | `ACCESS_DENIED` GraphQL error | Alert admin — app permissions need update in Shopify Partners |
+| **Store unavailable** | HTTP 5xx | Retry with backoff. After 3 failures, queue for later processing |
+
+**Error classes:**
+
+```typescript
+export class ShopifyAuthError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ShopifyAuthError";
+  }
+}
+
+export class ShopifyAPIError extends Error {
+  constructor(message: string, public statusCode: number) {
+    super(message);
+    this.name = "ShopifyAPIError";
+  }
+}
+
+export class ShopifyGraphQLError extends Error {
+  constructor(
+    public errors: Array<{ message: string; extensions?: Record<string, unknown> }>,
+  ) {
+    super(errors.map((e) => e.message).join("; "));
+    this.name = "ShopifyGraphQLError";
+  }
+}
+
+export class ShopifyDiscountError extends Error {
+  constructor(
+    message: string,
+    public userErrors: Array<{ field: string[]; message: string; code: string }>,
+  ) {
+    super(message);
+    this.name = "ShopifyDiscountError";
+  }
+}
+```
+
+### 16.6 Rate Limiting Strategy
+
+Shopify GraphQL Admin API uses a **leaky bucket** algorithm with a calculated query cost system:
+
+| Metric | Value |
+|--------|-------|
+| **Bucket size** | 1,000 cost points |
+| **Restore rate** | 50 points/second |
+| **Typical mutation cost** | 10-20 points |
+| **Typical query cost** | 5-50 points |
+
+**Strategy:**
+
+1. Read `extensions.cost.throttleStatus.currentlyAvailable` from every response
+2. If `currentlyAvailable < 100`, add a 500ms delay before next request
+3. If `currentlyAvailable < 50`, add a 2s delay
+4. Batch operations (e.g., bulk coupon creation during migration) use a semaphore with max 2 concurrent requests
+
+### 16.7 Required Shopify App Scopes
+
+The Shopify custom app must have the following access scopes:
+
+| Scope | Purpose |
+|-------|---------|
+| `read_orders` | Query orders for sales attribution verification |
+| `read_products` | Product catalog for creator portal |
+| `write_discounts` | Create/deactivate discount codes for creators |
+| `read_discounts` | Query existing discount codes for sync |
+| `read_customers` | Customer lookup for anti-fraud cross-reference |
+
+---
+
+## 17. Creator Portal Wireframes
+
+Detailed ASCII wireframes for all 8 main creator portal pages. These complement the wireframes in section 5 with additional layout detail following the Moonstone design system (dark theme, DM Sans font, Lucide React icons).
+
+> **Design System:** Moonstone (see `DS.md`)
+> **Theme:** Dark background (`zinc-950`), card surfaces (`zinc-900`), accent (`indigo-500`)
+> **Font:** DM Sans (headings + body), DM Mono (numbers, codes, money)
+> **Icons:** Lucide React
+> **Components:** shadcn/ui (Navbar, Card, Table, Badge, Button, Avatar, Progress, Tabs)
+> **Mobile:** All pages responsive. Creator portal is mobile-first (many creators access via phone).
+
+### 17.1 Dashboard
+
+The creator's home screen. Shows tier progress, key metrics, recent sales, and active challenges at a glance.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ ┌───┐  Ambaril Creators                         [Bell]  [Avatar] Joao ▾  │
+│ │ ≡ │  Dashboard                                                          │
+│ └───┘                                                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  [Shield]  GROW                                                     │    │
+│  │  ███████████████████░░░░░░░░░░░░  67% para BLOOM                   │    │
+│  │                                                                     │    │
+│  │  Comissao: 10%     Vendas 90d: 10/15     Pontos: 890              │    │
+│  │  Faltam 5 vendas e 610 pontos para BLOOM                          │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌──────────────────────┐       │
+│  │ [DollarSign]     │  │ [ShoppingBag]    │  │ [Star]               │       │
+│  │ Ganhos (marco)   │  │ Vendas (marco)   │  │ CIENA Points         │       │
+│  │                  │  │                  │  │                      │       │
+│  │ R$ 234,50        │  │ 8 vendas         │  │ 890 pontos           │       │
+│  │ confirmados      │  │ R$ 2.345 receita │  │ +120 este mes        │       │
+│  └─────────────────┘  └─────────────────┘  └──────────────────────┘       │
+│                                                                             │
+│  Acoes rapidas                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────┐   │
+│  │ [Share2]     │  │ [Trophy]     │  │ [Package]    │  │ [User]      │   │
+│  │ Compartilhar │  │ Ranking      │  │ Produtos     │  │ Meu Perfil  │   │
+│  │ Cupom        │  │ #3 este mes  │  │ 135 itens    │  │ Editar      │   │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └─────────────┘   │
+│                                                                             │
+│  Vendas recentes                                                 [Ver todas]│
+│  ┌──────────┬────────┬──────────┬────────┬────────┬──────────────────┐     │
+│  │ Data     │ Pedido │ Cliente  │ Valor  │ Comiss.│ Status           │     │
+│  ├──────────┼────────┼──────────┼────────┼────────┼──────────────────┤     │
+│  │ 15/03    │ #4521  │ J*** S** │ R$ 180 │ R$ 18  │ [●] Confirmado  │     │
+│  │ 14/03    │ #4498  │ M*** O** │ R$ 270 │ R$ 27  │ [○] Pendente    │     │
+│  │ 12/03    │ #4456  │ P*** R** │ R$ 162 │ R$ 16  │ [●] Confirmado  │     │
+│  │ 10/03    │ #4412  │ A*** L** │ R$ 90  │ R$ 9   │ [◐] Ajustado    │     │
+│  │ 08/03    │ #4389  │ C*** F** │ R$ 360 │ R$ 36  │ [●] Confirmado  │     │
+│  └──────────┴────────┴──────────┴────────┴────────┴──────────────────┘     │
+│                                                                             │
+│  Desafios ativos                                                 [Ver todos]│
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ [Flame]  Drop 10 Style Challenge                                    │    │
+│  │          Poste um look completo com pecas do Drop 10                │    │
+│  │          +200 pts  ·  8 dias restantes  ·  12/50 participantes     │    │
+│  │                                                      [Enviar Prova] │    │
+│  ├─────────────────────────────────────────────────────────────────────┤    │
+│  │ [Users]  Community Vibes                                            │    │
+│  │          Indique 3 amigos para seguirem @cienalab                   │    │
+│  │          +100 pts  ·  15 dias restantes  ·  6 participantes        │    │
+│  │                                                      [Enviar Prova] │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│ ┌─────────┬─────────┬─────────┬─────────┬─────────┬─────────┬───────────┐ │
+│ │[Home]   │[Ticket] │[BarChart│[Wallet] │[Trophy] │[Flame]  │[Settings] │ │
+│ │Dashboard│ Cupons  │ Vendas  │ Ganhos  │ Ranking │Desafios │ Perfil    │ │
+│ └─────────┴─────────┴─────────┴─────────┴─────────┴─────────┴───────────┘ │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 17.2 Cupons & Links
+
+Coupon display with share functionality. QR code for offline events.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [ArrowLeft]  Meus Cupons & Links                                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [Cupom]  [Links UTM]  [QR Code]                                          │
+│  ━━━━━━                                                                    │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │                                                                     │    │
+│  │                    ╔══════════════════════╗                         │    │
+│  │                    ║     IGUIN10          ║                         │    │
+│  │                    ╚══════════════════════╝                         │    │
+│  │                      10% de desconto                                │    │
+│  │                                                                     │    │
+│  │              [████████  Copiar Codigo  ████████]                    │    │
+│  │                                                                     │    │
+│  │  Status: [●] Ativo        Ultimo uso: 15/03/2026                  │    │
+│  │  Usos totais: 47          Receita gerada: R$ 8.460                │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  Metricas do cupom                                                         │
+│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐  ┌───────────┐   │
+│  │ [ShoppingCart] │  │ [TrendingUp]  │  │ [DollarSign]  │  │ [Receipt] │   │
+│  │ 47 pedidos     │  │ R$ 8.460 GMV  │  │ R$ 846 comiss.│  │ R$ 180    │   │
+│  │ +3 este mes    │  │ +R$ 540 mes   │  │ R$ 234 pend.  │  │ ticket med│   │
+│  └───────────────┘  └───────────────┘  └───────────────┘  └───────────┘   │
+│                                                                             │
+│  Compartilhar                                                              │
+│  ┌────────────────────┐  ┌────────────────────┐  ┌────────────────────┐   │
+│  │ [MessageCircle]     │  │ [Instagram]         │  │ [QrCode]           │   │
+│  │ WhatsApp            │  │ Instagram           │  │ QR Code            │   │
+│  │ ──────────────      │  │ ──────────────      │  │ ──────────────     │   │
+│  │ "Olha so! Use meu  │  │ "Use IGUIN10 p/    │  │ ┌──────────────┐  │   │
+│  │ cupom IGUIN10 e    │  │ 10% off na         │  │ │ ██ ██ ██ ██  │  │   │
+│  │ ganhe 10% de       │  │ @cienalab"         │  │ │ ██    ██ ██  │  │   │
+│  │ desconto na        │  │                     │  │ │ ██ ██    ██  │  │   │
+│  │ @cienalab!         │  │                     │  │ │ ██ ██ ██ ██  │  │   │
+│  │ #cienaxiguin10"    │  │ #cienaxiguin10     │  │ └──────────────┘  │   │
+│  │                     │  │                     │  │                    │   │
+│  │ [Enviar via WA]    │  │ [Copiar Texto]     │  │ [Baixar PNG]      │   │
+│  └────────────────────┘  └────────────────────┘  └────────────────────┘   │
+│                                                                             │
+│  Links UTM (analytics — nao atribuem vendas)                               │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │ [Link] Instagram                                                    │    │
+│  │   ciena.com.br/?utm_source=ig&utm_medium=creator&utm_content=iguin │    │
+│  │   234 cliques                                         [Copy]       │    │
+│  │                                                                     │    │
+│  │ [Link] TikTok                                                       │    │
+│  │   ciena.com.br/?utm_source=tiktok&utm_medium=creator&utm_...       │    │
+│  │   89 cliques                                          [Copy]       │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│  [Info] Links UTM rastreiam trafego. Vendas so sao atribuidas via cupom.  │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 17.3 Vendas (Sales)
+
+Full sales history with filtering and period summary.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [ArrowLeft]  Minhas Vendas                                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Filtros                                                                   │
+│  Periodo: [01/03/2026] a [29/03/2026]        Status: [Todos       ▾]     │
+│                                                                             │
+│  Resumo do periodo                                                         │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  7 vendas  ·  4 confirmadas  ·  R$ 1.457 liq.  ·  R$ 128 comissao│    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  ┌──────┬────────┬──────────┬────────┬──────────┬────────┬───────┬──────┐  │
+│  │ Data │ Pedido │ Cliente  │ Total  │ Desconto │ Liquid.│Comiss.│Status│  │
+│  ├──────┼────────┼──────────┼────────┼──────────┼────────┼───────┼──────┤  │
+│  │15/03 │ #4521  │ J*** S** │ R$ 200 │ R$ 20    │ R$ 180 │ R$ 18 │ [●]  │  │
+│  │14/03 │ #4498  │ M*** O** │ R$ 300 │ R$ 30    │ R$ 270 │ R$ 27 │ [○]  │  │
+│  │12/03 │ #4456  │ P*** R** │ R$ 180 │ R$ 18    │ R$ 162 │ R$ 16 │ [●]  │  │
+│  │10/03 │ #4412  │ A*** L** │ R$ 150 │ R$ 15    │ R$ 90  │ R$ 9  │ [◐]  │  │
+│  │      │        │          │        │          │        │       │troca │  │
+│  │08/03 │ #4389  │ C*** F** │ R$ 400 │ R$ 40    │ R$ 360 │ R$ 36 │ [●]  │  │
+│  │05/03 │ #4334  │ L*** M** │ R$ 250 │ R$ 25    │ R$ 225 │ R$ 22 │ [●]  │  │
+│  │02/03 │ #4289  │ R*** A** │ R$ 189 │ R$ 19    │ R$ 170 │ R$ 0  │ [✕]  │  │
+│  │      │        │          │        │          │        │       │refund│  │
+│  └──────┴────────┴──────────┴────────┴──────────┴────────┴───────┴──────┘  │
+│                                                                             │
+│  [●] Confirmado  [○] Pendente  [◐] Ajustado  [✕] Cancelado               │
+│                                                                             │
+│  Mostrando 1-7 de 47 vendas                   [Anterior]  [1] 2 3 [Prox] │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 17.4 Ganhos (Earnings)
+
+Current balance, payout history, and payment preference selection.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [ArrowLeft]  Meus Ganhos                                                   │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Saldo atual                                                               │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  [Wallet]                                                           │    │
+│  │                                                                     │    │
+│  │  Comissoes confirmadas (marco)         R$ 234,50                   │    │
+│  │  Saldo acumulado (meses anteriores)    R$  42,00                   │    │
+│  │  ─────────────────────────────────── ──────────                    │    │
+│  │  Total a receber                       R$ 276,50                   │    │
+│  │                                                                     │    │
+│  │  [Calendar] Proximo pagamento: 15/04/2026 (calculo em 10/04)      │    │
+│  │  [CreditCard] Preferencia: PIX (***@email.com)                    │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  Preferencia de pagamento                                                  │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  (●) PIX — transferencia para chave PIX cadastrada                │    │
+│  │  ( ) Credito na loja — cupom de desconto para usar na loja        │    │
+│  │  ( ) Produtos — selecionar pecas no catalogo                      │    │
+│  │                                                [Salvar preferencia] │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  Historico de pagamentos                                                   │
+│  ┌──────────────────────┬──────────┬───────────┬──────────┬────────────┐   │
+│  │ Periodo              │ Bruto    │ Metodo    │ Liquido  │ Status     │   │
+│  ├──────────────────────┼──────────┼───────────┼──────────┼────────────┤   │
+│  │ 01/02 - 28/02/2026   │ R$ 312   │ [Banknote]│ R$ 312   │ [●] Pago   │   │
+│  │                      │          │ PIX       │          │ 15/03      │   │
+│  │ 01/01 - 31/01/2026   │ R$ 189   │ [Gift]    │ R$ 189   │ [●] Pago   │   │
+│  │                      │          │ Credito   │          │ 15/02      │   │
+│  │ 01/12 - 31/12/2025   │ R$ 456   │ [Banknote]│ R$ 456   │ [●] Pago   │   │
+│  │                      │          │ PIX       │          │ 15/01      │   │
+│  │ 01/11 - 30/11/2025   │ R$ 42    │ —         │ R$ 42    │ [Clock]    │   │
+│  │                      │          │           │          │ Abaixo min.│   │
+│  └──────────────────────┴──────────┴───────────┴──────────┴────────────┘   │
+│                                                                             │
+│  [Info] Pagamento minimo: R$ 50. Valores abaixo acumulam pro proximo mes. │
+│  [Info] Metodo final definido pelo PM. Sua preferencia e considerada.     │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 17.5 Ranking
+
+Leaderboard with top 20 creators, personal position highlight, and Creator of the Month spotlight.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [ArrowLeft]  Ranking                                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  Creator do Mes                                                            │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  [Crown]  @anacosta                                                 │    │
+│  │                                                                     │    │
+│  │  [Avatar]  Ana Costa — CORE                                        │    │
+│  │            R$ 7.200 GMV em marco                                   │    │
+│  │            +500 CIENA Points bonus                                 │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  Top 20 — GMV mensal (Marco 2026)                                         │
+│  ┌───┬──────────────────────┬──────────┬──────────┬───────────────────┐    │
+│  │ # │ Creator              │ Tier     │ GMV      │ Barra             │    │
+│  ├───┼──────────────────────┼──────────┼──────────┼───────────────────┤    │
+│  │ 1 │ [Medal] Ana Costa    │ CORE     │ R$ 7.200 │ ████████████████  │    │
+│  │ 2 │ Maria Santos         │ BLOOM    │ R$ 4.100 │ █████████░░░░░░░  │    │
+│  │ 3 │ ★ Joao da Silva      │ GROW     │ R$ 2.800 │ ██████░░░░░░░░░  │    │
+│  │ 4 │ Felipe Moura         │ GROW     │ R$ 2.100 │ ████░░░░░░░░░░░  │    │
+│  │ 5 │ Bruna Lima           │ GROW     │ R$ 1.800 │ ████░░░░░░░░░░░  │    │
+│  │ 6 │ Lucas Ferreira       │ SEED     │ R$ 1.500 │ ███░░░░░░░░░░░░  │    │
+│  │ 7 │ Camila Rocha         │ GROW     │ R$ 1.200 │ ██░░░░░░░░░░░░░  │    │
+│  │ 8 │ Rafael Souza         │ SEED     │ R$ 980   │ ██░░░░░░░░░░░░░  │    │
+│  │ . │ ...                  │ ...      │ ...      │                   │    │
+│  │20 │ Carla Dias           │ SEED     │ R$ 340   │ █░░░░░░░░░░░░░░  │    │
+│  └───┴──────────────────────┴──────────┴──────────┴───────────────────┘    │
+│  ★ = sua posicao                                                          │
+│                                                                             │
+│  Sua posicao                                                               │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  [Target] #3 de 34 creators                                        │    │
+│  │  GMV: R$ 2.800   ·   Faltam R$ 1.300 para #2                     │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  Distribuicao por tier                                                     │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  CORE  ██ 6%    BLOOM ████ 12%    GROW ██████████ 29%             │    │
+│  │  SEED  ████████████ 35%    AMB  ██████ 18%                        │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 17.6 Desafios (Challenges)
+
+Active challenges with submission, plus history of past submissions.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [ArrowLeft]  Desafios                                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [Ativos]  [Meus Envios]  [Concluidos]                                    │
+│  ━━━━━━━                                                                   │
+│                                                                             │
+│  Desafios ativos — Marco 2026                                              │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  [Flame] DROP 10 STYLE CHALLENGE                  Categoria: Drop  │    │
+│  │                                                                     │    │
+│  │  Poste um look completo usando pelo menos 2 pecas do Drop 10      │    │
+│  │  no seu Instagram com a tag @cienalab.                             │    │
+│  │                                                                     │    │
+│  │  Requisitos:                                                        │    │
+│  │  [Check] Foto deve mostrar as pecas claramente                    │    │
+│  │  [Check] Deve marcar @cienalab na foto (nao apenas legenda)       │    │
+│  │  [Check] Usar #cienalab e #drop10                                 │    │
+│  │  [Check] Post deve permanecer ativo por 7 dias                    │    │
+│  │                                                                     │    │
+│  │  [Star] +200 pts    [Clock] 8 dias    [Users] 12/50 participantes │    │
+│  │                                                                     │    │
+│  │                                              [████ Enviar Prova ████]│    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  [Users] COMMUNITY VIBES                    Categoria: Community   │    │
+│  │                                                                     │    │
+│  │  Indique 3 amigos para seguirem @cienalab e poste um story        │    │
+│  │  mostrando que eles seguem.                                        │    │
+│  │                                                                     │    │
+│  │  [Star] +100 pts    [Clock] 15 dias    [Users] 6 participantes    │    │
+│  │                                                                     │    │
+│  │                                              [████ Enviar Prova ████]│    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  ── Formulario de envio (modal/drawer ao clicar "Enviar Prova") ──        │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  Enviar prova — Drop 10 Style Challenge               [X]         │    │
+│  │                                                                     │    │
+│  │  Link da prova*                                                    │    │
+│  │  [https://instagram.com/p/...                                ]    │    │
+│  │                                                                     │    │
+│  │  Tipo de prova*                                                    │    │
+│  │  (●) Post no Instagram   ( ) Story   ( ) TikTok   ( ) Outro      │    │
+│  │                                                                     │    │
+│  │  Comentario (opcional)                                             │    │
+│  │  ┌───────────────────────────────────────────────────────────┐     │    │
+│  │  │                                                           │     │    │
+│  │  └───────────────────────────────────────────────────────────┘     │    │
+│  │                                                                     │    │
+│  │  [Cancelar]                                      [Enviar Prova]   │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  Meus envios anteriores                                                    │
+│  ┌──────────────────────┬────────────┬───────────┬─────────────────────┐   │
+│  │ Desafio              │ Enviado    │ Status    │ Pontos              │   │
+│  ├──────────────────────┼────────────┼───────────┼─────────────────────┤   │
+│  │ Viral Reel Feb       │ 22/02/2026 │ [●] Aprov.│ +300               │   │
+│  │ Style Drop 9         │ 10/02/2026 │ [●] Aprov.│ +200               │   │
+│  │ Surprise Valentine   │ 14/02/2026 │ [✕] Rej.  │ — (foto sem prod.) │   │
+│  └──────────────────────┴────────────┴───────────┴─────────────────────┘   │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 17.7 Perfil (Profile)
+
+Creator profile editing page. Non-editable fields shown as read-only. PIX key and payment preference highlighted.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [ArrowLeft]  Meu Perfil                                         [Salvar]  │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌────────────────────────────────┐                                        │
+│  │        [  Avatar  ]            │                                        │
+│  │        Joao da Silva           │                                        │
+│  │        GROW · 10% comissao     │                                        │
+│  │        [Upload nova foto]      │                                        │
+│  └────────────────────────────────┘                                        │
+│                                                                             │
+│  Informacoes pessoais                                                      │
+│  ──────────────────────                                                    │
+│  Nome*              [Joao da Silva                                 ]      │
+│  Bio                ┌─────────────────────────────────────────────┐       │
+│                     │ Creator de streetwear em SP. Apaixonado por │       │
+│                     │ moda urbana e cultura de rua.               │       │
+│                     └─────────────────────────────────────────────┘       │
+│  Tamanho de roupa   [M ▾]                                                │
+│                                                                             │
+│  Redes sociais                                                             │
+│  ──────────────────────                                                    │
+│  [Instagram] Instagram*      [@iguindasilva                       ]      │
+│                               12.4k seguidores · Verificado              │
+│  [Music]     TikTok*         [@iguindasilva                       ]      │
+│                               8.2k seguidores                             │
+│  [Youtube]   YouTube          [youtube.com/@iguin                  ]      │
+│  [Pin]       Pinterest        [@iguindasilva                       ]      │
+│  [Twitter]   Twitter/X        [                                    ]      │
+│  * obrigatorio                                                            │
+│                                                                             │
+│  Dados para pagamento                                                      │
+│  ──────────────────────                                                    │
+│  Preferencia     (●) PIX   ( ) Credito na loja   ( ) Produtos            │
+│  Tipo de chave   (●) CPF   ( ) Email   ( ) Telefone   ( ) Aleatoria     │
+│  Chave PIX       [12345678909                                      ]      │
+│                                                                             │
+│  Endereco                                                                  │
+│  ──────────────────────                                                    │
+│  CEP              [01310100        ] [Buscar]                             │
+│  Rua              [Av Paulista                           ] N [1000]      │
+│  Complemento      [Apto 42                               ]               │
+│  Bairro           [Bela Vista     ] Cidade [Sao Paulo   ] UF [SP]       │
+│                                                                             │
+│  Informacoes da conta (nao editavel)                                       │
+│  ──────────────────────                                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐    │
+│  │  CPF: 123.456.789-09        Email: joao@email.com                 │    │
+│  │  Telefone: +55 11 99999-9999  Membro desde: 15/09/2025           │    │
+│  │  Tier: GROW (10%)           Cupom: IGUIN10                       │    │
+│  └─────────────────────────────────────────────────────────────────────┘    │
+│                                                                             │
+│  [Cancelar]                                                      [Salvar] │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 17.8 Produtos (Products)
+
+Product catalog with commission estimate per product, favorites, and search.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [ArrowLeft]  Produtos                                                      │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  [Search] Buscar produto...                                                │
+│  Categoria: [Todos ▾]    Ordenar: [Maior comissao ▾]    [Exclusivos]      │
+│                                                                             │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐          │
+│  │ ┌──────────────┐ │  │ ┌──────────────┐ │  │ ┌──────────────┐ │          │
+│  │ │              │ │  │ │              │ │  │ │              │ │          │
+│  │ │  [Foto Prod] │ │  │ │  [Foto Prod] │ │  │ │  [Foto Prod] │ │          │
+│  │ │              │ │  │ │              │ │  │ │              │ │          │
+│  │ └──────────────┘ │  │ └──────────────┘ │  │ └──────────────┘ │          │
+│  │ Camiseta Drop10  │  │ Moletom CIENA    │  │ Bone Classic     │          │
+│  │ R$ 189,90        │  │ R$ 349,90        │  │ R$ 129,90        │          │
+│  │                  │  │                  │  │                  │          │
+│  │ Sua comissao:    │  │ Sua comissao:    │  │ Sua comissao:    │          │
+│  │ ~R$ 17,10 (10%) │  │ ~R$ 31,50 (10%) │  │ ~R$ 11,70 (10%) │          │
+│  │                  │  │                  │  │                  │          │
+│  │ [Heart]Favoritar │  │ [HeartFilled]    │  │ [Heart]Favoritar │          │
+│  └──────────────────┘  └──────────────────┘  └──────────────────┘          │
+│                                                                             │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐          │
+│  │ ┌──────────────┐ │  │ ┌──────────────┐ │  │ ┌──────────────┐ │          │
+│  │ │  [Foto Prod] │ │  │ │  [Foto Prod] │ │  │ │  [Foto Prod] │ │          │
+│  │ └──────────────┘ │  │ └──────────────┘ │  │ └──────────────┘ │          │
+│  │ Calca Cargo      │  │ Bucket Hat       │  │ [Lock] Camiseta  │          │
+│  │ R$ 279,90        │  │ R$ 149,90        │  │ Collab Exclusiva │          │
+│  │                  │  │                  │  │ R$ 199,90        │          │
+│  │ Sua comissao:    │  │ Sua comissao:    │  │                  │          │
+│  │ ~R$ 25,20 (10%) │  │ ~R$ 13,50 (10%) │  │ [Star] Exclusivo │          │
+│  │                  │  │                  │  │ BLOOM+ apenas    │          │
+│  │ [Heart]Favoritar │  │ [Heart]Favoritar │  │ 500 pts p/ trocar│          │
+│  └──────────────────┘  └──────────────────┘  └──────────────────┘          │
+│                                                                             │
+│  Mostrando 1-6 de 135 produtos                    [Anterior] [1] 2 [Prox] │
+│                                                                             │
+│  [Info] Comissao estimada = preco * sua taxa (10%). Valor real pode       │
+│  variar com descontos aplicados pelo comprador.                            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 18. Future Evolutions (Roadmap)
+
+> These features are NOT part of v1. They represent the evolution roadmap for the Creators module, to be implemented in future phases based on priority and feedback.
+
+| # | Evolution | Description | Dependencies |
+|---|----------|-------------|-------------|
+| C1 | Creator Content Studio | Pre-made content templates (stories, posts, reels) that creators can customize with their coupon code. Reduces content creation friction. | DAM module |
+| C2 | AI Content Coach | AI analysis of creator posts — suggestions for better captions, hashtags, posting times, content types. Uses performance data from content_detections. | Astro (AI Brain), content_detections data |
+| C3 | Shoppable Creator Feed | `/looks` page on the storefront showing curated creator content with shoppable product tags. UGC as storefront feature. | Shopify theme extension, DAM |
+| C4 | Creator Matchmaking AI | AI suggests optimal creators for specific products/campaigns based on audience overlap, past performance, and content style. | Astro, 6+ months data |
+| C5 | Real-time Sales Toast | SSE-powered real-time notification in creator portal when a sale is detected with their coupon. Gamification dopamine loop. | SSE (ADR-013) |
+| C6 | Creator Briefing Automatizado | Before each drop, system auto-generates and sends a brief to targeted creators via WA with: product photos, key selling points, suggested captions, hashtags, posting schedule. | WhatsApp Engine, DAM, Campaigns |
+| C7 | Micro-Affiliate Links | UTM-based tracking links as a complementary attribution method alongside coupons. Links would attribute sales via last-click within a 7-day window. Not a replacement for coupon attribution — an additional signal. | Checkout UTM capture |
+
+---
+
+## Princípios de UX
+
+> Referência: `DS.md` seções 4 (ICP & Filosofia), 6 (Formulários), 11 (Onboarding)
+
+### Formulário Público de Inscrição
+- **Inversão de sequência (DS.md 6.6):** mostrar benefícios e tier estimado ANTES de pedir dados pessoais. O candidato vê o que ganha primeiro, depois preenche CPF/dados.
+- **3 etapas progressivas (DS.md 6.1):** Etapa 1 (redes sociais + nicho), Etapa 2 (dados pessoais + fiscal), Etapa 3 (aceite de termos + confirmação).
+- **Paste nativo obrigatório:** nunca bloquear paste em campos de CPF, CNPJ, PIX.
+- **Explicação de dados sensíveis (DS.md 6.3):** CPF tooltip "Necessário para pagamento de comissões e emissão fiscal."
+
+### Portal do Creator — Empty States
+- **Checklist de ativação (DS.md 11.2):** 3-5 passos ("Poste seu primeiro conteúdo", "Compartilhe seu cupom", "Faça sua primeira venda") visíveis no dashboard do creator.
+- **Nunca tela vazia (DS.md 11.3):** Cada seção sem dados mostra ilustração minimalista + texto direto + CTA único.
+- Exemplos:
+  - Vendas: "Nenhuma venda registrada. Compartilhe seu cupom para começar a ganhar comissões."
+  - Conteúdo: "Nenhum post detectado. Poste com a hashtag do programa para acumular pontos."
+  - Ranking: "Ainda sem posição. Complete seu primeiro desafio para entrar no ranking."
+
+### Onboarding do Creator
+- **Welcome contextual (DS.md 11.5):** primeiro acesso ao portal mostra guia inline no painel, não modal bloqueante.
+- **Value-first (DS.md 11.6):** mostrar cupom gerado + tier atual + benefícios ANTES de pedir completar perfil.
+- **Progresso visível:** barra de progresso do checklist no topo do dashboard.
+
+### Hierarquia Visual
+- **CTA primário único por tela (DS.md 5):** "Compartilhar Cupom" como ação principal, demais ações como secundárias/ghost.
+- **Dados contextualizados (DS.md 8):** comissões com delta vs mês anterior, pontos com progresso até próximo tier.

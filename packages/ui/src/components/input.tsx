@@ -1,43 +1,55 @@
+"use client";
+
 import * as React from "react";
-import { Input as HeroInput } from "@heroui/react";
 import { cn } from "../lib/utils";
 
-export interface InputProps {
-  name?: string;
-  type?: string;
+export interface InputProps
+  extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
-  placeholder?: string;
+  error?: string;
+  /** Alias for error (HeroUI compat) */
   errorMessage?: string;
-  required?: boolean;
-  disabled?: boolean;
-  readOnly?: boolean;
-  autoComplete?: string;
-  className?: string;
-  value?: string;
-  defaultValue?: string;
-  onChange?: React.ChangeEventHandler<HTMLInputElement>;
+  startContent?: React.ReactNode;
+  endContent?: React.ReactNode;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, errorMessage, disabled, readOnly, ...props }, ref) => {
+  (
+    { className, label, error, errorMessage, startContent, endContent, id, ...props },
+    ref,
+  ) => {
+    const inputId = id || React.useId();
+    const resolvedError = error ?? errorMessage;
     return (
-      <HeroInput
-        ref={ref}
-        label={label}
-        variant="bordered"
-        size="sm"
-        isInvalid={!!errorMessage}
-        errorMessage={errorMessage}
-        isDisabled={disabled}
-        isReadOnly={readOnly}
-        classNames={{
-          inputWrapper: "border-border-default bg-bg-raised data-[hover=true]:border-border-strong data-[focus=true]:border-border-strong",
-          input: "text-text-primary placeholder:text-text-ghost",
-          label: "text-text-secondary",
-        }}
-        className={cn(className)}
-        {...props}
-      />
+      <div className="flex flex-col gap-1.5">
+        {label && (
+          <label
+            htmlFor={inputId}
+            className="text-sm font-medium text-text-secondary"
+          >
+            {label}
+          </label>
+        )}
+        <div
+          className={cn(
+            "flex items-center gap-2 rounded-md border border-input-border bg-input-bg px-3",
+            "min-h-9 transition-colors",
+            "focus-within:border-input-focus",
+            resolvedError && "border-danger",
+            className,
+          )}
+        >
+          {startContent}
+          <input
+            ref={ref}
+            id={inputId}
+            className="min-w-0 flex-1 bg-transparent py-2 text-sm text-text-primary placeholder:text-text-ghost outline-none"
+            {...props}
+          />
+          {endContent}
+        </div>
+        {resolvedError && <p className="text-xs text-danger">{resolvedError}</p>}
+      </div>
     );
   },
 );

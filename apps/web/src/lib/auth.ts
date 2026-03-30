@@ -3,7 +3,7 @@ import { db } from "@ambaril/db";
 import { sessions, users, permissions, roles, tenants, userTenants } from "@ambaril/db/schema";
 import { eq, and, gt } from "drizzle-orm";
 import { SESSION_COOKIE_NAME, SESSION_TTL_DEFAULT, SESSION_TTL_REMEMBER } from "@ambaril/shared/constants";
-import type { SessionData, TenantSessionData, RoleCode } from "@ambaril/shared/types";
+import type { BaseTenantSessionData, RoleCode } from "@ambaril/shared/types";
 import { hash, verify } from "@node-rs/argon2";
 
 // Generate a cryptographically secure session token
@@ -66,8 +66,8 @@ export async function createSession(
   return token;
 }
 
-// Get the current session from cookie (returns tenant-aware session)
-export async function getSession(): Promise<TenantSessionData | null> {
+// Get the current session from cookie (returns base tenant-aware session)
+export async function getSession(): Promise<BaseTenantSessionData | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
 

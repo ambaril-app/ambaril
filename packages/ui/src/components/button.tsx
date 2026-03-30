@@ -1,64 +1,62 @@
+"use client";
+
 import * as React from "react";
-import { Button as HeroButton } from "@heroui/react";
-import type { ButtonProps as HeroButtonProps } from "@heroui/react";
+import { Slot } from "@radix-ui/react-slot";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
 
-type ButtonVariant = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
-type ButtonSize = "default" | "sm" | "lg" | "icon";
+const buttonVariants = cva(
+  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-focus focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50",
+  {
+    variants: {
+      variant: {
+        default:
+          "bg-btn-primary-bg text-btn-primary-text shadow-[var(--shadow-sm)] hover:opacity-90",
+        destructive:
+          "bg-danger text-white hover:opacity-90",
+        outline:
+          "border border-btn-secondary-border bg-btn-secondary-bg text-btn-secondary-text hover:bg-bg-raised",
+        secondary:
+          "bg-bg-surface text-text-primary hover:opacity-90",
+        ghost:
+          "text-btn-ghost-text hover:bg-btn-ghost-hover",
+        link:
+          "text-info underline-offset-4 hover:underline",
+      },
+      size: {
+        default: "h-9 px-4 py-2",
+        sm: "h-8 rounded-md px-3 text-xs",
+        lg: "h-10 rounded-md px-8",
+        icon: "h-9 w-9",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
+  },
+);
 
-export interface ButtonProps {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
-  className?: string;
-  children?: React.ReactNode;
-  disabled?: boolean;
-  type?: "button" | "submit" | "reset";
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
   onPress?: () => void;
-  "aria-label"?: string;
 }
 
-const VARIANT_MAP: Record<ButtonVariant, { color: HeroButtonProps["color"]; variant: HeroButtonProps["variant"] }> = {
-  default: { color: "primary", variant: "solid" },
-  destructive: { color: "danger", variant: "solid" },
-  outline: { color: "default", variant: "bordered" },
-  secondary: { color: "default", variant: "flat" },
-  ghost: { color: "default", variant: "light" },
-  link: { color: "primary", variant: "light" },
-};
-
-const SIZE_MAP: Record<ButtonSize, HeroButtonProps["size"]> = {
-  default: "md",
-  sm: "sm",
-  lg: "lg",
-  icon: "sm",
-};
-
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = "default", size = "default", disabled, onPress, children, type, "aria-label": ariaLabel }, ref) => {
-    const mapped = VARIANT_MAP[variant];
-    const heroSize = SIZE_MAP[size];
-
+  ({ className, variant, size, asChild = false, onPress, onClick, ...props }, ref) => {
+    const Comp = asChild ? Slot : "button";
     return (
-      <HeroButton
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
-        color={mapped.color}
-        variant={mapped.variant}
-        size={heroSize}
-        isDisabled={disabled}
-        onPress={onPress}
-        type={type}
-        aria-label={ariaLabel}
-        className={cn(
-          size === "icon" && "min-w-9 w-9 px-0",
-          variant === "link" && "underline-offset-4 data-[hover=true]:underline",
-          className,
-        )}
-      >
-        {children}
-      </HeroButton>
+        onClick={onPress ?? onClick}
+        {...props}
+      />
     );
   },
 );
 Button.displayName = "Button";
 
-export { Button };
+export { Button, buttonVariants };

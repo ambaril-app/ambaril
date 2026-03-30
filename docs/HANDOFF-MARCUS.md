@@ -11,7 +11,7 @@
 |------|-----------|--------|
 | 1 | `pnpm install` + lock file regenerado (`@ambaril/*`) | OK |
 | 2 | ADR-014 — Multi-tenancy Strategy (doc completo) | OK |
-| 3 | HeroUI Provider + migracao de 4 componentes (Button, Badge, Input, Card) + login page | OK |
+| 3 | UI Provider + migracao de 4 componentes (Button, Badge, Input, Card) + login page | OK |
 | 4 | 35 tabelas Drizzle — checkout (7), crm (12), erp (9), whatsapp (4), dashboard (3) | OK |
 | 5 | Zod validators (14 schemas) + types (20+ tipos) + constants (6 modulos, 10 enums) | OK |
 | 6 | Este documento de handoff | OK |
@@ -60,7 +60,7 @@ echo 'DATABASE_URL="postgresql://user:pass@ep-xxx.sa-east-1.aws.neon.tech/neondb
 cd /Users/boromarl/Downloads/Ambaril/ambaril
 git init
 git add -A
-git commit -m "feat: Phase 0 Foundation — monorepo scaffold, Drizzle schemas, HeroUI, shared package"
+git commit -m "feat: Phase 0 Foundation — monorepo scaffold, Drizzle schemas, UI components, shared package"
 git branch -M main
 git remote add origin git@github.com:SEU-USER/ambaril.git
 git push -u origin main
@@ -115,7 +115,7 @@ Com o `DATABASE_URL` no `.env` e ADR-014 aprovado, eu posso:
 
 ```
 ambaril/
-├── apps/web/                  # Next.js 15 — HeroUI configurado, login page funcional
+├── apps/web/                  # Next.js 15 — UI configurado, login page funcional
 ├── packages/db/               # Drizzle ORM — 55 tabelas em 7 schemas
 │   └── src/schema/
 │       ├── global.ts          # 8 tabelas (users, roles, permissions, sessions...)
@@ -126,7 +126,7 @@ ambaril/
 │       ├── whatsapp.ts        # 4 tabelas (templates, messages, conversations...)
 │       └── dashboard.ts       # 3 tabelas (dashboard_configs, widgets, war_room...)
 ├── packages/shared/           # Zod validators (21 schemas), types, constants
-├── packages/ui/               # HeroUI wrappers (Button, Badge, Input, Card)
+├── packages/ui/               # shadcn/ui wrappers (Button, Badge, Input, Card)
 ├── packages/email/            # Resend (scaffold)
 └── docs/
     └── architecture/

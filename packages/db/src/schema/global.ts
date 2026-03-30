@@ -373,3 +373,104 @@ export const jobQueue = globalSchema.table(
     index("idx_job_queue_tenant_status").on(table.tenantId, table.status),
   ],
 );
+
+// global.integration_providers — catalog of available integration providers
+export const integrationProviders = globalSchema.table(
+  "integration_providers",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    providerId: varchar("provider_id", { length: 50 }).notNull().unique(),
+    capability: varchar("capability", { length: 50 }).notNull(),
+    name: varchar("name", { length: 100 }).notNull(),
+    description: text("description"),
+    icon: varchar("icon", { length: 50 }),
+    configSchema: jsonb("config_schema").notNull().default("[]"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_integration_providers_provider_id").on(table.providerId),
+    index("idx_integration_providers_capability").on(table.capability),
+  ],
+);
+
+// global.tenant_integrations — per-tenant integration connections (RLS enabled)
+export const tenantIntegrations = globalSchema.table(
+  "tenant_integrations",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    providerId: varchar("provider_id", { length: 50 })
+      .notNull()
+      .references(() => integrationProviders.providerId),
+    capability: varchar("capability", { length: 50 }).notNull(),
+    credentials: jsonb("credentials").notNull().default("{}"),
+    isActive: boolean("is_active").notNull().default(true),
+    lastTestedAt: timestamp("last_tested_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_tenant_integrations_unique").on(table.tenantId, table.capability),
+    index("idx_tenant_integrations_tenant").on(table.tenantId),
+    index("idx_tenant_integrations_provider").on(table.providerId),
+    pgPolicy("tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "public",
+      using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+      withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+    }),
+  ],
+).enableRLS();
+
+// global.module_setup_state — setup wizard progress per module (RLS enabled)
+export const moduleSetupState = globalSchema.table(
+  "module_setup_state",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    tenantId: uuid("tenant_id")
+      .notNull()
+      .references(() => tenants.id, { onDelete: "cascade" }),
+    moduleId: varchar("module_id", { length: 50 }).notNull(),
+    isSetupComplete: boolean("is_setup_complete").notNull().default(false),
+    currentStep: varchar("current_step", { length: 50 }),
+    stepData: jsonb("step_data").notNull().default("{}"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    completedBy: uuid("completed_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_module_setup_unique").on(table.tenantId, table.moduleId),
+    index("idx_module_setup_tenant").on(table.tenantId),
+    pgPolicy("tenant_isolation", {
+      as: "permissive",
+      for: "all",
+      to: "public",
+      using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+      withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+    }),
+  ],
+).enableRLS();

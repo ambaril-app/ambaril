@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<title>Ambaril — Moonstone Theme Comparison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  /* ========================================
+     RESET
+     ======================================== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* ========================================
+     SPACING SCALE (base 4px)
+     4  8  12  16  20  24  32  48  64
+     ======================================== */
+
+  /* ========================================
+     MOONSTONE LIGHT (DEFAULT)
+     ======================================== */
+  :root, [data-theme="light"] {
+    --bg-void: #F7F8FA;
+    --bg-base: #FFFFFF;
+    --bg-raised: #F3F4F6;
+    --bg-surface: #E8EAF0;
+    --bg-elevated: #FFFFFF;
+
+    --border-subtle: rgba(15,23,42,0.06);
+    --border-default: rgba(15,23,42,0.10);
+    --border-strong: rgba(15,23,42,0.18);
+
+    --text-ghost: #94A3B8;
+    --text-muted: #64748B;
+    --text-secondary: #475569;
+    --text-tertiary: #475569;
+    --text-primary: #334155;
+    --text-bright: #1E293B;
+    --text-white: #0F172A;
+
+    --success: #16A34A;
+    --success-muted: rgba(22,163,74,0.08);
+    --warning: #D97706;
+    --warning-muted: rgba(217,119,6,0.08);
+    --danger: #DC2626;
+    --danger-muted: rgba(220,38,38,0.08);
+    --info: #2563EB;
+    --info-muted: rgba(37,99,235,0.08);
+
+    --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
+    --shadow-md: 0 2px 8px rgba(15,23,42,0.06);
+    --shadow-lg: 0 4px 16px rgba(15,23,42,0.08);
+    --shadow-xl: 0 8px 32px rgba(15,23,42,0.12);
+
+    --sidebar-bg: #F7F8FA;
+    --sidebar-item-hover: #F3F4F6;
+    --sidebar-item-active-bg: #FFFFFF;
+    --sidebar-item-active-text: #0F172A;
+    --sidebar-border: rgba(15,23,42,0.08);
+
+    --btn-primary-bg: #0F172A;
+    --btn-primary-text: #FFFFFF;
+    --btn-secondary-bg: #FFFFFF;
+    --btn-secondary-text: #334155;
+    --btn-secondary-border: rgba(15,23,42,0.15);
+    --btn-ghost-text: #475569;
+    --btn-ghost-hover: #F3F4F6;
+
+    --chart-line: #334155;
+    --chart-area-start: rgba(15,23,42,0.06);
+    --chart-area-end: rgba(15,23,42,0);
+    --chart-grid: rgba(15,23,42,0.06);
+    --chart-bar-top: #64748B;
+    --chart-bar-bottom: #CBD5E1;
+    --chart-tooltip-bg: #0F172A;
+    --chart-tooltip-text: #F7F8FA;
+
+    --table-header-bg: #F9FAFB;
+    --table-row-hover: #F9FAFB;
+    --table-border: rgba(15,23,42,0.06);
+
+    --badge-bg: #F3F4F6;
+    --badge-text: #334155;
+    --input-bg: #F3F4F6;
+    --input-border: rgba(15,23,42,0.12);
+    --input-focus-border: #2563EB;
+
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+  }
+
+  /* ========================================
+     MOONSTONE DARK
+     ======================================== */
+  [data-theme="dark"] {
+    --bg-void: #07080B;
+    --bg-base: #0C0E13;
+    --bg-raised: #101216;
+    --bg-surface: #16181F;
+    --bg-elevated: #1C1F28;
+
+    --border-subtle: #1E2129;
+    --border-default: #262A34;
+    --border-strong: #333844;
+
+    --text-ghost: #3A3F4C;
+    --text-muted: #5C6170;
+    --text-secondary: #7C8293;
+    --text-tertiary: #A8AEBB;
+    --text-primary: #D0D4DE;
+    --text-bright: #E8EAF0;
+    --text-white: #F7F8FA;
+
+    --success: #3ECF8E;
+    --success-muted: rgba(62,207,142,0.08);
+    --warning: #F5A524;
+    --warning-muted: rgba(245,165,36,0.08);
+    --danger: #EF4444;
+    --danger-muted: rgba(239,68,68,0.08);
+    --info: #60A5FA;
+    --info-muted: rgba(96,165,250,0.08);
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+    --shadow-md: 0 2px 10px rgba(0,0,0,0.2);
+    --shadow-lg: 0 4px 20px rgba(0,0,0,0.3);
+    --shadow-xl: 0 8px 32px rgba(0,0,0,0.4);
+
+    --sidebar-bg: #0C0E13;
+    --sidebar-item-hover: rgba(247,248,250,0.02);
+    --sidebar-item-active-bg: rgba(247,248,250,0.03);
+    --sidebar-item-active-text: #E8EAF0;
+    --sidebar-border: #1E2129;
+
+    --btn-primary-bg: #16181F;
+    --btn-primary-text: #F7F8FA;
+    --btn-secondary-bg: transparent;
+    --btn-secondary-text: #D0D4DE;
+    --btn-secondary-border: #262A34;
+    --btn-ghost-text: #7C8293;
+    --btn-ghost-hover: rgba(247,248,250,0.03);
+
+    --chart-line: #D0D4DE;
+    --chart-area-start: rgba(247,248,250,0.06);
+    --chart-area-end: rgba(247,248,250,0);
+    --chart-grid: #1E2129;
+    --chart-bar-top: #A8AEBB;
+    --chart-bar-bottom: #262A34;
+    --chart-tooltip-bg: #1C1F28;
+    --chart-tooltip-text: #D0D4DE;
+
+    --table-header-bg: #101216;
+    --table-row-hover: rgba(247,248,250,0.015);
+    --table-border: #1E2129;
+
+    --badge-bg: #16181F;
+    --badge-text: #A8AEBB;
+    --input-bg: #101216;
+    --input-border: #262A34;
+    --input-focus-border: #60A5FA;
+
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ========================================
+     BASE
+     ======================================== */
+  body {
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    line-height: 1.65;
+    background: var(--bg-void);
+    color: var(--text-primary);
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .mono {
+    font-family: 'DM Mono', 'SF Mono', monospace;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ========================================
+     LAYOUT
+     ======================================== */
+  .app {
+    display: flex;
+    height: 100dvh;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    width: 210px;
+    min-width: 210px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    padding: 16px 0;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .sidebar-logo {
+    padding: 8px 20px 24px;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text-white);
+    letter-spacing: 0.02em;
+  }
+
+  .sidebar-group-label {
+    font-size: 9px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--text-ghost);
+    padding: 16px 20px 6px;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: background 0.15s ease, color 0.15s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-height: 36px;
+  }
+  .sidebar-item:hover {
+    background: var(--sidebar-item-hover);
+    color: var(--text-primary);
+  }
+  .sidebar-item.active {
+    background: var(--sidebar-item-active-bg);
+    color: var(--sidebar-item-active-text);
+    border-left-color: var(--text-tertiary);
+    font-weight: 500;
+  }
+  .sidebar-item svg {
+    width: 16px;
+    height: 16px;
+    min-width: 16px;
+    opacity: 0.6;
+  }
+  .sidebar-item.active svg { opacity: 1; }
+
+  .sidebar-item.dimmed {
+    opacity: 0.4;
+  }
+  .sidebar-item.dimmed .sidebar-badge {
+    opacity: 1;
+    font-size: 9px;
+    background: var(--info-muted);
+    color: var(--info);
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: auto;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  /* Main */
+  .main {
+    flex: 1;
+    min-width: 0;
+    overflow-y: auto;
+    padding: 24px;
+  }
+
+  @media (min-width: 1024px) {
+    .main { padding: 24px 32px; }
+  }
+
+  /* ========================================
+     HEADER
+     ======================================== */
+  .page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .page-header-left { min-width: 0; }
+
+  .page-title {
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--text-white);
+    line-height: 1.25;
+    text-wrap: balance;
+  }
+
+  .page-subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+
+  .page-actions {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  /* ========================================
+     THEME TOGGLE (floating)
+     ======================================== */
+  .theme-toggle-bar {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 4px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: 12px;
+    padding: 4px;
+    box-shadow: var(--shadow-xl);
+    z-index: 100;
+  }
+
+  .theme-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    background: transparent;
+    color: var(--text-secondary);
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .theme-btn:hover { color: var(--text-primary); }
+  .theme-btn.active {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* ========================================
+     BUTTONS
+     ======================================== */
+  .btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s ease, box-shadow 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    white-space: nowrap;
+    min-height: 36px;
+  }
+  .btn-primary {
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-text);
+    box-shadow: var(--shadow-sm);
+  }
+  .btn-primary:hover { box-shadow: var(--shadow-md); }
+
+  .btn-secondary {
+    background: var(--btn-secondary-bg);
+    color: var(--btn-secondary-text);
+    border: 1px solid var(--btn-secondary-border);
+  }
+  .btn-secondary:hover { background: var(--bg-raised); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--btn-ghost-text);
+  }
+  .btn-ghost:hover { background: var(--btn-ghost-hover); }
+
+  .btn-sm {
+    font-size: 12px;
+    padding: 4px 10px;
+    min-height: 28px;
+  }
+
+  /* ========================================
+     KPI CARDS
+     ======================================== */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 1023px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 639px) {
+    .kpi-grid { grid-template-columns: 1fr; }
+  }
+
+  .kpi-card {
+    background: var(--bg-base);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    min-width: 0;
+  }
+  .kpi-card:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-default);
+  }
+
+  [data-theme="dark"] .kpi-card {
+    background: linear-gradient(150deg, var(--bg-raised) 40%, var(--bg-surface));
+    box-shadow: none;
+  }
+  [data-theme="dark"] .kpi-card::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 100px; height: 100px;
+    background: radial-gradient(circle at top right, rgba(247,248,250,0.025), transparent 70%);
+    pointer-events: none;
+  }
+
+  .kpi-label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .kpi-value {
+    font-family: 'DM Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--text-white);
+    line-height: 1.1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .kpi-footer {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .kpi-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .kpi-delta.positive { color: var(--success); }
+  .kpi-delta.negative { color: var(--danger); }
+
+  .kpi-context {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .kpi-spark {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    width: 72px;
+    height: 28px;
+    pointer-events: none;
+  }
+  .kpi-spark svg { width: 100%; height: 100%; overflow: visible; }
+  .kpi-spark path {
+    fill: none;
+    stroke: var(--text-muted);
+    stroke-width: 1.5px;
+    vector-effect: non-scaling-stroke;
+    opacity: 0.25;
+  }
+
+  /* ========================================
+     CONTENT GRID
+     ======================================== */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  @media (max-width: 767px) {
+    .content-grid { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--bg-base);
+    border: 1px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow-sm);
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  [data-theme="dark"] .card {
+    box-shadow: none;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-bright);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  .card-period {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ========================================
+     LINE CHART (SVG)
+     ======================================== */
+  .chart-container {
+    width: 100%;
+    aspect-ratio: 3 / 1;
+    min-height: 140px;
+    max-height: 220px;
+  }
+  .chart-container svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .chart-grid-line {
+    stroke: var(--chart-grid);
+    stroke-width: 1px;
+    vector-effect: non-scaling-stroke;
+  }
+  .chart-line-path {
+    fill: none;
+    stroke: var(--chart-line);
+    stroke-width: 1.5px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+  }
+  .chart-area-fill {
+    fill: url(#areaGradient);
+  }
+  .chart-axis-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    fill: var(--text-ghost);
+  }
+  .chart-dot {
+    fill: var(--text-white);
+    stroke: var(--bg-base);
+    stroke-width: 2px;
+    vector-effect: non-scaling-stroke;
+  }
+  [data-theme="dark"] .chart-dot {
+    stroke: var(--bg-raised);
+  }
+
+  /* Tooltip inline example */
+  .chart-tooltip-example {
+    display: inline-flex;
+    margin-top: 12px;
+  }
+  .tooltip-box {
+    background: var(--chart-tooltip-bg);
+    color: var(--chart-tooltip-text);
+    border: 1px solid var(--border-default);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    box-shadow: var(--shadow-lg);
+  }
+  .tooltip-value {
+    font-family: 'DM Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .tooltip-label {
+    font-size: 11px;
+    opacity: 0.7;
+  }
+
+  /* ========================================
+     BAR CHART
+     ======================================== */
+  .bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    height: 100%;
+    min-height: 140px;
+    padding-bottom: 4px;
+  }
+
+  .bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    height: 100%;
+    justify-content: flex-end;
+  }
+
+  .bar-value {
+    font-family: 'DM Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .bar {
+    width: 100%;
+    max-width: 48px;
+    border-radius: 4px 4px 0 0;
+    background: linear-gradient(to top, var(--chart-bar-bottom), var(--chart-bar-top));
+    transition: opacity 0.15s ease;
+  }
+  .bar:hover { opacity: 0.75; }
+
+  .bar-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--text-ghost);
+    white-space: nowrap;
+  }
+
+  /* ========================================
+     TABLE
+     ======================================== */
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -20px -20px;
+    padding: 0 20px 20px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 560px;
+  }
+
+  thead th {
+    background: var(--table-header-bg);
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    text-align: left;
+    padding: 8px 16px;
+    border-bottom: 1px solid var(--table-border);
+    white-space: nowrap;
+  }
+
+  tbody td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--table-border);
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px;
+  }
+
+  tbody td:nth-child(2) {
+    max-width: 160px;
+  }
+
+  tbody tr {
+    transition: background 0.15s ease;
+  }
+  tbody tr:hover {
+    background: var(--table-row-hover);
+  }
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .cell-mono {
+    font-family: 'DM Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+  }
+  .cell-muted {
+    color: var(--text-muted);
+  }
+
+  /* Badges */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 5px;
+    white-space: nowrap;
+  }
+  .badge-success { background: var(--success-muted); color: var(--success); }
+  .badge-warning { background: var(--warning-muted); color: var(--warning); }
+  .badge-danger { background: var(--danger-muted); color: var(--danger); }
+  .badge-info { background: var(--info-muted); color: var(--info); }
+  .badge-default { background: var(--badge-bg); color: var(--badge-text); }
+
+  /* ========================================
+     FORM
+     ======================================== */
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 639px) {
+    .form-grid { grid-template-columns: 1fr; }
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .form-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+  }
+
+  .form-input {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 8px 12px;
+    background: var(--input-bg);
+    border: 1px solid var(--input-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    min-height: 36px;
+    width: 100%;
+  }
+  .form-input:focus {
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+  }
+  .form-input::placeholder { color: var(--text-ghost); }
+
+  [data-theme="dark"] .form-input:focus {
+    box-shadow: 0 0 0 3px rgba(96,165,250,0.1);
+  }
+
+  .form-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+    margin-top: 16px;
+  }
+
+  /* ========================================
+     EMPTY STATE
+     ======================================== */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px;
+  }
+
+  .empty-state-icon {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    background: var(--bg-raised);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+  }
+
+  .empty-state-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-bright);
+    margin-bottom: 4px;
+    text-wrap: balance;
+    text-align: center;
+  }
+
+  .empty-state-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+    max-width: 280px;
+    text-align: center;
+    text-wrap: pretty;
+  }
+
+  /* ========================================
+     MODULE INACTIVE PREVIEW
+     ======================================== */
+  .module-preview {
+    background: var(--bg-base);
+    border: 1px dashed var(--border-default);
+    border-radius: 12px;
+    padding: 20px;
+    opacity: 0.75;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .module-preview-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-bright);
+  }
+
+  .module-preview-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .module-preview-stat {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 8px;
+  }
+
+  /* ========================================
+     VOICE / ALERT ITEMS
+     ======================================== */
+  .voice-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  @media (max-width: 767px) {
+    .voice-grid { grid-template-columns: 1fr; }
+  }
+
+  .voice-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    border-left: 3px solid;
+    line-height: 1.5;
+  }
+  .voice-item.info-voice {
+    background: var(--info-muted);
+    border-left-color: var(--info);
+    color: var(--text-primary);
+  }
+  .voice-item.success-voice {
+    background: var(--success-muted);
+    border-left-color: var(--success);
+    color: var(--text-primary);
+  }
+  .voice-item.warning-voice {
+    background: var(--warning-muted);
+    border-left-color: var(--warning);
+    color: var(--text-primary);
+  }
+  .voice-item.danger-voice {
+    background: var(--danger-muted);
+    border-left-color: var(--danger);
+    color: var(--text-primary);
+  }
+  .voice-item.neutral-voice {
+    background: var(--bg-raised);
+    border-left-color: var(--border-strong);
+    color: var(--text-secondary);
+  }
+
+  /* ========================================
+     THEME LABEL
+     ======================================== */
+  .theme-label {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    background: var(--bg-base);
+    border: 1px solid var(--border-default);
+    padding: 4px 10px;
+    border-radius: 6px;
+    z-index: 100;
+  }
+
+  /* ========================================
+     RESPONSIVE: HIDE SIDEBAR ON MOBILE
+     ======================================== */
+  @media (max-width: 767px) {
+    .sidebar { display: none; }
+  }
+
+  /* ========================================
+     STACK LAYOUT UTILITY
+     ======================================== */
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div class="theme-label" id="themeLabel">Moonstone Light</div>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">Ambaril</div>
+
+    <div class="sidebar-group-label">Principal</div>
+    <div class="sidebar-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Dashboard
+    </div>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/></svg>
+      Pedidos
+    </div>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+      Estoque
+    </div>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+      CRM
+    </div>
+
+    <div class="sidebar-group-label">Operacoes</div>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      PCP
+    </div>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Fiscal
+    </div>
+
+    <div class="sidebar-group-label">Comercial</div>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6"/><path d="M23 11h-6"/></svg>
+      Creators
+    </div>
+    <div class="sidebar-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+      Atacado
+    </div>
+
+    <div class="sidebar-group-label">Mais</div>
+    <div class="sidebar-item dimmed">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Inbox
+      <span class="sidebar-badge">Novo</span>
+    </div>
+    <div class="sidebar-item dimmed">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+      Marketing
+      <span class="sidebar-badge">Novo</span>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+    <div class="page-header">
+      <div class="page-header-left">
+        <div class="page-title">Dashboard</div>
+        <div class="page-subtitle">Visao geral do negocio — Hoje, 30 Mar 2026</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-ghost">Exportar</button>
+        <button class="btn btn-secondary">Filtros</button>
+        <button class="btn btn-primary">War Room</button>
+      </div>
+    </div>
+
+    <!-- KPI CARDS -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Faturamento hoje</div>
+        <div class="kpi-value">R$&nbsp;12.4k</div>
+        <div class="kpi-footer">
+          <span class="kpi-delta positive">+18% vs ontem</span>
+          <span class="kpi-context">Meta: R$&nbsp;10k</span>
+        </div>
+        <div class="kpi-spark">
+          <svg viewBox="0 0 72 28"><path d="M0,22 C9,19 14,16 22,13 C31,10 36,18 45,8 C54,4 63,7 72,2"/></svg>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Pedidos</div>
+        <div class="kpi-value">47</div>
+        <div class="kpi-footer">
+          <span class="kpi-delta positive">+8 vs ontem</span>
+          <span class="kpi-context">Ticket: R$&nbsp;263</span>
+        </div>
+        <div class="kpi-spark">
+          <svg viewBox="0 0 72 28"><path d="M0,18 C9,16 18,20 27,13 C36,8 45,10 54,6 C63,3 72,5 72,5"/></svg>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">GMV Creators</div>
+        <div class="kpi-value">R$&nbsp;3.2k</div>
+        <div class="kpi-footer">
+          <span class="kpi-delta positive">+42% vs semana</span>
+          <span class="kpi-context">12 ativos</span>
+        </div>
+        <div class="kpi-spark">
+          <svg viewBox="0 0 72 28"><path d="M0,25 C9,22 18,18 27,20 C36,16 45,10 54,6 C63,3 72,1 72,1"/></svg>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Estoque critico</div>
+        <div class="kpi-value">3</div>
+        <div class="kpi-footer">
+          <span class="kpi-delta negative">+1 vs ontem</span>
+          <span class="kpi-context">&lt;&nbsp;10 un.</span>
+        </div>
+        <div class="kpi-spark">
+          <svg viewBox="0 0 72 28"><path d="M0,12 C9,10 18,15 27,17 C36,19 45,22 54,19 C63,17 72,21 72,21"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- CHART + BAR CHART -->
+    <div class="content-grid">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Faturamento — 30 dias</span>
+          <span class="card-period">01–30 Mar</span>
+        </div>
+        <div class="chart-container">
+          <svg viewBox="0 0 560 180" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--chart-line)" stop-opacity="0.08"/>
+                <stop offset="100%" stop-color="var(--chart-line)" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <!-- Grid -->
+            <line class="chart-grid-line" x1="32" y1="16" x2="548" y2="16"/>
+            <line class="chart-grid-line" x1="32" y1="52" x2="548" y2="52"/>
+            <line class="chart-grid-line" x1="32" y1="88" x2="548" y2="88"/>
+            <line class="chart-grid-line" x1="32" y1="124" x2="548" y2="124"/>
+            <line class="chart-grid-line" x1="32" y1="160" x2="548" y2="160"/>
+            <!-- Y labels -->
+            <text class="chart-axis-label" x="28" y="20" text-anchor="end">50k</text>
+            <text class="chart-axis-label" x="28" y="56" text-anchor="end">40k</text>
+            <text class="chart-axis-label" x="28" y="92" text-anchor="end">30k</text>
+            <text class="chart-axis-label" x="28" y="128" text-anchor="end">20k</text>
+            <text class="chart-axis-label" x="28" y="164" text-anchor="end">10k</text>
+            <!-- X labels -->
+            <text class="chart-axis-label" x="64" y="178">01</text>
+            <text class="chart-axis-label" x="160" y="178">07</text>
+            <text class="chart-axis-label" x="256" y="178">14</text>
+            <text class="chart-axis-label" x="352" y="178">21</text>
+            <text class="chart-axis-label" x="448" y="178">28</text>
+            <text class="chart-axis-label" x="530" y="178">30</text>
+            <!-- Area -->
+            <path class="chart-area-fill" d="M64,124 C100,115 136,105 180,88 C224,70 256,78 300,62 C340,52 376,44 416,48 C456,44 500,26 536,20 L536,160 L64,160 Z"/>
+            <!-- Line -->
+            <path class="chart-line-path" d="M64,124 C100,115 136,105 180,88 C224,70 256,78 300,62 C340,52 376,44 416,48 C456,44 500,26 536,20"/>
+            <!-- Last dot -->
+            <circle class="chart-dot" cx="536" cy="20" r="3.5"/>
+          </svg>
+        </div>
+        <div class="chart-tooltip-example">
+          <div class="tooltip-box">
+            <div class="tooltip-label">30 Mar 2026</div>
+            <div class="tooltip-value">R$&nbsp;12.400</div>
+            <div class="tooltip-label">15% acima da media (30d)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="display: flex; flex-direction: column;">
+        <div class="card-header">
+          <span class="card-title">Vendas por canal</span>
+        </div>
+        <div class="bar-chart" style="flex: 1;">
+          <div class="bar-col">
+            <div class="bar-value">42%</div>
+            <div class="bar" style="height: 84%;"></div>
+            <div class="bar-label">DTC</div>
+          </div>
+          <div class="bar-col">
+            <div class="bar-value">28%</div>
+            <div class="bar" style="height: 56%;"></div>
+            <div class="bar-label">Creator</div>
+          </div>
+          <div class="bar-col">
+            <div class="bar-value">18%</div>
+            <div class="bar" style="height: 36%;"></div>
+            <div class="bar-label">VIP</div>
+          </div>
+          <div class="bar-col">
+            <div class="bar-value">12%</div>
+            <div class="bar" style="height: 24%;"></div>
+            <div class="bar-label">B2B</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="card" style="margin-bottom: 24px;">
+      <div class="card-header">
+        <span class="card-title">Ultimos pedidos</span>
+        <button class="btn btn-ghost btn-sm">Ver todos</button>
+      </div>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Pedido</th>
+              <th>Cliente</th>
+              <th>Valor</th>
+              <th>Status</th>
+              <th>Canal</th>
+              <th>Data</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="cell-mono">#4892</td>
+              <td>Maria Silva</td>
+              <td class="cell-mono">R$&nbsp;459,00</td>
+              <td><span class="badge badge-success">Entregue</span></td>
+              <td><span class="badge badge-default">DTC</span></td>
+              <td class="cell-mono cell-muted">30/03 14:22</td>
+            </tr>
+            <tr>
+              <td class="cell-mono">#4891</td>
+              <td>Lucas Oliveira</td>
+              <td class="cell-mono">R$&nbsp;287,00</td>
+              <td><span class="badge badge-info">Enviado</span></td>
+              <td><span class="badge badge-default">Creator</span></td>
+              <td class="cell-mono cell-muted">30/03 13:58</td>
+            </tr>
+            <tr>
+              <td class="cell-mono">#4890</td>
+              <td>Ana Costa</td>
+              <td class="cell-mono">R$&nbsp;632,00</td>
+              <td><span class="badge badge-warning">Preparando</span></td>
+              <td><span class="badge badge-default">VIP</span></td>
+              <td class="cell-mono cell-muted">30/03 12:40</td>
+            </tr>
+            <tr>
+              <td class="cell-mono">#4889</td>
+              <td>Pedro Santos</td>
+              <td class="cell-mono">R$&nbsp;189,00</td>
+              <td><span class="badge badge-danger">Pendente</span></td>
+              <td><span class="badge badge-default">DTC</span></td>
+              <td class="cell-mono cell-muted">30/03 11:15</td>
+            </tr>
+            <tr>
+              <td class="cell-mono">#4888</td>
+              <td>Fernanda Lima</td>
+              <td class="cell-mono">R$&nbsp;1.240,00</td>
+              <td><span class="badge badge-success">Entregue</span></td>
+              <td><span class="badge badge-default">B2B</span></td>
+              <td class="cell-mono cell-muted">30/03 10:33</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- FORM + EMPTY STATE + MODULE PREVIEW -->
+    <div class="content-grid">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Novo creator — Etapa 1</span>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="name">Nome completo</label>
+            <input type="text" id="name" name="name" class="form-input" placeholder="Ex: Maria Silva" autocomplete="name">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="ig">Instagram</label>
+            <input type="text" id="ig" name="instagram" class="form-input" placeholder="@handle" autocomplete="off" spellcheck="false">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="cpf">CPF</label>
+            <input type="text" id="cpf" name="cpf" class="form-input" placeholder="000.000.000-00" inputmode="numeric" autocomplete="off">
+            <div class="form-hint">Necessario para pagamento de comissoes e emissao fiscal.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="niche">Nicho</label>
+            <input type="text" id="niche" name="niche" class="form-input" placeholder="Streetwear, lifestyle..." autocomplete="off">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn btn-ghost">Cancelar</button>
+          <button class="btn btn-primary">Proximo passo</button>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="card">
+          <div class="empty-state">
+            <div class="empty-state-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            </div>
+            <div class="empty-state-title">Nenhuma conversa pendente</div>
+            <div class="empty-state-desc">Quando mensagens chegarem via WhatsApp ou e-mail, aparecem aqui.</div>
+            <button class="btn btn-primary">Configurar canal</button>
+          </div>
+        </div>
+
+        <div class="module-preview">
+          <div class="module-preview-title">CRM disponivel</div>
+          <div class="module-preview-desc">Unifique sua base de clientes em um lugar.</div>
+          <div class="module-preview-stat">Clientes que ativam o CRM reduzem churn em 23%.</div>
+          <button class="btn btn-secondary" style="align-self: flex-start;">Ativar modulo</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VOICE / TOM EXAMPLES -->
+    <div class="card" style="margin-bottom: 64px;">
+      <div class="card-header">
+        <span class="card-title">Tom de voz — exemplos</span>
+      </div>
+      <div class="voice-grid">
+        <div class="voice-item info-voice">Sem dados ainda. Conecte sua primeira integracao para ver o painel.</div>
+        <div class="voice-item success-voice">Colecao Verao esgotou em 4 dias. Velocidade 2.3x acima da media.</div>
+        <div class="voice-item warning-voice">Alertas de PCP desativados. Ative para receber notificacoes de atraso.</div>
+        <div class="voice-item danger-voice">3 pedidos aguardando NF-e. Ana Clara precisa liberar.</div>
+        <div class="voice-item neutral-voice">3 de 5 passos concluidos. Proximo: configurar alertas de estoque.</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- THEME TOGGLE BAR -->
+<div class="theme-toggle-bar">
+  <button class="theme-btn active" onclick="setTheme('light')">Light</button>
+  <button class="theme-btn" onclick="setTheme('dark')">Dark</button>
+</div>
+
+<script>
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('themeLabel').textContent =
+    theme === 'light' ? 'Moonstone Light' : 'Moonstone Dark';
+  document.querySelectorAll('.theme-btn').forEach(function(btn) {
+    btn.classList.toggle('active', btn.textContent.trim().toLowerCase() === theme);
+  });
+}
+</script>
+</body>
+</html>

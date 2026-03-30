@@ -1209,6 +1209,45 @@ Following the testing strategy from [TESTING.md](../../platform/TESTING.md).
 
 ---
 
+## Princípios de UX
+
+> Referência: `DS.md` seções 4 (ICP & Filosofia), 7 (Dashboards), 8 (Charts), 11 (Onboarding)
+
+### Layout & Hierarquia
+- **F-pattern:** KPI primário no canto superior esquerdo. Leitura ocidental segue F-pattern — informação mais importante no topo esquerdo, complementar à direita.
+- **Ruído zero:** elemento não útil = carga cognitiva. Fundo e sidebar SEMPRE em nível visual inferior ao conteúdo. Conteúdo é protagonista.
+- **Conduza para ação:** só exibir KPIs acionáveis pelo role. Não mostrar dados que o usuário não pode influenciar.
+
+### Personalização por Role
+Painéis default por role (configurável por tenant):
+
+| Role | Painel default | KPI primário (top-left) |
+|---|---|---|
+| `admin` | War Room | Faturamento hoje vs meta |
+| `pm` | Marketing + Creators | GMV Creators + ROAS |
+| `operations` | PCP Timeline | Ordens atrasadas |
+| `support` | Inbox | Tickets abertos + tempo médio |
+| `finance` | Financeiro | DRE do mês + margem |
+| `creative` | Marketing | UGC pendente + calendário |
+| `commercial` | B2B | Pipeline atacado |
+
+### War Room UX
+- War Room = modo ativado sobre o dashboard (não painel separado). Ativação manual com transição clara.
+- Dados em tempo real: vendas por minuto, estoque por SKU, comparativo com drops anteriores.
+- Hierarquia visual: números grandes em `--text-white` / DM Mono Display, deltas em cor semântica (`--success` / `--danger`).
+
+### Contextualização de Dados
+- Todo valor principal acompanhado de delta (% ou absoluto) + período de referência.
+- Tooltips com enquadramento: "R$ 12.400 — 15% acima da média dos últimos 30 dias".
+- Números em DM Mono, deltas em cor semântica: `--success` para positivo, `--danger` para negativo.
+
+### Empty States & Onboarding
+- **Módulo não ativado:** mostrar preview visual + 1 frase de benefício + CTA "Ativar". Loss aversion: "Clientes que ativam [módulo] reduzem X em Y%."
+- **Dashboard com 1 módulo ativo:** ainda é útil. Mostrar o painel desse módulo + empty states dos demais como oportunidade.
+- **Primeiro login:** welcome contextual por role com guia inline (não modal bloqueante). Guia desaparece após completar checklist de ativação (3-5 passos).
+
+---
+
 ## Appendix A: Panel Data Response Schemas
 
 ### A.1 SummaryCards Response

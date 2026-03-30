@@ -7,8 +7,12 @@ import {
   userTenants,
   roles,
   permissions,
+  integrationProviders,
+  tenantIntegrations,
+  moduleSetupState,
 } from "./src/schema/global";
-import { creatorTiers } from "./src/schema/creators";
+import { creatorTiers, creators, coupons } from "./src/schema/creators";
+import { and, eq } from "drizzle-orm";
 
 // Default password for all seed users — MUST be changed after first login
 const DEFAULT_PASSWORD = "ambaril2026";
@@ -50,10 +54,11 @@ const TEAM = [
 ];
 
 const CREATOR_TIERS_DATA = [
-  { name: "Seed", slug: "seed", commissionRate: "8.00", minFollowers: 0, sortOrder: 0, benefits: { discount: 10 } },
-  { name: "Grow", slug: "grow", commissionRate: "10.00", minFollowers: 5000, sortOrder: 1, benefits: { discount: 15, earlyAccess: true } },
-  { name: "Bloom", slug: "bloom", commissionRate: "12.00", minFollowers: 20000, sortOrder: 2, benefits: { discount: 20, earlyAccess: true, exclusiveProducts: true } },
-  { name: "Core", slug: "core", commissionRate: "15.00", minFollowers: 50000, sortOrder: 3, benefits: { discount: 25, earlyAccess: true, exclusiveProducts: true, monthlyGifting: true } },
+  { name: "Ambassador", slug: "ambassador", commissionRate: "0.00", minFollowers: 0, sortOrder: 0, benefits: { discount: 8 } },
+  { name: "Seed", slug: "seed", commissionRate: "8.00", minFollowers: 0, sortOrder: 1, benefits: { discount: 10 } },
+  { name: "Grow", slug: "grow", commissionRate: "10.00", minFollowers: 5000, sortOrder: 2, benefits: { discount: 15, earlyAccess: true } },
+  { name: "Bloom", slug: "bloom", commissionRate: "12.00", minFollowers: 20000, sortOrder: 3, benefits: { discount: 20, earlyAccess: true, exclusiveProducts: true } },
+  { name: "Core", slug: "core", commissionRate: "15.00", minFollowers: 50000, sortOrder: 4, benefits: { discount: 25, earlyAccess: true, exclusiveProducts: true, monthlyGifting: true } },
 ];
 
 // Role definitions with display names
@@ -69,7 +74,9 @@ const ROLE_DEFINITIONS = [
 
 // Permission matrix (resource:action format)
 const ROLE_PERMISSIONS: Record<string, string[]> = {
-  // admin uses wildcard at app layer — no DB rows needed
+  admin: [
+    "system:impersonate",
+  ],
   pm: [
     "creators:profiles:read", "creators:profiles:write",
     "creators:challenges:read", "creators:challenges:write",
@@ -123,18 +130,28 @@ async function seed() {
 
   console.log("Seeding Ambaril database...\n");
 
-  // 1. Create CIENA tenant
+  // 1. Create or find CIENA tenant
   console.log("1. Creating CIENA tenant...");
-  const [tenant] = await db
+  let [tenant] = await db
     .insert(tenants)
     .values(CIENA_TENANT)
     .onConflictDoNothing()
     .returning({ id: tenants.id });
 
-  if (!tenant) throw new Error("Failed to create tenant (may already exist)");
-  console.log(`   Tenant created: ${tenant.id}`);
+  if (!tenant) {
+    // Already exists — fetch it
+    const existing = await db
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.slug, CIENA_TENANT.slug))
+      .limit(1);
+    tenant = existing[0]!;
+    console.log(`   Tenant already exists: ${tenant.id}`);
+  } else {
+    console.log(`   Tenant created: ${tenant.id}`);
+  }
 
-  // 2. Create roles
+  // 2. Create roles (idempotent — fetch if already exists)
   console.log("2. Creating roles...");
   const insertedRoles: Record<string, string> = {};
   for (const roleDef of ROLE_DEFINITIONS) {
@@ -145,7 +162,18 @@ async function seed() {
       .returning({ id: roles.id, name: roles.name });
     if (role) {
       insertedRoles[role.name] = role.id;
-      console.log(`   Role: ${roleDef.displayName} (${roleDef.name})`);
+      console.log(`   Role created: ${roleDef.displayName} (${roleDef.name})`);
+    } else {
+      // Already exists — fetch it
+      const existing = await db
+        .select({ id: roles.id, name: roles.name })
+        .from(roles)
+        .where(eq(roles.name, roleDef.name))
+        .limit(1);
+      if (existing[0]) {
+        insertedRoles[existing[0].name] = existing[0].id;
+        console.log(`   Role exists: ${roleDef.displayName} (${roleDef.name})`);
+      }
     }
   }
 
@@ -170,7 +198,7 @@ async function seed() {
   }
   console.log(`   ${permCount} permissions created`);
 
-  // 4. Create users
+  // 4. Create users (idempotent)
   console.log("4. Creating users...");
   const passwordHash = await hashPassword(DEFAULT_PASSWORD);
   const insertedUsers: { id: string; role: string }[] = [];
@@ -189,7 +217,17 @@ async function seed() {
 
     if (user) {
       insertedUsers.push({ id: user.id, role: member.role });
-      console.log(`   User: ${member.name} <${member.email}> [${member.role}]`);
+      console.log(`   User created: ${member.name} <${member.email}> [${member.role}]`);
+    } else {
+      const existing = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, member.email))
+        .limit(1);
+      if (existing[0]) {
+        insertedUsers.push({ id: existing[0].id, role: member.role });
+        console.log(`   User exists: ${member.name} <${member.email}> [${member.role}]`);
+      }
     }
   }
 
@@ -206,7 +244,7 @@ async function seed() {
       })
       .onConflictDoNothing();
   }
-  console.log(`   ${insertedUsers.length} user-tenant links created`);
+  console.log(`   ${insertedUsers.length} user-tenant links processed`);
 
   // 6. Create creator tiers for CIENA
   console.log("6. Creating creator tiers...");
@@ -226,8 +264,224 @@ async function seed() {
     console.log(`   Tier: ${tier.name} (${tier.commissionRate}%)`);
   }
 
+  // 7. Create demo creators for testing
+  console.log("7. Creating demo creators...");
+
+  // Find the "Seed" tier for the demo creator
+  const seedTierResult = await db
+    .select({ id: creatorTiers.id })
+    .from(creatorTiers)
+    .where(
+      and(
+        eq(creatorTiers.tenantId, tenant.id),
+        eq(creatorTiers.slug, "seed"),
+      ),
+    )
+    .limit(1);
+
+  const seedTierId = seedTierResult[0]?.id ?? null;
+
+  // Demo creator (active, with coupon)
+  const [demoCreator] = await db
+    .insert(creators)
+    .values({
+      tenantId: tenant.id,
+      name: "Demo Creator",
+      email: "creator@cienalab.com.br",
+      phone: "21999990001",
+      cpf: "000.000.000-01",
+      status: "active",
+      tierId: seedTierId,
+      commissionRate: "8.00",
+      joinedAt: new Date(),
+      contentRightsAccepted: true,
+      motivation: "Demo creator for testing",
+    })
+    .onConflictDoNothing()
+    .returning({ id: creators.id });
+
+  if (demoCreator) {
+    // Create coupon for demo creator
+    await db
+      .insert(coupons)
+      .values({
+        tenantId: tenant.id,
+        creatorId: demoCreator.id,
+        code: "DEMO10",
+        type: "creator",
+        discountType: "percent",
+        discountPercent: "10.00",
+        isActive: true,
+      })
+      .onConflictDoNothing();
+
+    // Link coupon to creator
+    const couponResult = await db
+      .select({ id: coupons.id })
+      .from(coupons)
+      .where(
+        and(
+          eq(coupons.tenantId, tenant.id),
+          eq(coupons.code, "DEMO10"),
+        ),
+      )
+      .limit(1);
+
+    if (couponResult[0]) {
+      await db
+        .update(creators)
+        .set({ couponId: couponResult[0].id })
+        .where(eq(creators.id, demoCreator.id));
+    }
+
+    console.log("   Creator: Demo Creator <creator@cienalab.com.br> [active]");
+  }
+
+  // Pending creator
+  await db
+    .insert(creators)
+    .values({
+      tenantId: tenant.id,
+      name: "Creator Pendente",
+      email: "pendente@cienalab.com.br",
+      phone: "21999990002",
+      cpf: "000.000.000-02",
+      status: "pending",
+      motivation: "Quero divulgar a marca nas minhas redes sociais",
+    })
+    .onConflictDoNothing();
+  console.log("   Creator: Creator Pendente <pendente@cienalab.com.br> [pending]");
+
+  // 8. Seed integration providers catalog
+  console.log("8. Creating integration providers...");
+  const PROVIDERS_DATA = [
+    {
+      providerId: "shopify",
+      capability: "ecommerce",
+      name: "Shopify",
+      description: "Catálogo de produtos, cupons e estoque",
+      icon: "ShoppingBag",
+      configSchema: [
+        { key: "shop", label: "Shopify Store", type: "text", required: true },
+        { key: "clientId", label: "Client ID", type: "text", required: true },
+        { key: "clientSecret", label: "Client Secret", type: "password", required: true },
+      ],
+    },
+    {
+      providerId: "yever",
+      capability: "checkout",
+      name: "Yever",
+      description: "Checkout e atribuição de vendas",
+      icon: "CreditCard",
+      configSchema: [
+        { key: "apiUrl", label: "API URL", type: "url", required: true },
+        { key: "apiKey", label: "API Key", type: "password", required: true },
+      ],
+    },
+    {
+      providerId: "resend",
+      capability: "messaging",
+      name: "Resend",
+      description: "Email transacional e marketing",
+      icon: "Mail",
+      configSchema: [
+        { key: "apiKey", label: "API Key", type: "password", required: true },
+        { key: "fromEmail", label: "Remetente", type: "text", required: true },
+      ],
+    },
+    {
+      providerId: "cloudflare-r2",
+      capability: "storage",
+      name: "Cloudflare R2",
+      description: "Armazenamento de arquivos e imagens",
+      icon: "HardDrive",
+      configSchema: [
+        { key: "accountId", label: "Account ID", type: "text", required: true },
+        { key: "accessKeyId", label: "Access Key ID", type: "text", required: true },
+        { key: "secretAccessKey", label: "Secret Access Key", type: "password", required: true },
+        { key: "bucketName", label: "Bucket Name", type: "text", required: true },
+        { key: "publicUrl", label: "Public URL", type: "url", required: false },
+      ],
+    },
+    {
+      providerId: "instagram",
+      capability: "social",
+      name: "Instagram",
+      description: "Monitoramento de menções e perfis",
+      icon: "Camera",
+      configSchema: [
+        { key: "accessToken", label: "Access Token", type: "password", required: true },
+        { key: "businessAccountId", label: "Business Account ID", type: "text", required: true },
+      ],
+    },
+  ];
+
+  for (const provider of PROVIDERS_DATA) {
+    await db
+      .insert(integrationProviders)
+      .values(provider)
+      .onConflictDoNothing();
+    console.log(`   Provider: ${provider.name} (${provider.capability})`);
+  }
+
+  // 9. Create CIENA tenant integrations (credentials reference .env)
+  console.log("9. Creating CIENA integrations...");
+  const CIENA_INTEGRATIONS = [
+    {
+      tenantId: tenant.id,
+      providerId: "shopify",
+      capability: "ecommerce",
+      credentials: { source: "env", keys: ["SHOPIFY_SHOP", "SHOPIFY_CLIENT_ID", "SHOPIFY_CLIENT_SECRET"] },
+      isActive: true,
+    },
+    {
+      tenantId: tenant.id,
+      providerId: "yever",
+      capability: "checkout",
+      credentials: { source: "env", keys: ["YEVER_API_URL", "YEVER_API_KEY"] },
+      isActive: true,
+    },
+    {
+      tenantId: tenant.id,
+      providerId: "resend",
+      capability: "messaging",
+      credentials: { source: "env", keys: ["RESEND_API_KEY", "FROM_EMAIL"] },
+      isActive: true,
+    },
+    {
+      tenantId: tenant.id,
+      providerId: "cloudflare-r2",
+      capability: "storage",
+      credentials: { source: "env", keys: ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME", "R2_PUBLIC_URL"] },
+      isActive: true,
+    },
+  ];
+
+  for (const integration of CIENA_INTEGRATIONS) {
+    await db
+      .insert(tenantIntegrations)
+      .values(integration)
+      .onConflictDoNothing();
+    console.log(`   Integration: ${integration.providerId} (${integration.capability})`);
+  }
+
+  // 10. Create module setup state (creators = not yet set up)
+  console.log("10. Creating module setup state...");
+  await db
+    .insert(moduleSetupState)
+    .values({
+      tenantId: tenant.id,
+      moduleId: "creators",
+      isSetupComplete: false,
+      currentStep: "integrations",
+      stepData: {},
+    })
+    .onConflictDoNothing();
+  console.log("   Module: creators (setup pending)");
+
   console.log("\nSeed completed successfully!");
   console.log(`\nDefault password for all users: ${DEFAULT_PASSWORD}`);
+  console.log("Creator login: creator@cienalab.com.br (uses 6-digit code, check terminal)");
   console.log("IMPORTANT: Change all passwords after first login.\n");
 }
 

@@ -1,5 +1,5 @@
-export { db } from "./client";
-export type { Database } from "./client";
+export { db, txDb } from "./client";
+export type { Database, TxDatabase } from "./client";
 export * as globalSchema from "./schema/global";
 export * as creatorsSchema from "./schema/creators";
 export * as checkoutSchema from "./schema/checkout";

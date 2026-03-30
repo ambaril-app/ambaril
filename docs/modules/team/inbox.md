@@ -316,7 +316,7 @@ CREATE INDEX idx_metrics_daily_range ON inbox.metrics_daily (date DESC);
 
 ## 4. Screens & Wireframes
 
-All screens follow the Ambaril Design System (DS.md): dark mode default, DM Sans, HeroUI components, Lucide React. Inbox screens use blue accent for agent messages, neutral for customer messages, and red for SLA breach indicators.
+All screens follow the Ambaril Design System (DS.md): light mode default (dark opt-in), DM Sans, shadcn/ui components, Lucide React. Inbox screens use blue accent for agent messages, neutral for customer messages, and red for SLA breach indicators.
 
 ### 4.1 Conversation List (Left Panel)
 
@@ -918,3 +918,28 @@ If the Inbox module has critical issues within the first week:
 ---
 
 *This module spec is the source of truth for Inbox de Atendimento implementation. All development, review, and QA should reference this document. Changes require review from Marcus (admin) or Slimgust (support).*
+
+---
+
+## Princípios de UX
+
+> Referência: `DS.md` seções 4 (ICP & Filosofia), 5 (Componentes), 7 (Dashboards)
+
+### Ação-First
+- **Responder > ler metadata (DS.md 4.2, princípio 5):** a caixa de resposta é o elemento principal. Dados do cliente são contexto, não protagonista.
+- **Template de resposta rápida como ação primária (DS.md 5):** botão de template com hierarquia primária. Permite responder com 2 cliques (selecionar template + enviar).
+- **Atalhos de teclado:** responder (R), próximo ticket (J), ticket anterior (K), fechar ticket (E). Slimgust processa dezenas de tickets por dia — velocidade é crítica.
+
+### Zero Ruído na Thread View
+- **Dados do cliente em sidebar colapsável (DS.md 7, regra 3):** nome, histórico de pedidos, segmento CRM, tags — tudo em sidebar à direita, colapsável. Não no corpo da conversa.
+- **Conteúdo é protagonista (DS.md 9):** a conversa ocupa o espaço principal. Metadata é suporte.
+- **Hierarquia visual clara (DS.md 5):** mensagens do operador vs cliente com diferenciação visual sutil (alignment + bg color level).
+
+### Empty States & Onboarding
+- **Inbox vazio (DS.md 11.3):** "Nenhuma conversa pendente. Quando mensagens chegarem via WhatsApp ou e-mail, aparecem aqui." Tom calmo.
+- **Sem integração ativa (DS.md 11.4):** "Conecte WhatsApp ou e-mail para começar a receber mensagens." CTA: "Configurar canal".
+- **Primeiro uso (DS.md 11.5):** guia inline mostrando como usar templates, tags, e atalhos de teclado.
+
+### Personalização por Role
+- **Support vê Inbox (DS.md 7):** KPI primário = tickets abertos + tempo médio de resposta. Visible no header do inbox.
+- **Métricas contextualizadas (DS.md 8):** "12 tickets abertos (3 há mais de 24h)". Tempo médio com delta: "4.2h (-0.8h vs semana passada)".

@@ -1,7 +1,7 @@
 # INFRA.md -- Infrastructure, Deployment & CI/CD
 
 > Ambaril (Ambaril) infrastructure reference.
-> Last updated: 2026-03-17
+> Last updated: 2026-03-29
 
 ---
 
@@ -10,9 +10,8 @@
 | Component | Service | Rationale |
 |-----------|---------|-----------|
 | **Web App (Next.js)** | Vercel (recommended) | Zero-config Next.js hosting, edge functions, preview deploys, built-in analytics. Self-hosted alternatives: Coolify, Docker on Fly.io, or AWS Amplify. |
-| **Worker (BullMQ)** | Railway or Fly.io | Requires an always-on Node.js process for background job processing (NF-e, email campaigns, image processing, sync jobs). Railway preferred for simplicity; Fly.io for multi-region. |
+| **Background Jobs** | Vercel Cron + PostgreSQL queues | Scheduled via `vercel.json` cron config, job state in PostgreSQL `global.job_queue` table. No separate worker process needed. |
 | **Database** | Neon PostgreSQL (serverless) | Serverless scaling, instant branching per PR, point-in-time recovery, connection pooling built in. |
-| **Redis** | Upstash (serverless) | Serverless Redis with per-request pricing. Used for BullMQ job queues, session cache, rate limiting, real-time pub/sub. |
 | **File Storage** | Cloudflare R2 | S3-compatible object storage with zero egress fees. Powers the DAM module (product images, brand assets, UGC). |
 | **Email** | Resend | Transactional and marketing emails. React Email templates, high deliverability, webhook tracking. |
 | **DNS** | Cloudflare | DNS, CDN, DDoS protection, custom domain routing, R2 custom domain for asset CDN. |
@@ -27,41 +26,41 @@
                                    |
                     +--------------+--------------+
                     |                             |
-            +-------+-------+           +---------+---------+
-            |  Vercel        |           |  assets.ambaril.app|
-            |  (Next.js App) |           |  Cloudflare R2     |
-            +---+----+---+--+           +--------------------+
-                |    |   |
-      +---------+    |   +------------+
-      |              |                |
-+-----+------+ +----+-------+ +------+----------+
-| Neon        | | Upstash    | | External APIs   |
-| PostgreSQL  | | Redis      | | - Mercado Pago  |
-+-----+------+ +----+-------+ | - Focus NF-e    |
-      |              |         | - Melhor Envio   |
-      |              |         | - WhatsApp/Meta  |
-      +---------+----+        | - Instagram      |
-                |              | - Discord        |
-        +-------+-------+     | - Resend         |
-        | Railway/Fly.io |     | - Claude AI      |
-        | (BullMQ Worker)|<----+ - Sentry         |
-        +----------------+     +------------------+
+            +-------+--------+          +---------+---------+
+            |  Vercel         |          |  assets.ambaril.app|
+            |  Next.js + Cron |          |  Cloudflare R2     |
+            +--+-----+----+--+          +--------------------+
+               |     |    |
+     +---------+     |    +------------+
+     |               |                 |
++----+--------+ +----+----------+ +----+-------------+
+| Neon        | | Vercel Cron   | | External APIs    |
+| PostgreSQL  | | (job_queue)   | | - Mercado Pago   |
+| + job_queue | +---------------+ | - Focus NF-e     |
++-------------+                   | - Melhor Envio   |
+                                  | - WhatsApp/Meta  |
+                                  | - Instagram      |
+                                  | - Discord        |
+                                  | - Resend         |
+                                  | - Claude AI      |
+                                  | - Sentry         |
+                                  +------------------+
 
 Flow:
-  User --> Cloudflare --> Vercel (Next.js SSR/API) --> Neon (PG) + Upstash (Redis) + R2 (files)
-  Worker (Railway) --> Neon + Upstash + External APIs
-  External webhooks --> Vercel API routes --> BullMQ queue --> Worker
+  User --> Cloudflare --> Vercel (Next.js SSR/API) --> Neon (PG + job_queue) + R2 (files)
+  Vercel Cron --> /api/cron/* routes --> Neon (process pending jobs) + External APIs
+  External webhooks --> Vercel API routes --> job_queue (INSERT) --> next cron tick processes
 ```
 
 ---
 
 ## 2. Environments
 
-| Environment | DB Branch | URL | Redis Namespace | Purpose |
-|-------------|-----------|-----|-----------------|---------|
-| **Development** | `dev` (branched from `main`) | `localhost:3000` | `dev:` | Local development. Each developer can create personal Neon branches from `dev`. Hot reload, seed data, mocked external APIs where possible. |
-| **Staging** | `staging` (branched from `main`) | `staging.ambaril.app` | `staging:` | Pre-production validation. Connected to sandbox/test accounts for Mercado Pago, Focus NF-e (homologacao), Melhor Envio (sandbox). Used for QA, client demos, and UAT. Mirrors production config with test credentials. |
-| **Production** | `main` | `app.ambaril.app` | `prod:` | Live environment. Real payment processing, real NF-e emission, real shipping quotes. Zero-downtime deploys via Vercel. Database migrations run post-deploy with automatic rollback capability. |
+| Environment | DB Branch | URL | Purpose |
+|-------------|-----------|-----|---------|
+| **Development** | `dev` (branched from `main`) | `localhost:3000` | Local development. Each developer can create personal Neon branches from `dev`. Hot reload, seed data, mocked external APIs where possible. |
+| **Staging** | `staging` (branched from `main`) | `staging.ambaril.app` | Pre-production validation. Connected to sandbox/test accounts for Mercado Pago, Focus NF-e (homologacao), Melhor Envio (sandbox). Used for QA, client demos, and UAT. Mirrors production config with test credentials. |
+| **Production** | `main` | `app.ambaril.app` | Live environment. Real payment processing, real NF-e emission, real shipping quotes. Zero-downtime deploys via Vercel. Database migrations run post-deploy with automatic rollback capability. |
 
 **PR Preview Environments:**
 - Every pull request automatically gets a Vercel preview URL (`pr-{number}.ambaril.vercel.app`).
@@ -72,15 +71,15 @@ Flow:
 
 ## 3. Environment Variables
 
-All environment variables required by the system. Store in Vercel environment settings (per environment) and Railway/Fly.io secrets for the worker.
+All environment variables required by the system. Store in Vercel environment settings (per environment).
 
-### Database & Cache
+### Database & Jobs
 
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `DATABASE_URL` | Neon PostgreSQL connection string (pooled) | `postgresql://user:pass@ep-xyz.us-east-2.aws.neon.tech/ambaril?sslmode=require` |
 | `DATABASE_URL_UNPOOLED` | Direct connection (for migrations only) | `postgresql://user:pass@ep-xyz.us-east-2.aws.neon.tech/ambaril?sslmode=require` |
-| `REDIS_URL` | Upstash Redis connection string | `rediss://default:token@us1-xyz.upstash.io:6379` |
+| `CRON_SECRET` | Secret token to authenticate Vercel Cron requests | `openssl rand -base64 32` |
 
 ### Authentication
 
@@ -284,11 +283,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}
 
-      # Step 7: Deploy worker to Railway
-      - run: railway up --service worker
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
   cleanup-neon-branches:
     runs-on: ubuntu-latest
     steps:
@@ -321,7 +315,7 @@ jobs:
 |------|---------|---------------|
 | **Sentry** | Error tracking, performance monitoring, session replay | Installed in Next.js (client + server + edge). Source maps uploaded during CI. Alert rules for new errors, error spikes, and performance regressions. |
 | **Vercel Analytics** | Web Vitals (LCP, FID, CLS, TTFB, INP) | Enabled in `next.config.js`. Tracks Core Web Vitals per route. Alerts on degradation. |
-| **BullMQ Board** | Background job monitoring | Mounted at `/admin/jobs` (admin-only). Shows active, waiting, completed, and failed jobs per queue. Retry and delete controls. |
+| **Vercel Cron Dashboard** | Background job monitoring | Cron execution logs visible in Vercel dashboard (Logs tab). Job history queryable via `global.job_queue` table in admin UI at `/admin/jobs`. |
 
 ### Uptime Monitoring
 
@@ -329,7 +323,7 @@ jobs:
 |-------|----------|----------|---------|-------|
 | App health | `GET /api/health` | 60s | 10s | Discord #alertas |
 | Checkout health | `GET /api/health` on checkout domain | 60s | 10s | Discord #alertas |
-| Worker health | BullMQ heartbeat job | 120s | 30s | Discord #alertas |
+| Cron health | Query `job_queue` for stale jobs (`status = 'processing'` older than 10 min) | 300s | 10s | Discord #alertas |
 | Database | Connection pool check via health endpoint | 60s | 5s | Discord #alertas |
 
 Use an external uptime service (e.g., BetterUptime, UptimeRobot, or Checkly) for these checks.
@@ -361,8 +355,8 @@ All logs are JSON-formatted with the following fields:
 
 | Severity | Channel | Examples |
 |----------|---------|----------|
-| **Critical** | Discord `#alertas` + SMS (optional) | App down, database unreachable, payment webhook failures, worker crash |
-| **Warning** | Discord `#alertas` | Error rate spike, slow queries (>2s), queue backup (>100 pending jobs) |
+| **Critical** | Discord `#alertas` + SMS (optional) | App down, database unreachable, payment webhook failures, cron route returning 5xx |
+| **Warning** | Discord `#alertas` | Error rate spike, slow queries (>2s), job_queue backup (>100 pending jobs) |
 | **Non-critical** | Sentry dashboard | Individual errors, deprecation warnings, minor performance issues |
 
 ---
@@ -386,12 +380,13 @@ All logs are JSON-formatted with the following fields:
 | **Lifecycle rules** | Delete non-current versions after 90 days. |
 | **Cross-region** | R2 is automatically distributed. No additional replication needed. |
 
-### Redis (Upstash)
+### Background Jobs (PostgreSQL job_queue)
 
 | Feature | Detail |
 |---------|--------|
-| **Ephemeral by design** | Redis data is treated as disposable. Sessions regenerate on next login. BullMQ jobs are retried on failure. Cache keys rebuild on miss. |
-| **No backup needed** | Loss of Redis data causes temporary degradation (slower responses, re-queued jobs) but no data loss. |
+| **Durable by design** | Job state lives in PostgreSQL (`global.job_queue` table), backed up via Neon PITR alongside all other data. |
+| **Retry built-in** | Failed jobs are retried up to `max_attempts` (default 3). Jobs use `FOR UPDATE SKIP LOCKED` to prevent double-processing. |
+| **No separate backup needed** | Job queue is part of the database -- covered by Neon's continuous backup and point-in-time recovery. |
 
 ### Recovery Targets
 
@@ -404,10 +399,9 @@ All logs are JSON-formatted with the following fields:
 
 1. **App outage**: Vercel auto-recovers. If persistent, redeploy last known good commit.
 2. **Database corruption**: Create Neon branch from PITR timestamp. Verify. Promote.
-3. **Worker crash**: Railway auto-restarts. If persistent, check logs, redeploy.
-4. **Redis failure**: Upstash auto-recovers. If persistent, BullMQ jobs retry. Sessions regenerate.
-5. **R2 outage**: Cloudflare SLA. Fallback: serve placeholder images, queue uploads for retry.
-6. **DNS failure**: Cloudflare SLA. Fallback: direct IP access for critical operations.
+3. **Cron jobs not running**: Check Vercel dashboard Logs tab for cron execution errors. Verify `CRON_SECRET` env var. Manually trigger `/api/cron/*` routes if needed. Stale jobs in `job_queue` can be reset to `pending` status.
+4. **R2 outage**: Cloudflare SLA. Fallback: serve placeholder images, queue uploads for retry.
+5. **DNS failure**: Cloudflare SLA. Fallback: direct IP access for critical operations.
 
 ---
 
@@ -445,14 +439,12 @@ Monthly cost estimates in USD based on traffic and usage tiers.
 |---------|------|--------------|
 | Vercel | Pro | $20 |
 | Neon PostgreSQL | Launch (1 project, 10 GiB) | $19 |
-| Upstash Redis | Pay-as-you-go | $5 |
 | Cloudflare R2 | Pay-as-you-go (~10 GB stored) | $2 |
 | Cloudflare DNS/CDN | Free | $0 |
-| Railway (Worker) | Starter | $5 |
 | Resend | Free tier (3k emails/mo) | $0 |
 | Sentry | Developer (5k errors) | $0 |
 | BetterUptime | Free tier | $0 |
-| **Total** | | **~$51/mo** |
+| **Total** | | **~$41/mo** |
 
 ### Medium Tier (Growth: ~5k orders/month, ~100k visitors)
 
@@ -460,15 +452,13 @@ Monthly cost estimates in USD based on traffic and usage tiers.
 |---------|------|--------------|
 | Vercel | Pro (extra bandwidth) | $40 |
 | Neon PostgreSQL | Scale (50 GiB, more compute) | $69 |
-| Upstash Redis | Pro (higher throughput) | $20 |
 | Cloudflare R2 | ~100 GB stored, moderate egress | $10 |
 | Cloudflare DNS/CDN | Free | $0 |
-| Railway (Worker) | Pro (more memory/CPU) | $20 |
 | Resend | Pro (50k emails/mo) | $20 |
 | Sentry | Team (50k errors) | $26 |
 | BetterUptime | Pro | $20 |
 | Claude API | Moderate usage | $50 |
-| **Total** | | **~$275/mo** |
+| **Total** | | **~$235/mo** |
 
 ### High Tier (Scale: ~50k orders/month, ~1M visitors)
 
@@ -476,15 +466,13 @@ Monthly cost estimates in USD based on traffic and usage tiers.
 |---------|------|--------------|
 | Vercel | Enterprise or Pro (extra) | $100 |
 | Neon PostgreSQL | Business (autoscaling) | $200 |
-| Upstash Redis | Enterprise | $80 |
 | Cloudflare R2 | ~1 TB stored | $50 |
 | Cloudflare DNS/CDN | Pro ($20) | $20 |
-| Railway (Worker, multiple instances) | Pro | $60 |
 | Resend | Business (500k emails/mo) | $80 |
 | Sentry | Business (500k errors) | $80 |
 | BetterUptime | Business | $40 |
 | Claude API | Heavy usage | $200 |
-| **Total** | | **~$910/mo** |
+| **Total** | | **~$770/mo** |
 
 > **Notes:**
 > - Mercado Pago, Focus NF-e, and Melhor Envio are pay-per-transaction (not monthly infrastructure costs).
@@ -501,10 +489,10 @@ Monthly cost estimates in USD based on traffic and usage tiers.
 
 | Signal | Action |
 |--------|--------|
-| Response times > 1s on API routes | Optimize queries, add Redis caching, consider ISR for static-ish pages. |
+| Response times > 1s on API routes | Optimize queries, consider ISR for static-ish pages, add PostgreSQL materialized views for heavy reads. |
 | Serverless function cold starts | Use Vercel Edge Functions for latency-sensitive routes. Pre-warm critical paths. |
 | Build times > 10 minutes | Split into smaller deployments, use `turbo` for incremental builds. |
-| Need WebSockets | Vercel does not support persistent WebSockets. Use Upstash Redis pub/sub + SSE, or move real-time features to a separate Fly.io service. |
+| Need WebSockets | Vercel does not support persistent WebSockets. Use SSE (Server-Sent Events) per ADR-013, or move real-time features to a separate service if needed. |
 
 #### Neon PostgreSQL
 
@@ -515,21 +503,14 @@ Monthly cost estimates in USD based on traffic and usage tiers.
 | Storage approaching plan limit | Upgrade plan tier. Archive old audit logs and analytics data. |
 | Need read replicas | Neon supports read replicas on Business plan. Route read-heavy queries (analytics, reports) to replicas. |
 
-#### Upstash Redis
+#### Vercel Cron + PostgreSQL Job Queue
 
 | Signal | Action |
 |--------|--------|
-| Throughput hitting rate limits | Upgrade to Pro/Enterprise. Batch operations where possible. |
-| Memory usage > 256 MB | Review key expiration policies. Ensure cache TTLs are set. Remove unused keys. |
-| BullMQ queue depth consistently > 1000 | Scale worker instances (see below). Optimize job processing time. |
-
-#### Railway/Fly.io Worker
-
-| Signal | Action |
-|--------|--------|
-| Job processing lag > 5 minutes | Add more worker instances (horizontal scaling). Each instance processes jobs concurrently. |
-| Memory usage > 512 MB per worker | Increase instance memory. Investigate memory leaks (especially in image processing). |
-| Need multi-region processing | Migrate to Fly.io for multi-region deployment. Route jobs to nearest region. |
+| Job processing lag > 5 minutes | Increase cron frequency (e.g., from every 5 min to every 1 min). Optimize job handler execution time. Process more jobs per tick (`LIMIT` in the `FOR UPDATE SKIP LOCKED` query). |
+| `job_queue` table growing large | Archive completed/failed jobs older than 30 days to `global.job_queue_archive`. Add index on `(status, scheduled_at)`. |
+| Cron timeout (Vercel 60s limit on Pro) | Break large jobs into smaller chunks. Use a "continuation" pattern: process N items, re-queue remaining. |
+| Need sub-minute scheduling | Vercel Cron minimum is 1 minute. For near-real-time processing, use Server Actions that INSERT + immediately process inline, falling back to cron for retries. |
 
 #### Cloudflare R2
 
@@ -551,7 +532,7 @@ Monthly cost estimates in USD based on traffic and usage tiers.
 
 | Orders/month | Key Actions |
 |--------------|-------------|
-| **0 - 1k** | Single Vercel + single worker. Default plans. Focus on feature development. |
-| **1k - 10k** | Upgrade Neon to Scale. Add Redis caching layer. Optimize critical queries. Add monitoring dashboards. |
-| **10k - 50k** | Multiple worker instances. Read replicas. CDN optimization. Consider separating checkout into its own service for isolation. |
+| **0 - 1k** | Single Vercel deployment with Cron jobs. Default plans. Focus on feature development. |
+| **1k - 10k** | Upgrade Neon to Scale. Increase cron frequency for critical jobs. Optimize queries. Add monitoring dashboards. |
+| **10k - 50k** | Neon read replicas. CDN optimization. Consider separating checkout into its own service for isolation. Archive old job_queue rows. |
 | **50k+** | Enterprise plans across the board. Multi-region consideration. Dedicated support contracts. Evaluate self-hosting for cost optimization. |

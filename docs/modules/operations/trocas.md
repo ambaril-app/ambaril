@@ -334,7 +334,7 @@ CREATE INDEX idx_store_credits_expires ON trocas.store_credits (expires_at) WHER
 
 ## 4. Screens & Wireframes
 
-All screens follow the Ambaril Design System (DS.md): dark mode default, DM Sans, HeroUI components, Lucide React. Trocas screens use amber accent for warning states and green for completed states.
+All screens follow the Ambaril Design System (DS.md): light mode default (dark opt-in), DM Sans, shadcn/ui components, Lucide React. Trocas screens use amber accent for warning states and green for completed states.
 
 ### 4.1 Exchange Request List
 
@@ -991,3 +991,26 @@ If the new Trocas module has critical issues within the first 2 weeks:
 ---
 
 *This module spec is the source of truth for Trocas e Devolucoes implementation. All development, review, and QA should reference this document. Changes require review from Marcus (admin) or Ana Clara (operations).*
+
+---
+
+## Princípios de UX
+
+> Referência: `DS.md` seções 4 (ICP & Filosofia), 6 (Formulários), 11 (Onboarding)
+
+### Fluxo Simples — Máximo 3 Steps
+- **Pergunte menos (DS.md 6.1):** máximo 3 etapas para o operador: motivo → tipo de troca (tamanho/cor, crédito, devolução) → confirmação.
+- **Evite digitação (DS.md 6.2):** motivos pré-definidos (dropdown), tipo de troca por seleção visual (cards), endereço de devolução auto-preenchido do pedido original.
+
+### Explicar Por Quê
+- **Dados sensíveis explicados (DS.md 6.3):** ao pedir dados de devolução, informar "Necessário para gerar etiqueta de logística reversa." Ao pedir fotos do defeito: "Necessário para registro de qualidade junto ao fornecedor."
+- **Tom factual (DS.md 12):** sem urgência artificial. "Envie o produto até [data] para que a troca seja processada."
+
+### Empty States
+- **Lista de trocas (DS.md 11.3):** "Nenhuma troca solicitada. Quando um cliente solicitar, o fluxo aparece aqui." Tom calmo, sem urgência.
+- **Créditos (DS.md 11.3):** "Nenhum crédito de loja emitido. Créditos são gerados quando trocas por crédito são aprovadas."
+- **Onboarding (DS.md 11.2):** checklist de ativação: configurar motivos de troca, definir prazo de troca, conectar Melhor Envio para etiquetas reversas.
+
+### Integração com Inbox
+- **Ação-first (DS.md 4.2, princípio 5):** Slimgust abre solicitação de troca direto da conversa com 1 clique. Dados do pedido e cliente preenchidos automaticamente.
+- **Zero retrabalho:** não pedir dados que já existem na conversa (número do pedido, nome do cliente, produto).

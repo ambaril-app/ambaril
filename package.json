@@ -25,8 +25,7 @@
     "onlyBuiltDependencies": [
       "esbuild",
       "sharp",
-      "@node-rs/argon2",
-      "@heroui/shared-utils"
+      "@node-rs/argon2"
     ]
   }
 }

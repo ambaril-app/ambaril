@@ -1034,7 +1034,7 @@ When the user clicks "Ver todos" in a section or navigates to `/search?q=...`, a
 | 3 | Build initial population scripts for `global.search_index` | P0 | All source tables seeded |
 | 4 | Implement search index sync hooks in application services | P0 | Service layer |
 | 5 | Build `/api/search` endpoint with permission filtering | P0 | Auth middleware, RBAC |
-| 6 | Build `GlobalSearch` component using HeroUI Command | P1 | DS.md compliance |
+| 6 | Build `GlobalSearch` component using Command (cmdk) | P1 | DS.md compliance |
 | 7 | Implement keyboard shortcut (`/`) handler | P1 | GlobalSearch component |
 | 8 | Implement result grouping and "Ver todos" links | P1 | API response format |
 | 9 | Add Redis caching layer for frequent queries | P2 | Upstash Redis |

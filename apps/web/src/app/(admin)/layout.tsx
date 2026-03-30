@@ -1,39 +1,37 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/auth";
+import { getTenantSession } from "@/lib/tenant";
 import { Sidebar } from "@/components/sidebar";
 import { Topbar } from "@/components/topbar";
-
-const ADMIN_ROLES = [
-  "admin",
-  "pm",
-  "creative",
-  "operations",
-  "support",
-  "finance",
-  "commercial",
-];
+import { db } from "@ambaril/db";
+import { eq } from "drizzle-orm";
+import { moduleSetupState } from "@ambaril/db/schema";
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getSession();
+  const session = await getTenantSession();
 
-  if (!session) {
-    redirect("/login");
-  }
+  // Query setup state for all modules
+  const setupRows = await db
+    .select({
+      moduleId: moduleSetupState.moduleId,
+      isSetupComplete: moduleSetupState.isSetupComplete,
+    })
+    .from(moduleSetupState)
+    .where(eq(moduleSetupState.tenantId, session.tenantId));
 
-  if (!ADMIN_ROLES.includes(session.role)) {
-    redirect("/login");
+  const setupState: Record<string, boolean> = {};
+  for (const row of setupRows) {
+    setupState[row.moduleId] = row.isSetupComplete;
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bg-void">
-      <Sidebar session={session} />
-      <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex h-dvh overflow-hidden bg-bg-void">
+      <Sidebar session={session} setupState={setupState} />
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Topbar session={session} />
-        <main className="flex-1 overflow-y-auto px-6 py-8 lg:px-8">
+        <main className="min-w-0 flex-1 overflow-y-auto px-6 py-8 lg:px-8">
           {children}
         </main>
       </div>

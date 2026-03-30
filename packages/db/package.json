@@ -17,12 +17,14 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^0.10",
-    "drizzle-orm": "^0.38",
     "@ambaril/shared": "workspace:*",
-    "@node-rs/argon2": "^2"
+    "@neondatabase/serverless": "^0.10",
+    "@node-rs/argon2": "^2",
+    "drizzle-orm": "^0.38",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
+    "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.30",
     "tsx": "^4",
     "typescript": "^5.7"

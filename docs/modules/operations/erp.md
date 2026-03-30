@@ -1657,6 +1657,29 @@ Following the testing strategy from [TESTING.md](../../platform/TESTING.md).
 
 ---
 
+## Princípios de UX
+
+> Referência: `DS.md` seções 4 (ICP & Filosofia), 6 (Formulários), 10 (Responsividade), 11 (Onboarding)
+
+### Desktop-first + Mobile Funcional
+- **90% desktop (DS.md 10):** ERP é módulo desktop-only na v1 para fluxos complexos (DRE, margem, bulk actions). Mobile funcional apenas para ações de expedição.
+- **Ação sticky em mobile (DS.md 10):** botão "Marcar como enviado" sempre visível (sticky bottom) nas telas de expedição mobile. Não enterrar em menus.
+- **Touch targets (DS.md 10):** mínimo 44px, espaçamento mínimo 8px entre targets em todas as ações mobile.
+- **Complexidade proporcional ao device (DS.md 10):** desktop mostra pipeline completo + detalhes, mobile mostra lista de pedidos + ação principal.
+
+### Formulários Mínimos
+- **Pergunte menos (DS.md 6.1):** mínimo de campos por step. Entrada de estoque: SKU + quantidade + motivo. NF-e: dados preenchidos automaticamente a partir do pedido.
+- **Evite digitação (DS.md 6.2):** auto-complete para SKU (busca por nome/código), seleção de fornecedor por dropdown, scan de código de barras quando possível.
+- **Feedback inline (DS.md 6.4):** validação em tempo real. Estoque negativo = alerta `--danger` imediato. Margem abaixo do mínimo = alerta `--warning`.
+
+### Empty States
+- **Estoque (DS.md 11.3):** "Nenhum produto cadastrado. Importe do Shopify ou crie manualmente." CTA duplo: "Importar do Shopify" (primário) + "Criar produto" (secundário).
+- **Pedidos (DS.md 11.3):** "Nenhum pedido registrado. Quando o primeiro entrar via checkout, aparece aqui."
+- **NF-e (DS.md 11.3):** "Nenhuma NF-e emitida. A emissão acontece quando a expedição marca o envio."
+- **Onboarding por módulo (DS.md 11.2):** checklist de ativação (3-5 passos): conectar Shopify, importar produtos, configurar fiscal, configurar frete.
+
+---
+
 ## Appendix A: Migration from Bling
 
 ### A.1 Data Export from Bling

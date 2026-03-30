@@ -1,71 +1,290 @@
 @import "tailwindcss";
 @config "../../tailwind.config.ts";
 
-/* ─── Ambaril Design System — Moonstone Palette ─── */
+@custom-variant dark (&:where(.dark, .dark *));
 
-@theme {
-  /* Backgrounds (dark → light) */
-  --color-bg-void: #07080B;
-  --color-bg-base: #0C0E13;
-  --color-bg-raised: #101216;
-  --color-bg-surface: #16181F;
-  --color-bg-elevated: #1C1F28;
+/* ===== AMBARIL DESIGN SYSTEM — MOONSTONE DUAL-THEME ===== */
+
+:root {
+  /* ===== MOONSTONE LIGHT (DEFAULT) ===== */
+
+  /* Backgrounds */
+  --bg-void: #F7F8FA;
+  --bg-base: #FFFFFF;
+  --bg-raised: #F3F4F6;
+  --bg-surface: #E8EAF0;
+  --bg-elevated: #FFFFFF;
 
   /* Borders */
-  --color-border-subtle: #1E2129;
-  --color-border-default: #262A34;
-  --color-border-strong: #333844;
+  --border-subtle: rgba(15,23,42,0.06);
+  --border-default: rgba(15,23,42,0.10);
+  --border-strong: rgba(15,23,42,0.18);
 
-  /* Text (ghost → white) */
-  --color-text-ghost: #3A3F4C;
-  --color-text-muted: #5C6170;
-  --color-text-secondary: #7C8293;
-  --color-text-tertiary: #A8AEBB;
-  --color-text-primary: #D0D4DE;
-  --color-text-bright: #E8EAF0;
-  --color-text-white: #F7F8FA;
+  /* Text */
+  --text-ghost: #94A3B8;
+  --text-muted: #64748B;
+  --text-secondary: #475569;
+  --text-tertiary: #475569;
+  --text-primary: #334155;
+  --text-bright: #1E293B;
+  --text-white: #0F172A;
 
   /* Semantic */
-  --color-success: #3ECF8E;
-  --color-success-muted: rgba(62, 207, 142, 0.08);
-  --color-warning: #F5A524;
-  --color-warning-muted: rgba(245, 165, 36, 0.08);
-  --color-danger: #EF4444;
-  --color-danger-muted: rgba(239, 68, 68, 0.08);
-  --color-info: #60A5FA;
-  --color-info-muted: rgba(96, 165, 250, 0.08);
+  --success: #16A34A;
+  --success-muted: rgba(22,163,74,0.08);
+  --warning: #D97706;
+  --warning-muted: rgba(217,119,6,0.08);
+  --danger: #DC2626;
+  --danger-muted: rgba(220,38,38,0.08);
+  --info: #2563EB;
+  --info-muted: rgba(37,99,235,0.08);
 
-  /* Radius */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
-  --radius-xl: 12px;
+  /* Typography */
+  --font: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'DM Mono', 'SF Mono', 'Fira Code', monospace;
 
-  /* Spacing (4px grid) */
-  --spacing-1: 4px;
-  --spacing-2: 8px;
-  --spacing-3: 12px;
-  --spacing-4: 16px;
-  --spacing-5: 20px;
-  --spacing-6: 24px;
-  --spacing-8: 32px;
-  --spacing-10: 40px;
-  --spacing-12: 48px;
+  /* Radius — defined in @theme block (static, same in both themes) */
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md: 0 2px 8px rgba(15,23,42,0.06);
+  --shadow-lg: 0 4px 16px rgba(15,23,42,0.08);
+  --shadow-xl: 0 8px 32px rgba(15,23,42,0.12);
+
+  /* Sidebar */
+  --sidebar-bg: #F7F8FA;
+  --sidebar-item-hover: #F3F4F6;
+  --sidebar-item-active-bg: #FFFFFF;
+  --sidebar-item-active-text: #0F172A;
+  --sidebar-border: rgba(15,23,42,0.08);
+
+  /* Buttons */
+  --btn-primary-bg: #0F172A;
+  --btn-primary-text: #FFFFFF;
+  --btn-secondary-bg: #FFFFFF;
+  --btn-secondary-text: #334155;
+  --btn-secondary-border: rgba(15,23,42,0.15);
+  --btn-ghost-text: #475569;
+  --btn-ghost-hover: #F3F4F6;
+
+  /* Charts */
+  --chart-line: #334155;
+  --chart-area: rgba(15,23,42,0.04);
+  --chart-grid: rgba(15,23,42,0.06);
+  --chart-bar-top: #64748B;
+  --chart-bar-bottom: #CBD5E1;
+  --chart-tooltip-bg: #0F172A;
+  --chart-tooltip-text: #F7F8FA;
+
+  /* Tables */
+  --table-header-bg: #F9FAFB;
+  --table-row-hover: #F9FAFB;
+  --table-border: rgba(15,23,42,0.06);
+
+  /* Inputs */
+  --input-bg: #F3F4F6;
+  --input-border: rgba(15,23,42,0.12);
+  --input-focus-border: #2563EB;
+
+  /* Badge */
+  --badge-bg: #F3F4F6;
+  --badge-text: #334155;
+
+  /* Spacing (base 4px) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+
+  /* Font smoothing */
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+.dark {
+  /* ===== MOONSTONE DARK ===== */
+
+  /* Backgrounds */
+  --bg-void: #07080B;
+  --bg-base: #0C0E13;
+  --bg-raised: #101216;
+  --bg-surface: #16181F;
+  --bg-elevated: #1C1F28;
+
+  /* Borders */
+  --border-subtle: #1E2129;
+  --border-default: #262A34;
+  --border-strong: #333844;
+
+  /* Text */
+  --text-ghost: #3A3F4C;
+  --text-muted: #5C6170;
+  --text-secondary: #7C8293;
+  --text-tertiary: #A8AEBB;
+  --text-primary: #D0D4DE;
+  --text-bright: #E8EAF0;
+  --text-white: #F7F8FA;
+
+  /* Semantic */
+  --success: #3ECF8E;
+  --success-muted: rgba(62,207,142,0.08);
+  --warning: #F5A524;
+  --warning-muted: rgba(245,165,36,0.08);
+  --danger: #EF4444;
+  --danger-muted: rgba(239,68,68,0.08);
+  --info: #60A5FA;
+  --info-muted: rgba(96,165,250,0.08);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md: 0 2px 10px rgba(0,0,0,0.2);
+  --shadow-lg: 0 4px 20px rgba(0,0,0,0.3);
+  --shadow-xl: 0 8px 32px rgba(0,0,0,0.4);
+
+  /* Sidebar */
+  --sidebar-bg: #0C0E13;
+  --sidebar-item-hover: rgba(247,248,250,0.02);
+  --sidebar-item-active-bg: rgba(247,248,250,0.03);
+  --sidebar-item-active-text: #E8EAF0;
+  --sidebar-border: #1E2129;
+
+  /* Buttons */
+  --btn-primary-bg: #E8EAF0;
+  --btn-primary-text: #0C0E13;
+  --btn-secondary-bg: transparent;
+  --btn-secondary-text: #D0D4DE;
+  --btn-secondary-border: #262A34;
+  --btn-ghost-text: #7C8293;
+  --btn-ghost-hover: rgba(247,248,250,0.03);
+
+  /* Charts */
+  --chart-line: #D0D4DE;
+  --chart-area: rgba(247,248,250,0.04);
+  --chart-grid: #1E2129;
+  --chart-bar-top: #A8AEBB;
+  --chart-bar-bottom: #262A34;
+  --chart-tooltip-bg: #1C1F28;
+  --chart-tooltip-text: #D0D4DE;
+
+  /* Tables */
+  --table-header-bg: #101216;
+  --table-row-hover: rgba(247,248,250,0.015);
+  --table-border: #1E2129;
+
+  /* Inputs */
+  --input-bg: #101216;
+  --input-border: #262A34;
+  --input-focus-border: #60A5FA;
+
+  /* Badge */
+  --badge-bg: #16181F;
+  --badge-text: #A8AEBB;
+
+  /* Font smoothing */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Tailwind v4 theme mapping ─── */
+
+@theme {
+  /* Backgrounds */
+  --color-bg-void: var(--bg-void);
+  --color-bg-base: var(--bg-base);
+  --color-bg-raised: var(--bg-raised);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+
+  /* Borders */
+  --color-border-subtle: var(--border-subtle);
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  /* Text */
+  --color-text-ghost: var(--text-ghost);
+  --color-text-muted: var(--text-muted);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-primary: var(--text-primary);
+  --color-text-bright: var(--text-bright);
+  --color-text-white: var(--text-white);
+
+  /* Semantic */
+  --color-success: var(--success);
+  --color-success-muted: var(--success-muted);
+  --color-warning: var(--warning);
+  --color-warning-muted: var(--warning-muted);
+  --color-danger: var(--danger);
+  --color-danger-muted: var(--danger-muted);
+  --color-info: var(--info);
+  --color-info-muted: var(--info-muted);
 
   /* Fonts */
-  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-  --font-mono: 'DM Mono', 'SF Mono', 'Fira Code', monospace;
+  --font-sans: var(--font);
+  --font-mono: var(--font-mono);
+
+  /* Input tokens (for unambiguous border/ring utilities in Tailwind v4) */
+  --color-input-bg: var(--input-bg);
+  --color-input-border: var(--input-border);
+  --color-input-focus: var(--input-focus-border);
+
+  /* Button tokens (for border contexts) */
+  --color-btn-primary-bg: var(--btn-primary-bg);
+  --color-btn-primary-text: var(--btn-primary-text);
+  --color-btn-secondary-bg: var(--btn-secondary-bg);
+  --color-btn-secondary-text: var(--btn-secondary-text);
+  --color-btn-secondary-border: var(--btn-secondary-border);
+  --color-btn-ghost-text: var(--btn-ghost-text);
+  --color-btn-ghost-hover: var(--btn-ghost-hover);
+
+  /* Badge */
+  --color-badge-bg: var(--badge-bg);
+  --color-badge-text: var(--badge-text);
+
+  /* Table tokens */
+  --color-table-header-bg: var(--table-header-bg);
+  --color-table-row-hover: var(--table-row-hover);
+  --color-table-border: var(--table-border);
+
+  /* Sidebar tokens */
+  --color-sidebar-bg: var(--sidebar-bg);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-item-hover: var(--sidebar-item-hover);
+  --color-sidebar-item-active-bg: var(--sidebar-item-active-bg);
+  --color-sidebar-item-active-text: var(--sidebar-item-active-text);
+
+  /* Radius (static — same in both themes, no circular ref) */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
 }
 
 /* ─── Base styles ─── */
 
 body {
-  background-color: var(--color-bg-void);
-  color: var(--color-text-primary);
-  font-family: var(--font-sans);
-  font-variant-numeric: tabular-nums;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font);
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Theme transition (opt-in: only after first paint to avoid FOWT) */
+html.theme-transition,
+html.theme-transition *,
+html.theme-transition *::before,
+html.theme-transition *::after {
+  transition: background-color 200ms ease, border-color 200ms ease, color 150ms ease !important;
 }
 
 /* Scrollbar styling */
@@ -79,10 +298,10 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-text-ghost);
+  background: var(--text-ghost);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-muted);
+  background: var(--text-muted);
 }

@@ -240,7 +240,7 @@ ambaril/
 │   │   ├── seed/                   # Seed data scripts
 │   │   └── index.ts                # DB client export
 │   │
-│   ├── ui/                         # Shared UI components (HeroUI based)
+│   ├── ui/                         # Shared UI components (shadcn/ui based)
 │   │   ├── components/             # Reusable components
 │   │   │   ├── button.tsx
 │   │   │   ├── data-table.tsx
@@ -343,7 +343,7 @@ const config = {
 
 - **Server Components by default.** Only add `"use client"` when you need interactivity (event handlers, hooks, browser APIs).
 - **Collocate styles with Tailwind.** No CSS modules, no styled-components. Use `cn()` from `packages/ui/lib/utils` for conditional classes.
-- **Use HeroUI primitives.** Do not build custom dropdowns, modals, or tables from scratch. Compose from the existing component library.
+- **Use Radix UI primitives via @ambaril/ui.** Do not build custom dropdowns, modals, or tables from scratch. Compose from the existing component library.
 - **Follow [DS.md](../../DS.md)** for colors, spacing, typography, and component patterns. The design system defines the visual language.
 - **Small, focused components.** If a component file exceeds ~200 lines, split it.
 

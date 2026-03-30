@@ -29,7 +29,7 @@
 ## Stack (ver docs/architecture/STACK.md)
 
 - **Framework:** Next.js 15 (App Router)
-- **UI:** HeroUI + Recharts + Lucide React + Tailwind v4 + DM Sans/DM Mono
+- **UI:** shadcn/ui (Radix + cva) + Recharts + Lucide React + Tailwind v4 + DM Sans/DM Mono
 - **ORM:** Drizzle ORM + PostgreSQL (Neon)
 - **Cache/Queues:** PostgreSQL queues + Vercel Cron (ADR-012 — Redis eliminado)
 - **Storage:** Cloudflare R2 (DAM, fotos de produto)
@@ -47,7 +47,7 @@
 
 | Doc | Path | Conteúdo |
 |-----|------|----------|
-| Design System | `DS.md` | Cores (Moonstone), tipografia (DM Sans/Mono), componentes (HeroUI), navegação, charts (Recharts), animações |
+| Design System | `DS.md` | Cores (Moonstone), tipografia (DM Sans/Mono), componentes (shadcn/ui), navegação, charts (Recharts), animações |
 | Plan | `plan.md` | Mapa de 15 módulos + 9 expansões + timeline |
 | Schema | `docs/architecture/DATABASE.md` | 79 tabelas, 15 schemas PostgreSQL |
 | API | `docs/architecture/API.md` | Padrões REST + catálogo de endpoints |
@@ -98,33 +98,70 @@ Modelo de permissão: `resource:action` (ex: `erp:orders:write`, `dam:assets:upl
 | **Flare** | Alertas | `flare` / `notifications` |
 | **Forge** | PCP + ERP | `forge` (conceitual) |
 
-## Mobile-first
+## Responsividade (ver DS.md §10)
 
-Ana Clara usa EXCLUSIVAMENTE mobile — todas as telas de ERP, logística e estoque devem ser responsive-first com touch targets de 44px.
+- **Desktop-first.** 90% do uso é desktop. Mobile é bônus, não requisito.
+- **Exceção:** Ana Clara (logistics) usa EXCLUSIVAMENTE mobile — telas de ERP/logística/estoque devem ser mobile-functional com touch targets de 44px e ação sticky no bottom.
+- **Módulos desktop-only na v1:** Dashboard completo, Analytics, PCP timeline, Fiscal, CRM bulk actions, DAM.
 
-## Integrações externas
+## Frontend — Regras de implementação
+
+Ao escrever qualquer componente visual (React, HTML, CSS):
+
+1. **Consultar DS.md** — tokens, spacing scale (§14.1), overflow rules (§14.2), layout rules (§14.4)
+2. **Consultar skill `baseline-ui`** — checklist de robustez genérica (acessibilidade, overflow, animação)
+3. **Spacing:** usar APENAS a escala do DS.md (4/8/12/16/20/24/32/48/64). Nunca valores arbitrários
+4. **Overflow:** todo texto em flex/grid precisa de `min-width: 0`. Textos em espaço limitado precisam de truncamento (`overflow: hidden; text-overflow: ellipsis; white-space: nowrap`)
+5. **Tabelas:** wrapper com `overflow-x: auto`, `min-width` no `<table>`, `max-width` em cells com dados variáveis
+6. **SVG:** `vector-effect: non-scaling-stroke` em todas as linhas. Charts usam `aspect-ratio` com min/max height
+7. **Interativos:** `min-height: 36px` desktop, `44px` mobile. Labels com `for`. `autocomplete` em inputs
+8. **Dados numéricos:** `font-variant-numeric: tabular-nums`. Monetários com `&nbsp;` (non-breaking space)
+9. **Nunca** bloquear paste, usar `transition: all`, usar `vh` (usar `dvh`), centralizar conteúdo de cards (exceto empty states)
+10. **Teste mental:** antes de entregar, verificar: "o que acontece se o texto for 2x mais longo? Se a tela for 768px? Se o valor for R$ 1.000.000?"
+
+## Integrações externas — Provider Abstraction
+
+**Regra fundamental:** Módulos consomem **capabilities**, nunca providers diretamente.
+Tenant escolhe quais providers conectar em `/admin/settings/integrations` (catálogo estilo app store).
+Código do módulo chama `ecommerce.listCoupons()` — nunca `shopify.listDiscountCodes()`.
+
+### Capabilities e exemplos de providers
+
+| Capability | Providers (CIENA) | Alternativas futuras |
+|------------|-------------------|---------------------|
+| `ecommerce` | Shopify | Nuvemshop, VNDA, WooCommerce |
+| `checkout` | Yever | Shopify Checkout, Mercado Pago |
+| `payments` | Mercado Pago | PagSeguro, Stripe |
+| `social` | Instagram Graph API | TikTok API |
+| `fiscal` | Focus NFe | Bling (fiscal only) |
+| `shipping` | Melhor Envio | Correios direto |
+| `messaging` | Meta Cloud API (WA), Resend (email) | Twilio |
+
+### Serviços de infraestrutura (não são por tenant)
 
 | Serviço | Uso |
 |---------|-----|
-| Mercado Pago | Gateway de pagamento (PIX, cartão, boleto) |
-| Melhor Envio | Frete, etiquetas, rastreamento |
-| Focus NFe | Emissão de NF-e |
-| Meta Cloud API | WhatsApp (sem BSP) |
-| Instagram Graph API | UGC Monitor, Creator Scout |
-| Meta Ad Library | Competitor Watch |
-| Shopify | Storefront + Admin APIs (catálogo mantido) |
-| Claude API | ClawdBot reports (Haiku) + chat (Sonnet) |
-| Resend | Email transacional + marketing |
-| ViaCEP | Lookup de endereço por CEP |
 | Cloudflare R2 | Storage de assets (DAM) |
+| Claude API | ClawdBot reports (Haiku) + chat (Sonnet) |
 | Sentry | Monitoring e error tracking |
-| Bling API v3 | OAuth 2.0 — criar app em developer.bling.com.br/aplicativos |
+| ViaCEP | Lookup de endereço por CEP |
+| Meta Ad Library | Competitor Watch |
 
-## Engenharia reversa (temporario)
+### Provider interface pattern
 
-- **Pasta `_legacy/`:** dados capturados das ferramentas atuais (Bling, Yever, Kevi, TroqueCommerce)
-- Esta pasta e **descartavel** — sera deletada quando modulos estiverem em producao
-- Specs reais do que construir estao em `docs/modules/`
-- Script de captura: `scripts/reverse-engineer.ts` (Playwright)
-- Cada ferramenta tem `NOTAS.md` (analise qualitativa) e `mapeamento.md` (ponte legado → Ambaril)
-- Bling API v3: **OAuth 2.0** (criar app em developer.bling.com.br/aplicativos)
+```
+packages/shared/src/integrations/
+  types.ts                    — Capability interfaces (EcommerceProvider, CheckoutProvider, etc.)
+  registry.ts                 — Resolve tenant → provider at runtime
+  providers/
+    shopify.ts                — implements EcommerceProvider
+    nuvemshop.ts              — implements EcommerceProvider (futuro)
+    yever.ts                  — implements CheckoutProvider
+    mercado-pago.ts           — implements PaymentsProvider
+    instagram.ts              — implements SocialProvider
+    ...
+```
+
+- **Credentials:** por tenant em `global.tenant_integrations` (encrypted). `.env` é para infra da plataforma, não para API keys de tenant.
+- **Adicionar novo provider:** implementar interface da capability + registrar no catálogo. Zero mudanças no código dos módulos.
+

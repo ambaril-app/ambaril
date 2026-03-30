@@ -1,34 +1,37 @@
+"use client";
+
 import * as React from "react";
-import { Chip } from "@heroui/react";
-import type { ChipProps } from "@heroui/react";
+import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
 
-type BadgeVariant = "default" | "success" | "warning" | "danger" | "secondary";
+const badgeVariants = cva(
+  "inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium",
+  {
+    variants: {
+      variant: {
+        default: "bg-[var(--badge-bg)] text-[var(--badge-text)]",
+        success: "bg-[var(--success-muted)] text-[var(--success)]",
+        warning: "bg-[var(--warning-muted)] text-[var(--warning)]",
+        danger: "bg-[var(--danger-muted)] text-[var(--danger)]",
+        secondary: "bg-[var(--bg-surface)] text-[var(--text-secondary)]",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  },
+);
 
-export interface BadgeProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "color"> {
-  variant?: BadgeVariant;
-}
+export interface BadgeProps
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "color">,
+    VariantProps<typeof badgeVariants> {}
 
-const VARIANT_MAP: Record<BadgeVariant, ChipProps["color"]> = {
-  default: "primary",
-  success: "success",
-  warning: "warning",
-  danger: "danger",
-  secondary: "default",
-};
-
-function Badge({ className, variant = "default", children, ...props }: BadgeProps) {
+function Badge({ className, variant, children, ...props }: BadgeProps) {
   return (
-    <Chip
-      color={VARIANT_MAP[variant]}
-      variant="flat"
-      size="sm"
-      className={cn(className)}
-      {...props}
-    >
+    <div className={cn(badgeVariants({ variant }), className)} {...props}>
       {children}
-    </Chip>
+    </div>
   );
 }
 
-export { Badge };
+export { Badge, badgeVariants };

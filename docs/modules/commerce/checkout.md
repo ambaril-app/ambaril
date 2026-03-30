@@ -488,7 +488,7 @@ CREATE INDEX idx_vip_drop_access_active ON checkout.vip_drop_access (is_active, 
 
 ## 4. Screens & Wireframes
 
-All screens follow the Ambaril Design System (DS.md): dark mode default, DM Sans, HeroUI components, Lucide React. The checkout is a **full-width, single-column layout** optimized for mobile-first (Ana Clara tests on mobile). No sidebar. Minimal navigation. Progress indicator at top.
+All screens follow the Ambaril Design System (DS.md): light mode default (dark opt-in), DM Sans, shadcn/ui components, Lucide React. The checkout is a **full-width, single-column layout** optimized for mobile-first (Ana Clara tests on mobile). No sidebar. Minimal navigation. Progress indicator at top.
 
 ### 4.1 Cart Page
 
@@ -1180,6 +1180,9 @@ Route prefix: `/api/v1/checkout`
 | R9 | **PIX QR code expiration** | PIX payments have a 30-minute expiration window. A countdown timer is displayed on the payment page. After expiration, the QR code becomes invalid and the customer must generate a new one. |
 | R10 | **Boleto expiration** | Boleto payments expire in 3 business days. If not paid within this window, the order is automatically cancelled by a background job. |
 | R11 | **Payment idempotency** | Each order can have at most one successful payment. If the Mercado Pago webhook fires multiple times for the same payment_id, only the first successful callback updates the order. Subsequent callbacks are logged but ignored. |
+| R11b | **Idempotency keys** | Each payment attempt generates a UUID v7 idempotency key sent to Mercado Pago. If the same key is sent twice, MP returns the original response without charging again. Key format: `{order_id}_{attempt_number}`. Stored in `checkout.orders.idempotency_key` column. Prevents double charges from network retries or client timeouts. |
+| R11c | **PIX recovery flow** | When a PIX payment expires (30min timeout): (1) DO NOT auto-cancel the order immediately. (2) Emit `checkout.pix_expired` event. (3) CRM triggers IMMEDIATE WA message (higher priority than cart recovery): "Seu PIX expirou! Geramos um novo link para você finalizar sua compra: {new_pix_link}. Válido por 15min." (4) Generate new PIX QR code with 15min expiration. (5) If second PIX also expires: cancel order and release inventory. (6) Recovery message sent within 60 seconds of expiration (real-time, not batched). |
+| R11d | **Soft decline retry** | For credit card `payment_status = 'rejected'` with soft decline codes (insufficient funds, processing error — NOT fraud/stolen card): (1) Offer retry with same card: "Tente novamente — às vezes o banco precisa de uma segunda tentativa." (2) If retry fails: offer PIX as alternative: "Que tal pagar por PIX? É instantâneo e tem {pix_discount}% de desconto!" (3) Maximum 2 retry attempts per order. Hard decline codes (fraud, stolen, blocked) do NOT allow retry — show: "Pagamento não autorizado. Tente outro cartão ou PIX." |
 
 ### 6.3 Validation Rules
 
@@ -1190,6 +1193,8 @@ Route prefix: `/api/v1/checkout`
 | R14 | **Fallback to manual address entry** | If ViaCEP is down (timeout after 5 seconds) or returns an error, the address fields become fully editable for manual entry. A warning message is displayed: "Nao foi possivel buscar o endereco automaticamente. Preencha manualmente." The system retries ViaCEP up to 2 times with 1-second backoff. |
 | R15 | **Email format validation** | Email is validated with a standard regex pattern. No MX record check (would add latency to checkout). |
 | R16 | **Phone format validation** | Phone must be a valid Brazilian mobile number: 11 digits (2-digit DDD + 9-digit number starting with 9). Stored in E.164 format: `+55{ddd}{number}`. |
+| R16b | **Address validation hardening** | After ViaCEP lookup, validate: (1) number field is not empty, (2) number is numeric or valid format (e.g., "123A", "S/N"), (3) complement is not just generic text ("casa", "apt", "apartamento" — require specific number). If validation fails: show confirmation modal "Confirme seu endereço completo antes de finalizar" with all address fields highlighted. |
+| R16c | **FOMO address validation (drops)** | During active VIP drop windows (`vip_drop_access.is_active = TRUE`): display an additional address confirmation modal before payment step: "Confirme seu endereço antes de finalizar — entregas com erro não podem ser reenviadas durante drops." This prevents rush-purchase address errors during high-demand drops. |
 
 ### 6.4 Feature Rules
 
@@ -1225,6 +1230,15 @@ Route prefix: `/api/v1/checkout`
 | R29 | **A/B variant assignment is sticky per session** | When a session first encounters a running A/B test, the variant is assigned based on the `traffic_split_percent` and stored in the session cookie. All subsequent interactions for that session use the same variant. The assignment is logged in `conversion_events.ab_variant`. |
 | R30 | **Minimum sample size for statistical significance** | A/B test results display a significance level calculated using a two-proportion z-test. The admin is warned if the sample size is below the minimum required for 95% confidence (approximately 385 per variant for detecting a 5% absolute difference). The "Declarar vencedor" button is disabled if significance is below 95%. |
 | R31 | **Only one A/B test runs at a time** | To prevent interaction effects, only one A/B test can have `status = 'running'` at any given time. Attempting to start a second test returns an error: "Ja existe um teste A/B em execucao. Encerre o teste atual antes de iniciar um novo." |
+
+### 6.8 Stability & Audit Rules
+
+| # | Rule | Detail |
+|---|------|--------|
+| R32 | **Retry with exponential backoff** | All external API calls (Mercado Pago, ViaCEP, Shopify, Focus NFe, Melhor Envio) use exponential backoff: 1s, 2s, 4s, max 3 retries. Jitter added (random 0-500ms) to prevent thundering herd. Circuit breaker opens after 5 consecutive failures per integration. |
+| R33 | **Audit trail** | Every checkout step is logged to `global.audit_logs`: cart creation, item add/remove, CPF identification, address entry, coupon applied, payment attempted, payment result, order confirmed. Each log includes: `user_id` (or session_id for anonymous), `action`, `resource_type`, `resource_id`, `request_data` (sanitized — no full card numbers), `response_status`, `ip_address`, `timestamp`. |
+| R34 | **Data consistency (ACID)** | Order creation (payment confirmed → order status update → inventory reservation → CRM contact upsert) runs in a PostgreSQL transaction. If ANY step fails, the entire transaction rolls back — no partially created orders. Inventory is only reserved within the transaction. |
+| R35 | **No partial orders** | An order is either fully created (all items, payment reference, contact linked, inventory reserved) or not created at all. There is no intermediate state visible to the customer or admin. The `order.paid` event is only emitted AFTER the transaction commits. |
 
 ---
 
@@ -1308,6 +1322,51 @@ Events emitted by the Checkout module to the Flare notification system. See [NOT
 | `checkout.payment_failed` | Payment rejected by Mercado Pago | In-app | `admin` role | Medium |
 | `checkout.high_value_order` | Order total > R$ 500 confirmed | In-app, Discord `#vendas` | `admin`, `pm`, `operations` | High |
 | `checkout.vip_access_started` | VIP drop window opened | In-app | `admin`, `pm` | Low |
+| `checkout.pix_expired` | PIX payment expired (30min timeout) | WhatsApp (recovery) | Customer (via CRM) | High |
+
+### 7.8 Meta Conversions API (CAPI)
+
+| Property | Value |
+|----------|-------|
+| **Purpose** | Server-to-server conversion tracking for Meta Ads optimization |
+| **Integration pattern** | `packages/integrations/meta-capi/client.ts` (shared with CRM) |
+| **Auth** | System User Access Token (permanent, stored in env) |
+| **API version** | v21.0 |
+| **Webhook** | N/A (outbound only) |
+| **Rate limits** | 2,000 events/second per pixel |
+| **Retry** | Exponential backoff (1s, 2s, 4s), max 3 retries |
+
+**Events sent from Checkout:**
+
+| Event | Trigger | Data Sent (hashed where PII) |
+|-------|---------|------------------------------|
+| `PageView` | Checkout page loaded | ip, user_agent, fbp cookie, fbc cookie |
+| `AddToCart` | `cart.item_added` | + content_ids[], content_type, value, currency |
+| `InitiateCheckout` | CPF identification step completed | + hashed email, hashed phone |
+| `Purchase` | `order.paid` | + hashed email, hashed phone, value, currency, order_id, content_ids[] |
+
+**Deduplication:** `event_id = {session_id}_{event_name}_{timestamp_ms}` ensures no double-counting with browser Meta Pixel.
+
+**Consent:** Events only sent if visitor has tracking consent. Checked via `consent_tracking` cookie or `crm.contacts.consent_tracking`.
+
+### 7.9 GA4 Measurement Protocol
+
+| Property | Value |
+|----------|-------|
+| **Purpose** | Server-side e-commerce event tracking for Google Analytics 4 |
+| **Integration pattern** | `packages/integrations/ga4/client.ts` (shared with CRM) |
+| **Auth** | API Secret + Measurement ID (stored in env) |
+| **Endpoint** | `POST https://www.google-analytics.com/mp/collect` |
+
+**Events sent from Checkout:**
+
+| Event | Trigger | Parameters |
+|-------|---------|-----------|
+| `add_to_cart` | Item added to cart | items[], value, currency |
+| `begin_checkout` | Checkout started | items[], value, currency, coupon |
+| `purchase` | `order.paid` | transaction_id, value, currency, items[], coupon, shipping |
+
+**Enhanced Conversions:** Purchase events include hashed email and phone for cross-device matching (requires `consent_tracking = TRUE`).
 
 ---
 
@@ -1511,5 +1570,35 @@ If the new checkout shows a conversion rate drop > 10% compared to Yever after 7
 | OQ-9 | Future integration: CRO tools (heatmap, scroll tracking, session replay) via Microsoft Clarity (free) or Hotjar | Caio / Marcus | Phase 3+ | Provides click maps and conversion funnel visualization for checkout optimization. Microsoft Clarity is free and privacy-compliant; Hotjar offers more advanced features at cost. Enables data-driven checkout UX improvements: identify where users hesitate, which form fields cause friction, and where scroll depth drops. Phase 3+ consideration — requires script injection on public checkout pages and LGPD consent for session recording. Ref: Pandora96 uses CRO tooling to optimize conversion at every step. |
 
 ---
+
+---
+
+## Princípios de UX
+
+> Referência: `DS.md` seções 4 (ICP & Filosofia), 5 (Componentes), 6 (Formulários)
+
+### Cupom como Recompensa Comportamental
+- **Campo recolhido (DS.md 6.8):** input de cupom recolhido por padrão ("Tem cupom?"), não input fixo visível. Evita que o cliente saia do checkout para buscar cupons.
+- **Recompensa contextual:** se o cliente é creator ou VIP, o cupom aparece pré-preenchido com badge de benefício.
+
+### Paste Nativo Obrigatório
+- **Nunca bloquear paste (DS.md 6.2):** em CPF, endereço, cartão, CEP — paste SEMPRE habilitado. Bloquear paste = atrito desnecessário = abandono.
+
+### Steps Progressivos
+- **3 etapas claras (DS.md 6.1):** Endereço → Pagamento → Confirmação. Barra de progresso visível no topo.
+- **Inversão de sequência (DS.md 6.6):** mostrar resumo do pedido + prazo de entrega + frete ANTES de pedir dados de pagamento. O cliente vê o valor total antes de preencher o cartão.
+
+### CTA Único Primário
+- **Botão "Finalizar compra" (DS.md 5):** como único primário na tela de confirmação. Shadow-sm, hierarquia primária. Tudo mais é ghost/terciário.
+- **Nunca 2 primários (DS.md 5):** "Voltar" e "Continuar comprando" são terciários/ghost. Não competem visualmente.
+
+### Explicação Inline para Dados Sensíveis
+- **CPF (DS.md 6.3):** tooltip inline "Necessário para emissão da NF-e". Aumenta taxa de preenchimento vs campo sem explicação.
+- **Dados de pagamento:** ícone de cadeado + "Seus dados são criptografados" abaixo do formulário de cartão.
+
+### Padrões Especiais
+- **VIP Whitelist Drop Access:** durante as primeiras 24h, UI clara de "acesso exclusivo" — não parecer erro 403.
+- **Split Delivery:** separação de remessas com timeline visual. "Remessa 1: chega dia X" / "Remessa 2: chega dia Y".
+- **Order Bump:** card compacto com CTA secundário, nunca modal bloqueante. Não atrapalhar o fluxo de checkout.
 
 *This module spec is the source of truth for Checkout implementation. All development, review, and QA should reference this document. Changes require review from Marcus (admin) or Caio (pm).*

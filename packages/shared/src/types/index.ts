@@ -43,12 +43,15 @@ export interface SessionData {
   email: string;
 }
 
-// Module registry for sidebar
+// Module registry — single source of truth for sidebar, home page, and catch-all routes.
+// When a module is implemented, change its status from "coming_soon" to "active" here.
 export interface ModuleConfig {
   id: string;
   label: string;
+  description: string;
   icon: string;
   basePath: string;
+  status: "active" | "coming_soon" | "disabled";
   requiredRoles: RoleCode[];
   subroutes: SubRoute[];
 }
@@ -58,6 +61,10 @@ export interface SubRoute {
   label: string;
   path: string;
   requiredPermission?: Permission;
+  /** Show this route only BEFORE module setup is complete */
+  showOnlyBeforeSetup?: boolean;
+  /** Show this route only AFTER module setup is complete */
+  showOnlyAfterSetup?: boolean;
 }
 
 // Notification priority
@@ -77,10 +84,24 @@ export interface TenantData {
   settings: Record<string, unknown>;
 }
 
-// Expanded session with tenant context
-export interface TenantSessionData extends SessionData {
+// Base session with tenant context (returned by getSession)
+export interface BaseTenantSessionData extends SessionData {
   tenantId: string;
   tenantSlug: string;
+}
+
+// Full session with impersonation support (returned by getTenantSession)
+export interface TenantSessionData extends BaseTenantSessionData {
+  /** Role display name from the roles table (e.g., "Administrador") */
+  roleDisplayName: string;
+  /** When impersonating, the role code being impersonated */
+  impersonatingRole?: RoleCode;
+  /** The role that governs visibility (impersonatingRole ?? role) */
+  effectiveRole: RoleCode;
+  /** Permissions of the effective role */
+  effectivePermissions: Permission[];
+  /** True when admin is impersonating another role */
+  isImpersonating: boolean;
 }
 
 // ─── Checkout ──────────────────────────────────────────

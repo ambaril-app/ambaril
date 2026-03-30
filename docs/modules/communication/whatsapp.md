@@ -410,7 +410,7 @@ CREATE INDEX idx_campaigns_created_by ON whatsapp.broadcast_campaigns (created_b
 
 ## 4. Screens & Wireframes
 
-All screens follow the Ambaril Design System (DS.md): dark mode default, DM Sans, HeroUI components, Lucide React. WhatsApp screens use green accent (`#25D366`) for WhatsApp-specific status indicators.
+All screens follow the Ambaril Design System (DS.md): light mode default (dark opt-in), DM Sans, shadcn/ui components, Lucide React. WhatsApp screens use green accent (`#25D366`) for WhatsApp-specific status indicators.
 
 ### 4.1 Template Manager — List
 

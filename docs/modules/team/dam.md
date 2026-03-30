@@ -343,7 +343,7 @@ tarefas.task_attachments.file_url       ──► shared R2 bucket (same infrast
 
 ## 4. Screens & Wireframes
 
-All screens follow the Ambaril Design System: dark mode default, DM Sans, HeroUI components, Lucide React. DAM uses a media-forward layout with large thumbnails, minimal chrome, and responsive grid.
+All screens follow the Ambaril Design System: light mode default (dark opt-in), DM Sans, shadcn/ui components, Lucide React. DAM uses a media-forward layout with large thumbnails, minimal chrome, and responsive grid.
 
 ### 4.1 Asset Library (Grid View — Default)
 

@@ -25,6 +25,12 @@ Todos os itens abaixo foram discutidos e aprovados (ou ajustados) por Marcus. Na
 - **VIP Whitelist Drop Access:** durante as primeiras 24h de um lançamento, site visível para todos mas apenas clientes da whitelist VIP conseguem comprar (login/conta). Após 24h, libera para público geral
 - Tracking de CPF comprador ≠ CPF creator (anti-fraude para programa Creators)
 - **Economia:** 1,8% sobre faturamento (~R$ 3.060/mês a R$ 170k)
+- **UX (DS.md seções 5, 6):**
+  - Cupom como recompensa comportamental (campo recolhido por padrão)
+  - Paste nativo obrigatório em todos os campos
+  - Steps progressivos (endereço → pagamento → confirmação)
+  - Botão "Finalizar compra" como único primário (tudo mais é ghost/terciário)
+  - Explicação inline para CPF ("Necessário para emissão da NF-e")
 
 ### 2. CRM / Retenção (`crm.md`) — substitui Kevi
 - Base unificada de clientes com histórico completo
@@ -37,6 +43,10 @@ Todos os itens abaixo foram discutidos e aprovados (ou ajustados) por Marcus. Na
 - **Cohort Analytics avançado (C2):** análise por coorte de aquisição — "clientes que entraram pelo Drop 10: quantos recompraram no Drop 11? Qual LTV médio dessa coorte?" Queries SQL sobre dados que já existem no CRM. Caio lê esses dados com facilidade
 - **Atribuição de Canal (C3):** toda venda rastreada por origem — Instagram orgânico, ad pago, influencer X, WhatsApp VIP, Google, direto. Todos os links UTMzados. Checkout captura UTM + cupom + fonte de tráfego. Urgente
 - **Economia:** R$ 1.200/mês
+- **UX (DS.md seções 6, 7):**
+  - Personalização por role (Caio vê analytics, Slimgust vê tickets)
+  - LTV com enquadramento: "R$ 2.400 — Top 10% dos clientes"
+  - Progressive disclosure em filtros (básicos visíveis, avançados em expand)
 
 ### 3. Mini-ERP + Fiscal (`erp.md`) — substitui Bling
 - Gestão de pedidos (status pipeline: pendente → pago → separação → enviado → entregue)
@@ -57,6 +67,10 @@ Todos os itens abaixo foram discutidos e aprovados (ou ajustados) por Marcus. Na
 - **DRE Automatizado (C1):** relatório mensal automático para Pedro — receita bruta → descontos → receita líquida → CMV → margem bruta → despesas operacionais → resultado líquido. Todos os dados já existem no ERP
 - Interface 100% responsiva mobile (Ana Clara usa exclusivamente celular)
 - **Economia:** R$ 0–50/mês + eficiência operacional massiva
+- **UX (DS.md seções 6, 10, 11):**
+  - Desktop-first. Mobile funcional para ações de expedição (sticky bottom button "Marcar como enviado")
+  - Formulários com mínimo de campos por step
+  - Empty state de estoque: "Nenhum produto cadastrado. Importe do Shopify ou crie manualmente."
 
 ### 4. PCP — Produção + Fornecedores (`pcp.md`) — O MÓDULO MAIS COMPLETO
 **Status:** PRIORIDADE MÁXIMA — maior gargalo da empresa
@@ -107,6 +121,10 @@ Todos os itens abaixo foram discutidos e aprovados (ou ajustados) por Marcus. Na
 - Gestão de Tarefas (tarefas de produção viram tasks automaticamente)
 - Dashboard Executivo (status de produção, atrasos, custos)
 - ClawdBot Discord (#report-producao diário, #alertas para atrasos)
+- **UX (DS.md seções 6, 7):**
+  - Timeline como view principal (ação > informação)
+  - Form de OP com progressive disclosure (dados básicos primeiro, detalhes em accordion)
+  - Alertas com contexto: "3 dias para deadline. Fornecedor X não confirmou entrega."
 
 ### 5. WhatsApp Engine (`whatsapp.md`)
 - Mensagens transacionais (confirmação, envio, rastreamento)
@@ -124,6 +142,10 @@ Todos os itens abaixo foram discutidos e aprovados (ou ajustados) por Marcus. Na
 - Estoque atualizado ao receber produto de volta
 - Integração com Inbox (Slimgust abre solicitação direto da conversa)
 - Comissões do programa Creators: só sobre vendas confirmadas após 7 dias (janela de troca)
+- **UX (DS.md seções 6, 11):**
+  - Fluxo simples: máximo 3 steps (motivo → tipo de troca → confirmação)
+  - Explicar por quê ao pedir dados de devolução
+  - Empty state: "Nenhuma troca solicitada. Quando um cliente solicitar, o fluxo aparece aqui."
 
 ### 7. Inbox de Atendimento (`inbox.md`)
 - Inbox unificado WhatsApp + e-mail para Slimgust
@@ -131,6 +153,10 @@ Todos os itens abaixo foram discutidos e aprovados (ou ajustados) por Marcus. Na
 - Tags, status, respostas rápidas, templates
 - Integração nativa com Trocas
 - Métricas: tempo de resposta, volume, taxa de resolução
+- **UX (DS.md seções 5, 7):**
+  - Ação-first: responder > ler metadata
+  - Thread view com zero ruído (dados do cliente em sidebar colapsável, não no corpo)
+  - Template de resposta rápida como ação primária
 
 ---
 
@@ -159,6 +185,11 @@ Todos os itens abaixo foram discutidos e aprovados (ou ajustados) por Marcus. Na
 - Detecção de posts via Instagram Graph API (alimenta sistema de pontos)
 - **Bridge:** Moneri nos primeiros 60–90 dias → migrar para Ambaril
 - Dashboard admin: GMV, top performers, CAC, ROAS, mix de produtos por creator
+- **Evoluções futuras (C1-C7):** Content Studio, AI Content Coach, Shoppable Creator Feed, Creator Matchmaking AI, Real-time Sales Toast, Briefing Automatizado, Micro-Affiliate Links (ver `creators.md` seção 18)
+- **UX (DS.md seções 4, 6, 11):**
+  - Formulário público 3 etapas: inversão de sequência (mostrar benefícios/tier antes de pedir dados pessoais)
+  - Portal creator: empty states com checklist ("Poste seu primeiro conteúdo para começar a acumular pontos")
+  - Onboarding de creator com 3-5 passos de ativação
 
 ### 10. Marketing Intelligence (`marketing-intel.md`)
 - **UGC Monitor:** Instagram Graph API — menções/tags @cienalab, métricas de engajamento, identificação de UGC com potencial para Partnership Ads
@@ -209,6 +240,12 @@ Todos os itens abaixo foram discutidos e aprovados (ou ajustados) por Marcus. Na
 - **Drop War Room:** view de tempo real ativada durante lançamentos — vendas por minuto, estoque em tempo real por SKU, comparativo com drops anteriores. Ativação manual por Marcus ou Caio
 - DRE visual mensal (alimentado pelo ERP)
 - Alertas automáticos configuráveis
+- **UX (DS.md seções 4, 7, 8):**
+  - F-pattern: KPI primário top-left por role (ver tabela DS.md seção 7)
+  - Personalização por role — painéis default configuráveis por tenant
+  - Empty states que vendem módulos inativos (preview + benefício + CTA "Ativar módulo")
+  - War Room = modo ativado sobre o dashboard (não painel separado)
+  - Dados sempre contextualizados: delta + período de referência
 
 ### 14. Repositório de Assets / DAM (`dam.md`)
 **Status:** Confirmado — Google Drive é muito caótico
@@ -329,6 +366,104 @@ Estes não são módulos separados — são funcionalidades que ficam compartime
 
 ---
 
+## NOVOS MÓDULOS (Análise Estratégica v2 — Sessão 21)
+
+### N1. CRO Engine — Motor de Otimização de Conversão
+**Vive dentro de:** Checkout + Dashboard
+- Heatmap & Session Recording via Microsoft Clarity (gratuito, LGPD-compliant com consent)
+- A/B Testing automatizado com sugestões AI (complementa A/B do Checkout)
+- Conversion Funnel Analysis (evolução do funel do Checkout com comparativos por período)
+- Page Speed Monitor (Core Web Vitals — TTFB sub-100ms meta)
+- Price Elasticity Calculator (simulação "se mudo preço de X para Y, volume muda Z%")
+- Social Proof Engine (notificações reais de compras recentes — usa dados do pipeline)
+- **Phase:** 3+ (após Dashboard e Checkout estarem live)
+
+### N2. SEO & AEO — Visibilidade em Buscadores + AI Browsers
+**Vive dentro de:** ERP + Shopify
+- Product Data Enrichment Score ("seus dados estão 67% prontos para AI shoppers")
+- Schema.org / Structured Data Generator (JSON-LD automático para todos produtos)
+- AI-Readiness Score (produtos prontos para agentic commerce)
+- Content Suggestions (keywords + gaps identificados vs. concorrentes)
+- Technical SEO Audit (meta tags, canonical, sitemap, robots.txt)
+- AEO Optimization (FAQs estruturadas, atributos granulares para AI browsers)
+- **Phase:** 3+ (após ERP com catálogo rico)
+
+### N3. Onsite Tools — Widgets Controlados pelo Painel Ambaril
+**Vive dentro de:** CRM (evolução do On-Site Widget Engine Phase 2) + Shopify Theme App Extension
+- O1: Smart Popup Builder (targeting por segmento CRM, comportamento, device)
+- O2: Social Proof Notifications (dados reais do pipeline — "Maria acabou de comprar X")
+- O3: Product Recommendation Widget (collaborative filtering com dados de compra)
+- O4: Size Quiz (zero-party data → CRM → recomendação de tamanho)
+- O5: Drop Countdown (timer + opt-in WA/email para notificação)
+- O6: Creator Showcase (UGC shoppable — galeria curada de posts de creators)
+- O7: Back-in-Stock Alert (→ CRM automação R5 Back in Stock)
+- O8: Sticky Cart (carrinho persistente em todas as páginas)
+- O9: Live Shopping Widget (futuro — streaming + compra em tempo real)
+- **Phase:** CRM Phase 2 (On-Site Widget Engine é a base, Onsite Tools são os widgets)
+
+### N4. Astro — O Cérebro do Ambaril (AI Brain)
+**Status:** Aprovado. Implementação incremental acompanhando cada módulo.
+
+**Conceito:** AI assistant com contexto completo da operação, memória cumulativa, e capacidade de executar ações. Chat em linguagem natural acessível a todos os usuários do tenant.
+
+**Interfaces:**
+
+| Interface | Quem usa | O que faz |
+|-----------|----------|-----------|
+| Chat no Dashboard | Marcus, Caio, todos | "Quantas vendas esta semana?" "Qual creator performou melhor?" |
+| Discord (ClawdBot) | Time inteiro | Reports automáticos + queries naturais + ações |
+| WhatsApp (alertas) | Marcus, Caio | Alertas críticos em tempo real |
+| Email (briefs) | Marcus | Weekly Executive Brief automático |
+| Portal Creator | Creators | AI Content Coach + sugestões de posts |
+| Inbox | Slimgust | AI Draft de resposta + self-service bot |
+
+**Memória cumulativa (3 camadas):**
+1. **Event Log** (append-only) — tudo que observou/concluiu. Tabela: `brain.events`
+2. **Knowledge Graph** (incremental) — relações entre entidades. Tabela: `brain.knowledge_edges`
+3. **Semantic Memory** (pgvector) — embeddings de insights/decisões. Busca por similaridade. PostgreSQL + pgvector (Neon)
+
+**Modelo de custo AI:**
+
+| Modelo | Custo/1M tokens (input) | Uso no Astro |
+|--------|-------------------------|-------------|
+| Gemini 2.0 Flash | ~$0.10 | Classificação, parsing, tarefas simples (80% volume) |
+| Claude Haiku 4.5 | $0.80 | Reports estruturados, anomaly detection |
+| Claude Sonnet 4.6 | $3.00 | Chat, análise profunda, insights cross-module |
+
+Estimativa: **$30-80/mês por tenant** (80% tasks baratas + 20% análise profunda).
+
+**Fases incrementais:**
+
+| Fase | Capability | Quando | Custo AI/tenant |
+|------|-----------|--------|----------------|
+| Astro v0.1 | Anomaly detection (thresholds) + alertas automáticos | Com cada módulo | ~$5/mês |
+| Astro v0.2 | Correlações entre 2 módulos + Weekly Brief | Após 3+ módulos live | ~$15/mês |
+| Astro v0.3 | Chat natural + memória semântica | Após Dashboard | ~$40/mês |
+| Astro v0.4 | Predictive (churn, demand, next-purchase) | 6+ meses de dados | ~$60/mês |
+| Astro v0.5 | Autonomous actions (com aprovação) | 12+ meses | ~$80/mês |
+
+**Exemplos cross-module:**
+
+| Insight | Módulos envolvidos | Ação |
+|---------|-------------------|------|
+| "Creator João vendeu 3x mais, mas 60% trocaram por tamanho errado" | Creators + Trocas + CRM | Briefing para João: comunicar sizing correto |
+| "Clientes que recompram em 30 dias pós-drop têm LTV 4.7x maior" | CRM + Checkout + ERP | Automação "look complementar" 15 dias após drop |
+| "SKU top-seller com 5 dias de estoque, OP entrega em 15" | ERP + PCP + Dashboard | ALERTA CRÍTICO: revenue leak R$12.4k projetado |
+
+---
+
+### Integrações Faltantes (adições da Análise v2)
+
+| Integração | Status Anterior | Ação | Phase |
+|------------|----------------|------|-------|
+| Meta CAPI (Conversions API) | NÃO EXISTIA | **ADICIONADO** ao Checkout + CRM | 1A |
+| GA4 Measurement Protocol | NÃO EXISTIA (Shopify Analytics como proxy) | **ADICIONADO** como integração direta | 1B |
+| GA4 Enhanced Conversions | NÃO EXISTIA | **ADICIONADO** | 1B |
+| Server-Side GTM | NÃO EXISTIA | **ADICIONADO** ($100-200/mês) | 2 |
+| TikTok Events API | Planejado | **CONFIRMADO** para v1.1 | v1.1 |
+
+---
+
 ## TIMELINE CONSOLIDADA (v3 — Roadmap Sessao 17)
 
 > **Estrategia v3:** Construir ferramentas NOVAS primeiro (geram receita), substituir existentes depois (ja funcionam).
@@ -348,7 +483,40 @@ Estes não são módulos separados — são funcionalidades que ficam compartime
 | Global search | tsvector indexes, search endpoint | Tudo |
 | ADR-014 | Multi-tenancy: Shared DB + tenant_id + RLS (B+A) — **APROVADO** | Tudo |
 
-> **Status:** Scaffolding completo, compilando. Neon DB criado (sa-east-1). GitHub repo criado. ADR-014 APROVADO. Proximo: implementar tenant_id + RLS → migrations → seed → primeiro commit.
+> **Status:** Scaffolding completo, compilando. Neon DB criado (sa-east-1). GitHub repo criado. ADR-014 APROVADO.
+
+> **Regra UX de entrega (DS.md seções 4, 7, 11):** Cada módulo entregue deve incluir: empty states, checklist de ativação por role, e welcome contextual. Módulos não ativados pelo tenant devem ser visíveis mas dimmed com preview + CTA.
+
+> **Regra de integração (Sessão 25):** Módulos consomem **capabilities**, não providers específicos. Tenant escolhe providers no catálogo de integrações. Código do módulo chama `ecommerce.listCoupons()`, nunca `shopify.listDiscountCodes()`. Ver IMPLEMENTATION.md §0.0.
+
+> **Regra de entrega por camadas (Sessão 25):** Cada módulo é entregue em layers priorizados:
+> - **Layer 0:** Onboarding do módulo (check integrations → import dados existentes → configurar → ativar)
+> - **Layer 1:** Fluxo core (3-5 páginas admin + 3-5 páginas user, com dados reais)
+> - **Layer 2:** Engajamento (features que dependem de dados acumulados — progressive disclosure)
+> - **Layer 3:** Avançado (compliance, anti-fraud, analytics, automações)
+> Ver IMPLEMENTATION.md "Module Delivery Framework".
+
+### Fase 0.5: Tenant Onboarding & Integration Catalog
+
+| Item | Descrição | Bloqueante para |
+|------|-----------|----------------|
+| **Módulo Onboarding** | Wizard de setup do tenant: criar conta → conectar integrações → configurar módulos | Todos os módulos |
+| **Integration Catalog** | Catálogo de providers por capability (ecommerce, checkout, payments, social, fiscal, shipping, messaging). Tenant escolhe quais conectar. UI estilo app store em `/admin/settings/integrations` | Creators, CRM, ERP, todos |
+| **Provider Layer** | Interface de abstração: cada capability tem TypeScript interface. Providers implementam interface. Módulos consomem capabilities, nunca providers diretamente | Todos os módulos |
+| **Tabelas `global.integration_providers` + `global.tenant_integrations`** | Seed data com providers disponíveis + credenciais criptografadas por tenant | Todos os módulos |
+| **CIENA setup** | Conectar Shopify (ecommerce) + Yever (checkout) + Instagram (social) + Resend (messaging) como primeiro tenant | Fase 1 (Creators) |
+
+> **Capabilities e providers iniciais:**
+> | Capability | Providers v1 | Futuro |
+> |------------|-------------|--------|
+> | `ecommerce` | Shopify | Nuvemshop, VNDA, WooCommerce |
+> | `checkout` | Yever | Shopify Checkout, Mercado Pago |
+> | `payments` | Mercado Pago | PagSeguro, Stripe |
+> | `social` | Instagram Graph API | TikTok API |
+> | `fiscal` | Focus NFe | Bling (fiscal only) |
+> | `shipping` | Melhor Envio | Correios direto |
+> | `messaging` | Meta Cloud API (WA), Resend (email) | Twilio |
+> | `storage` | Cloudflare R2 | — (infraestrutura, não por tenant) |
 
 ### Fase 1: Creators (PRIORIDADE #1 — ferramenta NOVA, gera receita)
 
@@ -410,15 +578,25 @@ Ferramentas que já existem e funcionam (Kevi, Yever, Bling, TroqueCommerce) —
 ```
 Fase 0 (Foundation) ─────────────────────────────────────────┐
   │                                                           │
+  ├─► Fase 0.5 (Tenant Onboarding + Integration Catalog) ────┤
+  │     └─► Provider Layer + Catalog UI + CIENA setup         │
+  │                                                           │
   ├─► Fase 1 (Creators — prioridade #1) ─────────────────────┤
+  │     └─► Astro v0.1 (anomaly detection)                   │
   │                                                           │
   ├─► Fase 2 (PCP — prioridade #2) ──────────────────────────┤
+  │     └─► Astro v0.1 (alertas PCP)                         │
   │                                                           │
   ├─► Fase 3 (Dashboard, Marketing Intel, Tarefas, DAM) ─────┤
+  │     └─► Astro v0.2 (correlações) + v0.3 (chat)           │
   │                                                           │
   ├─► Fase 4 (Substituições: CRM, Checkout, ERP, Trocas) ────┤
+  │     └─► CRO Engine + SEO/AEO + Onsite Tools              │
   │                                                           │
-  └─► Fase 5 (Expansões + Hardening)
+  ├─► Fase 5 (Expansões + Hardening) ────────────────────────┤
+  │     └─► Astro v0.4 (predictive)                          │
+  │                                                           │
+  └─► Fase 6 (Astro v0.5 — autonomous actions)
 ```
 
 ### Diferenças-chave: roadmap v2 vs. v3
@@ -459,11 +637,12 @@ Stack aprovada (ADRs 008-014). Fase 0 em progresso.
 - [x] Drizzle schemas definidos (79 tabelas, 7 schemas)
 - [x] Auditoria completa + correcoes pre-commit (sessao 17)
 
-**Proximos passos (Phase 0 — finalizar Foundation):**
-1. Implementar multi-tenancy B+A (tenant_id em ~95 tabelas + RLS policies)
-2. Gerar e aplicar migrations (`drizzle-kit migrate`)
-3. Seed data (tenant CIENA + 9 usuarios + creator_tiers + roles/permissions)
-4. Primeiro commit + push
-5. **Fase 1** — Creators (prioridade #1, gera receita nova)
+**Proximos passos (Phase 1 — Creators):**
+1. Push first commit to GitHub
+2. Phase 1 Wave 1: UI Components + Forms + Zod schemas
+3. Phase 1 Wave 2: Server Actions + Service Clients
+4. Phase 1 Wave 3: Admin pages + Creator Portal
+5. Phase 1 Wave 4: Cron jobs + Instagram polling + E2E test
+6. Phase 1 Wave 5: Cross-review + DS compliance
 
 *Este documento e definitivo em escopo macro. Detalhes tecnicos estao nos .md individuais de cada modulo.*

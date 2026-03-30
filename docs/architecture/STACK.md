@@ -2,7 +2,7 @@
 
 > **Versão:** 1.0
 > **Data:** Março 2026
-> **Status:** Opções em aberto — decisões finais pendentes de Marcus/Caio
+> **Status:** Aprovado — ADRs 008-014 ratificados
 > **Referências:** [DS.md](../../DS.md), [plan.md](../../plan.md), [GLOSSARY.md](../dev/GLOSSARY.md)
 
 ---
@@ -31,13 +31,13 @@ Ambaril (marca UI: **Ambaril**) é uma plataforma SaaS all-in-one para a marca d
 | SvelteKit | Performance excelente, DX simples, bundle menor | Ecossistema menor, menos devs disponíveis, shadcn não nativo | Alternativa |
 | Remix | Bom para forms, nested routes | Comunidade menor, menos integrações | Descartado |
 
-**Decisão:** A decidir. Recomendação: Next.js 15.
+**Decisão:** APROVADO (ADR-008) — Next.js 15.
 
 ### 2.2 UI Layer (definido pelo DS.md)
 
 | Lib | Uso | Versão de referência |
 |-----|-----|---------------------|
-| **HeroUI** | Componentes base (Button, Input, Select, Dialog, Table, Tabs, Tooltip, Popover, Command, Sheet) | latest |
+| **shadcn/ui** | Componentes base (Button, Input, Select, Dialog, Table, Tabs, Tooltip, Popover, Command, Sheet) — Radix UI headless + cva + Tailwind | latest |
 | **Recharts** | Charts e metric cards no Beacon Dashboard | v3+ |
 | **Lucide React** | Ícones (`lucide-react`) — Light, Regular, Bold apenas | latest |
 | **Tailwind CSS** | Utilitários de layout, responsividade, estados | v4+ |
@@ -52,7 +52,7 @@ Ambaril (marca UI: **Ambaril**) é uma plataforma SaaS all-in-one para a marca d
 | **Jotai** (client) | Atômico, bom para estado derivado | Curva de aprendizado, overhead para equipe pequena | Alternativa |
 | React Context | Nativo, sem dependência | Renders desnecessários, não escala | Não recomendado |
 
-**Decisão:** A decidir. Recomendação: RSC + Zustand.
+**Decisão:** APROVADO (ADR-011) — RSC + Zustand.
 
 ### 2.4 Forms e Validação
 
@@ -71,7 +71,7 @@ Zod schemas são definidos uma vez e usados tanto no frontend (validação inlin
 | SWR | Mais simples, Vercel ecosystem | Menos features que TanStack | Alternativa |
 | Server Actions only | Zero lib extra | Limitado para UX complexa (optimistic, cache) | Insuficiente sozinho |
 
-**Decisão:** A decidir. Recomendação: Server Actions para mutations + TanStack Query para client data.
+**Decisão:** APROVADO — Server Actions para mutations + TanStack Query para client data.
 
 ---
 
@@ -85,7 +85,7 @@ Zod schemas são definidos uma vez e usados tanto no frontend (validação inlin
 | Hono (separado) | Ultra leve, edge-ready, type-safe | Segundo deploy, mais complexidade | Para API pública futura |
 | Fastify (separado) | Maduro, plugins, performance | Overhead de manter 2 stacks | Não recomendado p/ equipe pequena |
 
-**Estratégia recomendada:** Next.js API Routes como BFF principal. Se necessário no futuro, extrair APIs para Hono. Background jobs via worker separado (ver seção 8).
+**Decisão:** APROVADO (ADR-008) — Next.js API Routes + Server Actions como BFF principal. Se necessário no futuro, extrair APIs para Hono. Background jobs via PostgreSQL queues + Vercel Cron (ver seção 6).
 
 ### 3.2 ORM / Database Access
 
@@ -95,7 +95,7 @@ Zod schemas são definidos uma vez e usados tanto no frontend (validação inlin
 | Prisma | Maduro, Prisma Studio, grande ecossistema | Pesado (~8MB), queries complexas requerem raw SQL, overhead de schema.prisma | Alternativa |
 | Kysely | Query builder puro, zero overhead | Sem migrations embutido, menos ergonômico | Para SQL experts |
 
-**Decisão:** A decidir. Recomendação: Drizzle ORM.
+**Decisão:** APROVADO (ADR-009) — Drizzle ORM.
 
 **Justificativa Drizzle:** O Ambaril precisa de queries SQL complexas (tsvector search, window functions para RFM, CTEs para DRE, aggregations para dashboard). Drizzle permite raw SQL ergonomicamente sem sair do ORM. Prisma obrigaria raw SQL separado para metade das queries do sistema.
 
@@ -123,26 +123,28 @@ Zod schemas são definidos uma vez e usados tanto no frontend (validação inlin
 | Railway | Simple, flat pricing, always-on | Sem branching, sem scale-to-zero | Alternativa simples |
 | RDS (AWS) | Enterprise, confiável | Overkill, gerenciamento manual, caro | Não recomendado |
 
-**Decisão:** A decidir. Recomendação: Neon (branching é killer feature para dev workflow).
+**Decisão:** APROVADO (ADR-010) — Neon PostgreSQL Scale ($69/mês). Branching é killer feature para dev workflow.
 
 ---
 
 ## 5. Cache e Real-time
 
-### 5.1 Redis
+### 5.1 Redis — REJEITADO (ADR-012)
+
+> **Redis foi eliminado da stack.** Background jobs usam PostgreSQL queues + Vercel Cron. Sessions usam cookie `ambaril_session` com tabela `global.sessions`. Rate limiting usa PostgreSQL. Cache de dashboard usa RSC + ISR/revalidação.
 
 | Opção | Prós | Contras | Nota |
 |-------|------|---------|------|
-| **Upstash** | Serverless, pay-per-request, REST API, edge-compatible | Latência vs. dedicated Redis | **Recomendado** |
-| Railway Redis | Always-on, dedicated, previsível | Sem edge, pricing fixo | Alternativa |
-| Vercel KV | Integrado, edge-ready | Wrapper do Upstash com markup | Alternativa (se Vercel) |
+| ~~Upstash~~ | Serverless, pay-per-request, REST API, edge-compatible | Latência vs. dedicated Redis | **REJEITADO (ADR-012)** |
+| ~~Railway Redis~~ | Always-on, dedicated, previsível | Sem edge, pricing fixo | **REJEITADO (ADR-012)** |
+| ~~Vercel KV~~ | Integrado, edge-ready | Wrapper do Upstash com markup | **REJEITADO (ADR-012)** |
 
-**Usos de Redis no Ambaril:**
-- Session store (auth)
-- Job queue (BullMQ)
-- Real-time counters (Drop War Room: vendas/minuto, estoque por SKU)
-- Rate limiting (API, WhatsApp sends)
-- Cache de dados de dashboard (TTL: 5min para métricas, 1min para War Room)
+**Usos originalmente planejados para Redis (agora resolvidos sem Redis):**
+- ~~Session store~~ → cookie `ambaril_session` + tabela `global.sessions`
+- ~~Job queue (BullMQ)~~ → PostgreSQL queues + Vercel Cron (ADR-012)
+- Real-time counters (Drop War Room) → SSE + PostgreSQL (ADR-013)
+- Rate limiting → PostgreSQL-based
+- Cache de dados de dashboard → RSC + ISR/revalidação
 
 ### 5.2 Real-time (Drop War Room)
 
@@ -152,7 +154,7 @@ Zod schemas são definidos uma vez e usados tanto no frontend (validação inlin
 | WebSocket (Soketi/Pusher) | Bidirecional, maduro | Requer infra separada, custo | Para escala maior |
 | Polling (5s) | Zero infra extra | Latência, tráfego desnecessário | Fallback |
 
-**Estratégia recomendada:** SSE para Drop War Room + notifications. A War Room é read-only (dados fluem servidor→cliente). SSE funciona nativamente com Next.js e Vercel. Se bidirecional for necessário no futuro, migrar para WebSocket.
+**Decisão:** APROVADO (ADR-013) — SSE para Drop War Room + notifications. A War Room é read-only (dados fluem servidor→cliente). SSE funciona nativamente com Next.js e Vercel. Se bidirecional for necessário no futuro, migrar para WebSocket.
 
 ---
 
@@ -160,10 +162,10 @@ Zod schemas são definidos uma vez e usados tanto no frontend (validação inlin
 
 | Opção | Prós | Contras | Nota |
 |-------|------|---------|------|
-| **BullMQ + Redis** | Maduro, prioridades, retry, scheduling (cron), dashboard (Bull Board) | Requer worker dedicado (não serverless) | **Recomendado** |
-| Trigger.dev | Serverless jobs, built for Next.js | Vendor lock-in, pricing | Alternativa moderna |
-| Inngest | Event-driven, serverless, step functions | Vendor lock-in, curva de aprendizado | Alternativa |
-| pg_cron + pg_notify | Zero dependência extra | Limitado, sem retry sofisticado | Minimal |
+| **PostgreSQL queues + Vercel Cron** | Zero dependência extra, sem Redis, integrado com stack existente, retry via tabela de jobs | Menos features que BullMQ | **APROVADO (ADR-012)** |
+| ~~BullMQ + Redis~~ | Maduro, prioridades, retry, scheduling (cron), dashboard (Bull Board) | Requer worker dedicado (não serverless), requer Redis | **REJEITADO (ADR-012)** |
+| ~~Trigger.dev~~ | Serverless jobs, built for Next.js | Vendor lock-in, pricing | REJEITADO |
+| ~~Inngest~~ | Event-driven, serverless, step functions | Vendor lock-in, curva de aprendizado | REJEITADO |
 
 **Jobs necessários no Ambaril:**
 
@@ -188,7 +190,7 @@ Zod schemas são definidos uma vez e usados tanto no frontend (validação inlin
 | Competitor Ad Library polling | Marketing | Diário 06:00 | Baixa |
 | Audit log archival | Platform | Mensal | Baixa |
 
-**Decisão:** A decidir. Recomendação: BullMQ + Redis com worker process separado.
+**Decisão:** APROVADO (ADR-012) — PostgreSQL queues + Vercel Cron. Redis eliminado da stack.
 
 ---
 
@@ -327,14 +329,14 @@ ambaril/
 
 | Opção | Prós | Contras | Custo estimado |
 |-------|------|---------|----------------|
-| **Vercel** (web) | Next.js nativo, preview deploys, edge functions, analytics | Pricing pode escalar, serverless limits | ~$20-50/mo (Pro) |
-| **Railway** (worker) | Simple, sempre-on para BullMQ worker | Sem edge | ~$5-20/mo |
-| **Neon** (database) | Serverless PG, branching, autoscaling | Cold start | ~$19-50/mo (Launch) |
-| **Upstash** (Redis) | Serverless, pay-per-request | — | ~$10-30/mo |
+| **Vercel** (web + cron) | Next.js nativo, preview deploys, edge functions, analytics, Vercel Cron para jobs | Pricing pode escalar, serverless limits | ~$20-50/mo (Pro) |
+| **Neon** (database) | Serverless PG, branching, autoscaling, scale-to-zero OFF | Cold start | ~$69/mo (Scale) |
 | **Cloudflare R2** (storage) | Egress free, S3 compat | — | ~$5-15/mo |
-| **Resend** (email) | Developer-friendly | — | ~$20/mo |
+| **Resend** (email) | Developer-friendly | — | ~$20-40/mo |
+| ~~Railway (worker)~~ | — | — | **REJEITADO (ADR-012)** — worker eliminado com Redis |
+| ~~Upstash (Redis)~~ | — | — | **REJEITADO (ADR-012)** — Redis eliminado da stack |
 
-**Custo total estimado:** ~$80-185/mo (muito abaixo dos R$ 4.300+/mês de ferramentas substituídas)
+**Custo total estimado:** ~$114-174/mo — 4 vendors (Vercel, Neon, Cloudflare R2, Resend). Muito abaixo dos R$ 4.300+/mês de ferramentas substituídas.
 
 ### 10.1 Environments
 
@@ -352,7 +354,7 @@ ambaril/
 |------------|-----------|------------|
 | **Sentry** | Error tracking, performance monitoring | Crítica (dia 1) |
 | **Vercel Analytics** | Web vitals, page performance | Alta |
-| **BullMQ Board** | Dashboard de jobs (status, retry, failed) | Alta |
+| **Job Queue Dashboard** | Dashboard de PostgreSQL jobs (status, retry, failed) | Alta |
 | **Structured Logging** | JSON logs com correlation ID | Alta |
 | **Uptime monitoring** | Ping externo para APIs críticas | Média (Better Uptime / UptimeRobot) |
 
@@ -365,7 +367,7 @@ ambaril/
 | HTTPS everywhere | Enforced by hosting provider |
 | CORS | Configurado por domínio permitido |
 | CSRF | Next.js Server Actions (built-in) |
-| Rate limiting | Redis-based, per-user, per-endpoint |
+| Rate limiting | PostgreSQL-based, per-user, per-endpoint |
 | Input validation | Zod schemas em todas as bordas |
 | SQL injection | ORM (Drizzle) parametriza queries |
 | XSS | React escaping + Content-Security-Policy |
@@ -379,9 +381,9 @@ ambaril/
 
 | # | Data | Decisão | Status |
 |---|------|---------|--------|
-| ADR-001 | Mar 2026 | Dark mode como padrão (light mode como toggle) | Aprovado |
+| ADR-001 | Mar 2026 | Light mode como padrão, dark mode opt-in, system como terceira opção | Aprovado |
 | ADR-002 | Mar 2026 | PostgreSQL como banco único (sem NoSQL) | Aprovado |
-| ADR-003 | Mar 2026 | HeroUI + Recharts + Lucide React + Tailwind como UI stack | Aprovado |
+| ADR-003 | Mar 2026 | shadcn/ui (Radix + cva) + Recharts + Lucide React + Tailwind como UI stack | Aprovado |
 | ADR-004 | Mar 2026 | DM Sans/DM Mono como fonte | Aprovado |
 | ADR-005 | Mar 2026 | REST-first (não GraphQL) | Aprovado |
 | ADR-006 | Mar 2026 | Monorepo (não microservices) | Aprovado |
@@ -392,7 +394,8 @@ ambaril/
 | ADR-011 | Mar 2026 | State management: Zustand + React Server Components | **Aprovado** |
 | ADR-012 | Mar 2026 | Background jobs: PostgreSQL queues + Vercel Cron (Redis eliminado) | **Aprovado** |
 | ADR-013 | Mar 2026 | Real-time: SSE (Server-Sent Events) | **Aprovado** |
+| ADR-014 | Mar 2026 | Multi-tenancy: Shared DB + tenant_id + RLS (B+A defesa em profundidade) | **Aprovado** |
 
 ---
 
-*Todas as decisões de ADR-001 a ADR-013 foram aprovadas. ADR-014 (Multi-tenancy strategy) está pendente.*
+*Todas as decisões de ADR-001 a ADR-014 foram aprovadas e ratificadas.*

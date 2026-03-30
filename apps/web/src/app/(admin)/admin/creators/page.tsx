@@ -1,27 +1,137 @@
-import { getSession } from "@/lib/auth";
-import { redirect } from "next/navigation";
+import Link from "next/link";
+import { getTenantSession } from "@/lib/tenant";
+import { listCreators } from "@/app/actions/creators/crud";
+import { listTiers } from "@/app/actions/creators/tiers";
+import { Plus } from "lucide-react";
+import { db } from "@ambaril/db";
+import { eq, and } from "drizzle-orm";
+import { moduleSetupState } from "@ambaril/db/schema";
+import { CreatorsTable } from "./components/creators-table";
+import type { CreatorStats } from "./components/creator-summary-cards";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function computeStats(
+  allResult: Awaited<ReturnType<typeof listCreators>>,
+): CreatorStats {
+  const creators = allResult.data?.creators ?? [];
+  let active = 0;
+  let pending = 0;
+  let suspended = 0;
+
+  for (const c of creators) {
+    if (c.status === "active") active++;
+    else if (c.status === "pending") pending++;
+    else if (c.status === "suspended") suspended++;
+  }
+
+  return {
+    total: allResult.data?.total ?? 0,
+    active,
+    pending,
+    suspended,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Page (Server Component)
+// ---------------------------------------------------------------------------
 
 export default async function CreatorsPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const session = await getTenantSession();
+
+  // Check setup state
+  const [setupRow] = await db
+    .select({ isSetupComplete: moduleSetupState.isSetupComplete })
+    .from(moduleSetupState)
+    .where(
+      and(
+        eq(moduleSetupState.tenantId, session.tenantId),
+        eq(moduleSetupState.moduleId, "creators"),
+      ),
+    )
+    .limit(1);
+
+  const isSetupComplete = setupRow?.isSetupComplete ?? false;
+
+  // Fetch initial data in parallel
+  const [creatorsResult, tiersResult] = await Promise.all([
+    listCreators({ page: 1, per_page: 25 }),
+    listTiers(),
+  ]);
+
+  // Compute summary stats from initial fetch
+  // For accurate stats, fetch all statuses separately
+  const [pendingResult, activeResult, suspendedResult] = await Promise.all([
+    listCreators({ page: 1, per_page: 1, status: "pending" }),
+    listCreators({ page: 1, per_page: 1, status: "active" }),
+    listCreators({ page: 1, per_page: 1, status: "suspended" }),
+  ]);
+
+  const stats: CreatorStats = {
+    total: creatorsResult.data?.total ?? 0,
+    active: activeResult.data?.total ?? 0,
+    pending: pendingResult.data?.total ?? 0,
+    suspended: suspendedResult.data?.total ?? 0,
+  };
+
+  const tiers = (tiersResult.data ?? []).map((t) => ({
+    id: t.id,
+    name: t.name,
+  }));
+
+  const initialData = creatorsResult.data ?? {
+    creators: [],
+    total: 0,
+    page: 1,
+    pageSize: 25,
+  };
 
   return (
     <div className="space-y-6">
+      {/* Setup banner */}
+      {!isSetupComplete && (
+        <div className="flex items-center justify-between rounded-lg border border-yellow-500/30 bg-yellow-500/5 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium text-text-bright">Configuracao pendente</p>
+            <p className="text-xs text-text-secondary">
+              Configure as integracoes e importe dados existentes para ativar o programa.
+            </p>
+          </div>
+          <Link
+            href="/admin/creators/setup"
+            className="rounded-lg bg-text-white px-3 py-1.5 text-sm font-medium text-bg-void transition-opacity hover:opacity-90"
+          >
+            Configurar
+          </Link>
+        </div>
+      )}
+
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-lg font-medium text-text-bright">Creators</h1>
           <p className="text-sm text-text-secondary">
-            Gerencie os creators
+            Gerencie os creators e seus perfis, vendas e comissoes.
           </p>
         </div>
+        <Link
+          href="/admin/creators/new"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-text-white px-4 py-2 text-sm font-medium text-bg-void transition-opacity hover:opacity-90"
+        >
+          <Plus className="h-4 w-4" />
+          Novo Creator
+        </Link>
       </div>
 
-      {/* Placeholder — Phase 1 will add DataTable, filters, and CRUD */}
-      <div className="flex h-64 items-center justify-center rounded-lg border border-border-default bg-bg-base">
-        <p className="text-sm text-text-tertiary">
-          Lista de creators sera implementada na Phase 1
-        </p>
-      </div>
+      {/* Client-side interactive table */}
+      <CreatorsTable
+        initialData={initialData}
+        tiers={tiers}
+        stats={stats}
+      />
     </div>
   );
 }

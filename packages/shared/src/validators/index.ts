@@ -188,6 +188,9 @@ export const productFiltersSchema = paginationSchema.extend({
 // ---------------------------------------------------------------------------
 
 // Creator application (public form — 3-step)
+// @deprecated — Superseded by comprehensive schemas in ../schemas/creators.ts
+// (fullRegistrationSchema, registrationStep1Schema, registrationStep2Schema, registrationStep3Schema)
+// Kept for backward compatibility. New code should import from @ambaril/shared/schemas.
 export const creatorApplicationSchema = z.object({
   // Step 1: Personal info
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(255),
@@ -208,6 +211,8 @@ export const creatorApplicationSchema = z.object({
   shippingAddress: addressSchema,
 });
 
+// @deprecated — Superseded by profileUpdateSchema in ../schemas/creators.ts
+// Kept for backward compatibility. New code should import from @ambaril/shared/schemas.
 export const updateCreatorSchema = z.object({
   tierId: uuidSchema.optional(), // FK to creators.creator_tiers — configurable per tenant
   status: z.enum(["pending", "active", "suspended", "inactive"]).optional(),
@@ -218,6 +223,8 @@ export const updateCreatorSchema = z.object({
     .optional(),
 });
 
+// @deprecated — Superseded by creatorFiltersSchema in ../schemas/creators.ts
+// Kept for backward compatibility. New code should import from @ambaril/shared/schemas.
 export const creatorFiltersSchema = paginationSchema.extend({
   tierId: uuidSchema.optional(), // FK to creators.creator_tiers
   status: z.enum(["pending", "active", "suspended", "inactive"]).optional(),

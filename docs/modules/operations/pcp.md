@@ -1782,3 +1782,32 @@ VALUES
 ---
 
 *This module spec is the source of truth for PCP implementation. All development, review, and QA should reference this document. Changes require review from Marcus (admin) or Tavares (operations).*
+
+---
+
+## Princípios de UX
+
+> Referência: `DS.md` seções 4 (ICP & Filosofia), 6 (Formulários), 7 (Dashboards)
+
+### Timeline como View Principal
+- **Ação > informação (DS.md 4.2, princípio 5):** a timeline visual é o elemento dominante. Mostrar o que importa ao bater o olho — ordens atrasadas em destaque, ordens no prazo subordinadas.
+- **Contraste é priorização (DS.md 4.2, princípio 3):** ordens atrasadas com border `--danger`, ordens em risco com border `--warning`, ordens no prazo com border `--border-default`.
+- **Padrão F (DS.md 7):** ordens mais urgentes no topo esquerdo.
+
+### Formulários de OP — Progressive Disclosure
+- **Dados básicos primeiro (DS.md 6.1):** nome da OP, coleção, fornecedor, prazo. Campos essenciais no topo.
+- **Detalhes em accordion (DS.md 6.5):** insumos, custos, retoque, histórico — expandíveis sob sections colapsáveis. Não sobrecarregar Tavares com todos os campos de uma vez.
+- **Pergunte menos (DS.md 6.1):** steps progressivos para criação de OP com mais de 5 campos.
+
+### Alertas Contextuais
+- **Contextualização (DS.md 7, regra 4):** todo alerta com significado + enquadramento.
+  - "3 dias para deadline. Fornecedor X não confirmou entrega."
+  - "Prazo de segurança consumido. Margem restante: 0 dias."
+  - "Fornecedor Y atrasou 3 das últimas 5 entregas. Confiabilidade: 40%."
+- **Escalonamento visual:** informação em `--info`, atenção em `--warning`, ação urgente em `--danger`.
+
+### Empty States
+- **Nunca tela vazia (DS.md 11.3):**
+  - Ordens: "Nenhuma ordem de produção criada. Crie a primeira para acompanhar o fluxo."
+  - Fornecedores: "Nenhum fornecedor cadastrado. Adicione seus fornecedores para acompanhar prazos e qualidade."
+  - Insumos: "Lista de insumos vazia. Vincule insumos à coleção para receber alertas de compra."

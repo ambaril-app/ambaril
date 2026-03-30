@@ -362,7 +362,7 @@ CREATE UNIQUE INDEX idx_price_tables_default ON b2b.price_tables (is_default) WH
 
 ## 4. Screens & Wireframes
 
-All screens follow the Ambaril Design System (DS.md): dark mode default, DM Sans, HeroUI components, Lucide React. B2B admin screens use teal accent to visually distinguish from DTC admin. B2B portal uses the same dark-mode system with the CIENA brand identity.
+All screens follow the Ambaril Design System (DS.md): light mode default (dark opt-in), DM Sans, shadcn/ui components, Lucide React. B2B admin screens use teal accent to visually distinguish from DTC admin. B2B portal uses the same dual-theme system with the CIENA brand identity.
 
 ### 4.1 B2B Portal — Catalog Grid
 
