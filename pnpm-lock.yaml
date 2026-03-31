@@ -14,6 +14,9 @@ importers:
 
   apps/marketing:
     dependencies:
+      '@ambaril/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@ambaril/email':
         specifier: workspace:*
         version: link:../../packages/email
