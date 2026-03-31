@@ -212,17 +212,24 @@ export async function saveSetupStep(
 }
 
 // ---------------------------------------------------------------------------
-// 4. importCouponsFromProvider — import coupons from ecommerce provider
+// 4. importCouponsFromProvider — import coupons from connected providers
+// Strategy:
+//   1. Try ecommerce provider (Shopify) — has full coupon catalog
+//   2. If ecommerce returns empty or is not connected, try checkout provider (Yever)
+//      — discovers coupons from order history (scan all paid orders)
 // ---------------------------------------------------------------------------
 
 export async function importCouponsFromProvider(): Promise<
   ActionResult<{
     imported: number;
+    source: "ecommerce" | "checkout";
     coupons: Array<{
       code: string;
       discountType: string;
       discountValue: string;
       isActive: boolean;
+      orderCount?: number;
+      totalRevenue?: string;
     }>;
   }>
 > {
@@ -230,23 +237,54 @@ export async function importCouponsFromProvider(): Promise<
     const session = await getTenantSession();
     assertPermission(session, "creators:profiles:write");
 
-    // Ensure providers are registered before resolving
     registerAllProviders();
 
-    const ecommerce = await getProvider(session.tenantId, "ecommerce");
-    const providerCoupons = await ecommerce.listCoupons();
+    // Try ecommerce (Shopify) first
+    try {
+      const ecommerce = await getProvider(session.tenantId, "ecommerce");
+      const providerCoupons = await ecommerce.listCoupons();
 
-    const mappedCoupons = providerCoupons.map((c) => ({
-      code: c.code,
-      discountType: c.discountType,
-      discountValue: c.discountValue,
-      isActive: c.isActive,
-    }));
+      if (providerCoupons.length > 0) {
+        return {
+          data: {
+            imported: providerCoupons.length,
+            source: "ecommerce",
+            coupons: providerCoupons.map((c) => ({
+              code: c.code,
+              discountType: c.discountType,
+              discountValue: c.discountValue,
+              isActive: c.isActive,
+            })),
+          },
+        };
+      }
+    } catch {
+      // ecommerce not connected — fall through to checkout discovery
+    }
+
+    // Fallback: checkout provider (Yever) — discover from order history
+    const checkout = await getProvider(session.tenantId, "checkout");
+
+    if (!checkout.discoverCoupons) {
+      return {
+        data: { imported: 0, source: "checkout", coupons: [] },
+      };
+    }
+
+    const discovered = await checkout.discoverCoupons();
 
     return {
       data: {
-        imported: mappedCoupons.length,
-        coupons: mappedCoupons,
+        imported: discovered.length,
+        source: "checkout",
+        coupons: discovered.map((c) => ({
+          code: c.code,
+          discountType: "percent",   // unknown from order history — assume percent
+          discountValue: "0",        // unknown from order history
+          isActive: true,            // has orders = active
+          orderCount: c.orderCount,
+          totalRevenue: c.totalRevenue,
+        })),
       },
     };
   } catch (err) {

@@ -70,17 +70,11 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
     icon: "CreditCard",
     configFields: [
       {
-        key: "apiUrl",
-        label: "API URL",
-        type: "url",
-        required: true,
-        placeholder: "https://api.yever.com.br",
-      },
-      {
         key: "apiKey",
-        label: "API Key",
+        label: "Token de API",
         type: "password",
         required: true,
+        placeholder: "Cole o token gerado em Yever → Configuração → API",
       },
     ],
   },

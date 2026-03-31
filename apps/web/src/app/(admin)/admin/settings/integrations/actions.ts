@@ -149,16 +149,11 @@ export async function testConnection(
         };
       }
     } else if (capability === "checkout") {
-      if (!creds.apiUrl || !creds.apiKey) {
+      if (!creds.apiKey) {
         return {
           success: false,
-          error: "Credenciais do Yever incompletas",
+          error: "Token do Yever ausente",
         };
-      }
-      try {
-        new URL(creds.apiUrl);
-      } catch {
-        return { success: false, error: "URL do Yever inválida" };
       }
     } else if (capability === "social") {
       if (!creds.accessToken || !creds.businessAccountId) {

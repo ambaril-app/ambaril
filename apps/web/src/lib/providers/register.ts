@@ -28,10 +28,11 @@ export function registerAllProviders(): void {
 
   registerProvider("checkout", async (tenantId) => {
     const creds = await getCredentials(tenantId, "checkout");
-    if (!creds) return new YeverCheckoutProvider();
+    if (!creds?.apiKey) return new YeverCheckoutProvider();
+    // Yever API URL is always the same — tenant only provides the token
     return new YeverCheckoutProvider({
-      apiUrl: creds.apiUrl ?? "",
-      apiKey: creds.apiKey ?? "",
+      apiUrl: "https://api.yever.com.br/api/v1",
+      apiKey: creds.apiKey,
     });
   });
 

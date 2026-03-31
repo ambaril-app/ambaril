@@ -389,10 +389,33 @@ Only after Layer 0-2 are working:
 
 > Extracted from Phase 1 retrospective. Every module MUST follow this pattern.
 
+### Simulação Dia 1 — Obrigatório antes de qualquer spec técnico
+
+**Todo módulo começa aqui.** Se não consegue preencher, o spec não está pronto para implementação.
+
+```
+## Simulação Dia 1
+
+**Usuário:** [nome do role — ex: Caio - PM]
+**Contexto:** primeira vez abrindo o módulo
+**Dados existentes no tenant:** [o que já existe nos sistemas externos: Shopify/Yever/etc]
+
+Passo 1: [tela exata que o usuário vê]
+Passo 2: [primeira ação que ele toma]
+Passo 3: [o que acontece na tela]
+Passo 4: [onde ele chega]
+Passo 5: [valor real que ele obteve]
+
+**Resultado mínimo aceitável:** [o que precisa funcionar para o módulo ter valor]
+**O que NÃO existe ainda:** [features que dependem de dados futuros — esconder até condição X]
+**Dados a importar:** [o que já existe nos sistemas externos do tenant que precisa ser puxado]
+```
+
 ### Pre-Implementation Checklist
 
 Before writing any UI code for a new module:
 
+- [ ] **Simulação Dia 1 preenchida** — sem isso, não começar
 - [ ] **What capabilities does this module need?** (ecommerce, checkout, payments, social, fiscal, shipping, messaging)
 - [ ] **Are providers implemented for those capabilities?** If not, implement provider before module UI
 - [ ] **What data already exists in the tenant's connected platforms?** (orders, customers, coupons, products)
@@ -400,7 +423,17 @@ Before writing any UI code for a new module:
 - [ ] **What's the module setup wizard?** (check integrations → import existing data → configure → activate)
 - [ ] **What features need accumulated data?** (analytics, ranking, predictions — defer these)
 
+### Definition of Done (obrigatório)
+
+| ❌ NÃO é done | ✅ É done |
+|--------------|----------|
+| `pnpm type-check` zero errors | Dono do produto testou o fluxo no browser |
+| Todos os arquivos criados conforme spec | First-time-user completou a jornada end-to-end |
+| Spec 100% coberta | Pelo menos 1 dado real aparece na tela |
+
 ### Implementation Order (for every module)
+
+**Usar fatias verticais, não waves horizontais.** Cada fatia = 1 jornada completa testável no browser antes de avançar.
 
 ```
 Layer -1: Platform Integrations (if new capability needed)
@@ -452,6 +485,9 @@ Layer 3: Advanced
 | Skip tenant setup wizard | PM has no guidance on how to start |
 | **Hardcode provider-specific code in modules** | Locks platform to specific vendors. Every tenant is different |
 | **Store tenant API keys in `.env`** | `.env` is for platform infra. Tenant credentials go in DB (encrypted) |
+| **Waves horizontais (schema→backend→UI→portal→jobs)** | 160 arquivos entregues, nenhum fluxo end-to-end verificável. Usar fatias verticais |
+| **Considerar type-check como Definition of Done** | Type-check é necessário, não suficiente. Done = dono do produto testou no browser |
+| **Escrever spec sem Simulação Dia 1** | Spec que não começa com first-time-user journey vai construir páginas vazias sem utilidade |
 
 ---
 

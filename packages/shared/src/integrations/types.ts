@@ -54,10 +54,23 @@ export interface CheckoutOrder {
   total: string;
   /** NUMERIC(12,2) string — never a float */
   discount: string;
-  couponCode: string;
+  couponCode?: string;
   customerCpf?: string;
   status: string;
   createdAt: string;
+}
+
+/**
+ * Coupon discovered from checkout order history.
+ * Used by checkout providers that have no dedicated coupon endpoint (e.g. Yever).
+ */
+export interface DiscoveredCoupon {
+  code: string;
+  orderCount: number;
+  /** NUMERIC(12,2) string — never a float */
+  totalRevenue: string;
+  /** NUMERIC(12,2) string — never a float */
+  totalDiscount: string;
 }
 
 /** Options for sending an email via the messaging capability */
@@ -103,8 +116,10 @@ export interface EcommerceProvider {
 /**
  * Checkout capability — order lookup and sale attribution.
  * Based on apps/web/src/lib/yever.ts (getOrdersByCoupon, getOrderById).
+ * discoverCoupons() is optional — implemented by providers with no coupon catalog (e.g. Yever).
  */
 export interface CheckoutProvider {
+  discoverCoupons?(): Promise<DiscoveredCoupon[]>;
   listOrdersByCoupon(
     couponCode: string,
     since?: Date,
