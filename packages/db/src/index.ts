@@ -7,3 +7,4 @@ export * as crmSchema from "./schema/crm";
 export * as erpSchema from "./schema/erp";
 export * as whatsappSchema from "./schema/whatsapp";
 export * as dashboardSchema from "./schema/dashboard";
+export * as marketingSchema from "./schema/marketing";

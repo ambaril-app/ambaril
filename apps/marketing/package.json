@@ -11,6 +11,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@ambaril/db": "workspace:*",
     "@ambaril/email": "workspace:*",
     "next": "^15",
     "react": "^19",

@@ -5,3 +5,4 @@ export * from "./crm";
 export * from "./erp";
 export * from "./whatsapp";
 export * from "./dashboard";
+export * from "./marketing";

@@ -9,6 +9,7 @@ import * as crmSchema from "./schema/crm";
 import * as erpSchema from "./schema/erp";
 import * as whatsappSchema from "./schema/whatsapp";
 import * as dashboardSchema from "./schema/dashboard";
+import * as marketingSchema from "./schema/marketing";
 
 const allSchemas = {
   ...globalSchema,
@@ -18,6 +19,7 @@ const allSchemas = {
   ...erpSchema,
   ...whatsappSchema,
   ...dashboardSchema,
+  ...marketingSchema,
 };
 
 function getDatabaseUrl(): string {
