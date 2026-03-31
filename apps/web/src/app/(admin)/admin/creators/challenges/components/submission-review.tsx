@@ -148,7 +148,7 @@ export function SubmissionReview({ challengeId }: SubmissionReviewProps) {
       key: "proofType",
       label: "Tipo",
       render: (_value, row) => (
-        <span className="text-sm text-text-secondary">
+        <span className="text-sm text-text-ghost">
           {PROOF_TYPE_LABELS[row.proofType as string] ?? row.proofType}
         </span>
       ),

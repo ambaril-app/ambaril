@@ -43,7 +43,7 @@ interface CampaignListClientProps {
 const CAMPAIGN_STATUS_MAP: StatusBadgeProps["statusMap"] = {
   draft: { label: "Rascunho", variant: "default" },
   active: { label: "Ativa", variant: "success" },
-  completed: { label: "Concluida", variant: "info" },
+  completed: { label: "Concluída", variant: "info" },
   cancelled: { label: "Cancelada", variant: "danger" },
 };
 
@@ -109,17 +109,17 @@ const columns: DataTableColumn<CampaignRow>[] = [
   },
   {
     key: "startDate",
-    label: "Inicio",
+    label: "Início",
     sortable: true,
     render: (value) => (
-      <span className="text-text-secondary">{formatDate(String(value))}</span>
+      <span className="text-text-ghost">{formatDate(String(value))}</span>
     ),
   },
   {
     key: "endDate",
     label: "Fim",
     render: (value) => (
-      <span className="text-text-secondary">
+      <span className="text-text-ghost">
         {value ? formatDate(String(value)) : "-"}
       </span>
     ),
@@ -172,8 +172,8 @@ export function CampaignListClient({
     <>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Campanhas</h1>
-          <p className="text-sm text-text-secondary">
+          <h1 className="font-display text-[32px] font-medium leading-tight tracking-[-0.02em] text-text-bright">Campanhas</h1>
+          <p className="mt-1 text-sm text-text-ghost">
             Gerencie campanhas de creators
           </p>
         </div>
@@ -187,7 +187,7 @@ export function CampaignListClient({
         <EmptyState
           icon={Megaphone}
           title="Nenhuma campanha encontrada"
-          description="Crie sua primeira campanha para comecar a gerenciar creators."
+          description="Crie sua primeira campanha para começar a gerenciar creators."
           action={{
             label: "Nova Campanha",
             onPress: () => setIsModalOpen(true),

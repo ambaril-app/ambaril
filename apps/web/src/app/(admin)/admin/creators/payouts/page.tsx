@@ -10,10 +10,10 @@ export default async function PayoutsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">
-          Gerenciamento de Pagamentos
+        <h1 className="font-display text-[32px] font-medium leading-tight tracking-[-0.02em] text-text-bright">
+          Pagamentos
         </h1>
-        <p className="text-sm text-text-secondary">
+        <p className="mt-1 text-sm text-text-ghost">
           Calcule, aprove e processe pagamentos dos creators
         </p>
       </div>

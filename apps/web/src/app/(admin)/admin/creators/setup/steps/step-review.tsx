@@ -46,8 +46,8 @@ export function StepReview({ wizardData, tiers }: StepReviewProps) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-text-secondary">
-        Revise as configuracoes antes de ativar o programa.
+      <p className="text-sm text-text-ghost">
+        Revise as configurações antes de ativar o programa.
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2">
@@ -57,7 +57,7 @@ export function StepReview({ wizardData, tiers }: StepReviewProps) {
             <Settings className="mt-0.5 h-5 w-5 shrink-0 text-text-ghost" />
             <div className="min-w-0">
               <p className="text-sm font-medium text-text-bright">Tiers</p>
-              <p className="mt-1 text-sm text-text-secondary">
+              <p className="mt-1 text-sm text-text-ghost">
                 {tiers.length} tier{tiers.length !== 1 ? "s" : ""} configurado
                 {tiers.length !== 1 ? "s" : ""}
               </p>
@@ -76,7 +76,7 @@ export function StepReview({ wizardData, tiers }: StepReviewProps) {
             <Ticket className="mt-0.5 h-5 w-5 shrink-0 text-text-ghost" />
             <div className="min-w-0">
               <p className="text-sm font-medium text-text-bright">Cupons</p>
-              <p className="mt-1 text-sm text-text-secondary">
+              <p className="mt-1 text-sm text-text-ghost">
                 {importedCoupons.length} cupom
                 {importedCoupons.length !== 1 ? "ns" : ""} importado
                 {importedCoupons.length !== 1 ? "s" : ""}
@@ -91,9 +91,9 @@ export function StepReview({ wizardData, tiers }: StepReviewProps) {
             <Users className="mt-0.5 h-5 w-5 shrink-0 text-text-ghost" />
             <div className="min-w-0">
               <p className="text-sm font-medium text-text-bright">Creators</p>
-              <p className="mt-1 text-sm text-text-secondary">
+              <p className="mt-1 text-sm text-text-ghost">
                 {couponLinks.length} creator
-                {couponLinks.length !== 1 ? "s" : ""} sera
+                {couponLinks.length !== 1 ? "s" : ""} será
                 {couponLinks.length !== 1 ? "o" : ""} criado
                 {couponLinks.length !== 1 ? "s" : ""}
               </p>
@@ -107,13 +107,13 @@ export function StepReview({ wizardData, tiers }: StepReviewProps) {
             <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-text-ghost" />
             <div className="min-w-0">
               <p className="text-sm font-medium text-text-bright">Cadastro</p>
-              <p className="mt-1 text-sm text-text-secondary">
+              <p className="mt-1 text-sm text-text-ghost">
                 {MODE_LABELS[accountOptions.onboardingMode] ??
                   accountOptions.onboardingMode}
               </p>
               <p className="mt-0.5 text-xs text-text-ghost">
                 Email de boas-vindas:{" "}
-                {accountOptions.sendWelcomeEmail ? "Sim" : "Nao"}
+                {accountOptions.sendWelcomeEmail ? "Sim" : "Não"}
               </p>
             </div>
           </CardContent>

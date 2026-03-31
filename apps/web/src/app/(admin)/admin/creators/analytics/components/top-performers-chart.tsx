@@ -100,7 +100,7 @@ function TopPerformersChart({ data }: TopPerformersChartProps) {
   if (chartData.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-text-secondary">
+        <p className="text-sm text-text-ghost">
           Nenhum creator com vendas este mes
         </p>
       </div>

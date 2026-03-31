@@ -50,6 +50,21 @@ function TaxProfileSection({ taxpayerType, cpf, cnpj, municipalityName }: TaxPro
             <p className="text-sm text-text-primary">
               {taxpayerType ? (TAXPAYER_LABELS[taxpayerType] ?? taxpayerType) : "Nao informado"}
             </p>
+            {taxpayerType === "mei" && (
+              <p className="text-[11px] text-text-muted">
+                MEI: contribuição mensal fixa (DAS). Consulte seu contador sobre retenção de IRRF.
+              </p>
+            )}
+            {taxpayerType === "pj" && (
+              <p className="text-[11px] text-text-muted">
+                PJ: IRRF e ISS retidos conforme regime tributário. Emita NF-e para cada pagamento.
+              </p>
+            )}
+            {taxpayerType === "pf" && (
+              <p className="text-[11px] text-text-muted">
+                PF: IRRF retido na fonte conforme tabela progressiva. Declare na sua declaração anual.
+              </p>
+            )}
           </div>
 
           <div className="space-y-1">

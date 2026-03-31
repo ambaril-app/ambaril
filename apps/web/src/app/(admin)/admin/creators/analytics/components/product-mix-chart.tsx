@@ -12,7 +12,7 @@ function ProductMixChart() {
       <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-bg-surface">
         <Package className="h-5 w-5 text-text-ghost" />
       </div>
-      <p className="text-sm text-text-secondary">
+      <p className="text-sm text-text-ghost">
         Dados disponíveis quando módulo ERP for implementado
       </p>
       <p className="text-xs text-text-muted">

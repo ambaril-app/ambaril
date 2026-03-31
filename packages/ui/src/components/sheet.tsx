@@ -55,6 +55,7 @@ function Sheet({ isOpen, onClose, title, children, width = "md", className }: Sh
             "fixed right-0 top-0 z-50 h-full",
             "bg-bg-base border-l border-border-default",
             "shadow-[var(--shadow-xl)] flex flex-col",
+            "outline-none",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=open]:slide-in-from-right data-[state=closed]:slide-out-to-right",
             WIDTH_MAP[width],
@@ -74,6 +75,7 @@ function Sheet({ isOpen, onClose, title, children, width = "md", className }: Sh
                   "ml-auto",
                   "text-text-muted hover:text-text-primary",
                   "transition-colors duration-150 cursor-pointer",
+                  "focus:outline-none",
                 )}
                 aria-label="Fechar"
               >

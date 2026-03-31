@@ -64,7 +64,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
       {/* Back link */}
       <Link
         href="/admin/creators/campaigns"
-        className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
+        className="inline-flex items-center gap-1.5 text-sm text-text-ghost transition-colors hover:text-text-primary"
       >
         <ArrowLeft className="h-4 w-4" />
         Voltar para campanhas

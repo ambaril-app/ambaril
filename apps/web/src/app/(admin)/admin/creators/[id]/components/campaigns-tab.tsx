@@ -49,7 +49,7 @@ const COLUMNS: DataTableColumn<Record<string, unknown>>[] = [
     key: "campaignType",
     label: "Tipo",
     render: (value) => (
-      <span className="text-sm text-text-secondary">
+      <span className="text-sm text-text-ghost">
         {CAMPAIGN_TYPE_LABELS[value as string] ?? (value as string)}
       </span>
     ),
@@ -63,7 +63,7 @@ const COLUMNS: DataTableColumn<Record<string, unknown>>[] = [
     key: "startDate",
     label: "Inicio",
     render: (value) => (
-      <span className="text-xs text-text-secondary">
+      <span className="text-xs text-text-ghost">
         {value ? new Date(value as string).toLocaleDateString("pt-BR") : "-"}
       </span>
     ),
@@ -72,7 +72,7 @@ const COLUMNS: DataTableColumn<Record<string, unknown>>[] = [
     key: "endDate",
     label: "Fim",
     render: (value) => (
-      <span className="text-xs text-text-secondary">
+      <span className="text-xs text-text-ghost">
         {value ? new Date(value as string).toLocaleDateString("pt-BR") : "-"}
       </span>
     ),

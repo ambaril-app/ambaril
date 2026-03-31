@@ -166,7 +166,7 @@ export function AntiFraudClient({ initialFlags, initialTotal }: AntiFraudClientP
       key: "creatorId",
       label: "Creator",
       render: (value) => (
-        <span className="font-mono text-xs text-text-secondary">
+        <span className="font-mono text-xs text-text-ghost">
           {String(value).substring(0, 8)}...
         </span>
       ),
@@ -175,7 +175,7 @@ export function AntiFraudClient({ initialFlags, initialTotal }: AntiFraudClientP
       key: "date",
       label: "Data",
       render: (value) => (
-        <span className="text-text-secondary">{String(value)}</span>
+        <span className="text-text-ghost">{String(value)}</span>
       ),
     },
     {
@@ -208,7 +208,7 @@ export function AntiFraudClient({ initialFlags, initialTotal }: AntiFraudClientP
     },
     {
       key: "actions",
-      label: "Acoes",
+      label: "Ações",
       render: (_value, row) => (
         <div className="flex gap-2">
           <Button
@@ -236,8 +236,8 @@ export function AntiFraudClient({ initialFlags, initialTotal }: AntiFraudClientP
     <>
       {/* Header */}
       <div>
-        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Monitor Anti-Fraude</h1>
-        <p className="text-sm text-text-secondary">
+        <h1 className="font-display text-[32px] font-medium leading-tight tracking-[-0.02em] text-text-bright">Monitor Anti-Fraude</h1>
+        <p className="text-sm text-text-ghost">
           Flags de auto-compra e limite mensal excedido
         </p>
       </div>
@@ -248,7 +248,7 @@ export function AntiFraudClient({ initialFlags, initialTotal }: AntiFraudClientP
           <CardHeader>
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-warning" />
-              <CardTitle className="text-xs text-text-secondary">Total de Flags</CardTitle>
+              <CardTitle className="text-xs text-text-ghost">Total de Flags</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
@@ -262,7 +262,7 @@ export function AntiFraudClient({ initialFlags, initialTotal }: AntiFraudClientP
           <CardHeader>
             <div className="flex items-center gap-2">
               <ShieldX className="h-4 w-4 text-danger" />
-              <CardTitle className="text-xs text-text-secondary">Auto-compra</CardTitle>
+              <CardTitle className="text-xs text-text-ghost">Auto-compra</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
@@ -276,7 +276,7 @@ export function AntiFraudClient({ initialFlags, initialTotal }: AntiFraudClientP
           <CardHeader>
             <div className="flex items-center gap-2">
               <ShieldAlert className="h-4 w-4 text-warning" />
-              <CardTitle className="text-xs text-text-secondary">Limite Excedido</CardTitle>
+              <CardTitle className="text-xs text-text-ghost">Limite Excedido</CardTitle>
             </div>
           </CardHeader>
           <CardContent>

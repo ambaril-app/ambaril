@@ -17,8 +17,8 @@ export default async function ChallengesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Desafios</h1>
-        <p className="text-sm text-text-secondary">
+        <h1 className="font-display text-[32px] font-medium leading-tight tracking-[-0.02em] text-text-bright">Desafios</h1>
+        <p className="mt-1 text-sm text-text-ghost">
           Crie e gerencie desafios mensais para os creators
         </p>
       </div>

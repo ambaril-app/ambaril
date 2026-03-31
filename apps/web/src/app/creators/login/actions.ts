@@ -9,6 +9,7 @@ import {
   generateLoginCode,
   verifyLoginCode,
 } from "@/lib/creator-auth";
+import { sendCreatorLoginCodeEmail } from "@/lib/email";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -78,13 +79,8 @@ export async function requestLoginCodeAction(
       creator.tenantId,
     );
 
-    // MVP: log to console. Production: send via Resend.
-    console.log(
-      `[creator-auth] Login code for ${creator.name} (${normalizedEmail}): ${code}`,
-    );
-
-    // Placeholder for email sending:
-    // await sendCreatorLoginCodeEmail(normalizedEmail, creator.name, code);
+    // Send login code via email
+    await sendCreatorLoginCodeEmail(normalizedEmail, code);
 
     return { data: { verificationToken } };
   } catch (err) {

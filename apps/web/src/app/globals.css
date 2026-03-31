@@ -41,12 +41,6 @@
   --info: #2563EB;
   --info-muted: rgba(37,99,235,0.08);
 
-  /* Accent — âmbar (uso cirúrgico: btn-primary + nav active) */
-  --accent: oklch(65% 0.12 60);
-  --accent-hover: oklch(60% 0.13 60);
-  --accent-muted: oklch(65% 0.12 60 / 0.10);
-  --accent-text: #FFFFFF;
-
   /* Typography */
   --font-display: 'Bricolage Grotesque', 'DM Sans', -apple-system, sans-serif;
   --font: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -68,9 +62,9 @@
   --sidebar-border: rgba(15,23,42,0.08);
 
   /* Buttons */
-  --btn-primary-bg: var(--accent);
-  --btn-primary-text: var(--accent-text);
-  --btn-primary-hover: var(--accent-hover);
+  --btn-primary-bg: #0F172A;
+  --btn-primary-text: #FFFFFF;
+  --btn-primary-hover: #1E293B;
   --btn-secondary-bg: #FFFFFF;
   --btn-secondary-text: #334155;
   --btn-secondary-border: rgba(15,23,42,0.15);
@@ -110,6 +104,9 @@
   --space-8: 32px;
   --space-12: 48px;
   --space-16: 64px;
+
+  /* Accent — amber, used only in nav active indicator */
+  --accent: oklch(65% 0.12 60);
 
   /* Transitions */
   --transition-fast: 150ms ease;
@@ -167,7 +164,10 @@
   --sidebar-item-active-text: #E8EAF0;
   --sidebar-border: #1E2129;
 
-  /* Buttons (--accent uniforme em ambos os temas) */
+  /* Buttons */
+  --btn-primary-bg: #F7F8FA;
+  --btn-primary-text: #0C0E13;
+  --btn-primary-hover: #FFFFFF;
   --btn-secondary-bg: transparent;
   --btn-secondary-text: #D0D4DE;
   --btn-secondary-border: #262A34;
@@ -196,6 +196,9 @@
   /* Badge */
   --badge-bg: #16181F;
   --badge-text: #A8AEBB;
+
+  /* Accent (same value works well on dark) */
+  --accent: oklch(68% 0.14 60);
 
   /* Font smoothing */
   -webkit-font-smoothing: antialiased;
@@ -241,12 +244,6 @@
   --font-sans: var(--font);
   --font-mono: var(--font-mono);
 
-  /* Accent */
-  --color-accent: var(--accent);
-  --color-accent-hover: var(--accent-hover);
-  --color-accent-muted: var(--accent-muted);
-  --color-accent-text: var(--accent-text);
-
   /* Input tokens (for unambiguous border/ring utilities in Tailwind v4) */
   --color-input-bg: var(--input-bg);
   --color-input-border: var(--input-border);
@@ -277,6 +274,9 @@
   --color-sidebar-item-hover: var(--sidebar-item-hover);
   --color-sidebar-item-active-bg: var(--sidebar-item-active-bg);
   --color-sidebar-item-active-text: var(--sidebar-item-active-text);
+
+  /* Accent */
+  --color-accent: var(--accent);
 
   /* Radius (static — same in both themes, no circular ref) */
   --radius-sm: 6px;
@@ -320,4 +320,34 @@ html.theme-transition *::after {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
+}
+
+/* ─── Login page — Silmaril background ─── */
+.login-silmaril {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 640px;
+  height: 640px;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 44% 42%,
+    oklch(99%  0.003 215 / 0.11)  0%,
+    oklch(92%  0.018 213 / 0.07) 22%,
+    oklch(80%  0.048 214 / 0.04) 48%,
+    transparent 72%
+  );
+  filter: blur(52px);
+  pointer-events: none;
+  animation: silmaril-breathe 5.5s ease-in-out infinite;
+}
+
+@keyframes silmaril-breathe {
+  0%, 100% { opacity: 1;   transform: translate(-50%, -50%) scale(1);    }
+  50%       { opacity: 0.6; transform: translate(-50%, -50%) scale(1.04); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-silmaril { animation: none; }
 }

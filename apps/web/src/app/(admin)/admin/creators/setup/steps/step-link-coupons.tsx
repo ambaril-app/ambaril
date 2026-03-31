@@ -65,8 +65,8 @@ export function StepLinkCoupons({
   if (importedCoupons.length === 0) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-text-secondary">
-          Nenhum cupom importado na etapa anterior. Voce pode pular esta etapa e
+        <p className="text-sm text-text-ghost">
+          Nenhum cupom importado na etapa anterior. Você pode pular esta etapa e
           vincular creators manualmente depois.
         </p>
       </div>
@@ -75,8 +75,8 @@ export function StepLinkCoupons({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-text-secondary">
-        Para cada cupom, informe o creator responsavel. Deixe em branco para
+      <p className="text-sm text-text-ghost">
+        Para cada cupom, informe o creator responsável. Deixe em branco para
         pular.
       </p>
 
@@ -113,7 +113,7 @@ export function StepLinkCoupons({
 
               {tiers.length > 0 && (
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-text-secondary">
+                  <label className="text-xs text-text-ghost">
                     Tier
                   </label>
                   <select

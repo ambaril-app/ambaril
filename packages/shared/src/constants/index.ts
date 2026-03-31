@@ -37,12 +37,14 @@ export const MODULES: ModuleConfig[] = [
     status: "active",
     requiredRoles: ["admin", "pm"],
     subroutes: [
-      { id: "creators-setup", label: "Configuracao", path: "/admin/creators/setup", showOnlyBeforeSetup: true },
-      { id: "creators-list", label: "Lista", path: "/admin/creators", showOnlyAfterSetup: true },
+      { id: "creators-analytics", label: "Analytics", path: "/admin/creators/analytics", requiredPermission: "creators:analytics:read", showOnlyAfterSetup: true },
+      { id: "creators-list", label: "Creators", path: "/admin/creators", showOnlyAfterSetup: true },
       { id: "creators-challenges", label: "Desafios", path: "/admin/creators/challenges", requiredPermission: "creators:challenges:read", showOnlyAfterSetup: true },
       { id: "creators-campaigns", label: "Campanhas", path: "/admin/creators/campaigns", requiredPermission: "creators:campaigns:read", showOnlyAfterSetup: true },
       { id: "creators-payouts", label: "Pagamentos", path: "/admin/creators/payouts", requiredPermission: "creators:payouts:read", showOnlyAfterSetup: true },
-      { id: "creators-analytics", label: "Analytics", path: "/admin/creators/analytics", requiredPermission: "creators:analytics:read", showOnlyAfterSetup: true },
+      { id: "creators-tiers", label: "Tiers", path: "/admin/creators/tiers", requiredPermission: "creators:tiers:read", showOnlyAfterSetup: true },
+      { id: "creators-antifraud", label: "Anti-fraude", path: "/admin/creators/anti-fraud", requiredPermission: "creators:antifraud:read", showOnlyAfterSetup: true },
+      { id: "creators-setup", label: "Configurar", path: "/admin/creators/setup" },
     ],
   },
   {
@@ -71,7 +73,7 @@ export const MODULES: ModuleConfig[] = [
     subroutes: [
       { id: "crm-contacts", label: "Contatos", path: "/admin/crm/contacts" },
       { id: "crm-segments", label: "Segmentos", path: "/admin/crm/segments", requiredPermission: "crm:segments:read" },
-      { id: "crm-automations", label: "Automacoes", path: "/admin/crm/automations", requiredPermission: "crm:automations:read" },
+      { id: "crm-automations", label: "Automações", path: "/admin/crm/automations", requiredPermission: "crm:automations:read" },
       { id: "crm-campaigns", label: "Campanhas", path: "/admin/crm/campaigns", requiredPermission: "crm:campaigns:read" },
     ],
   },
@@ -114,7 +116,7 @@ export const MODULES: ModuleConfig[] = [
     status: "coming_soon",
     requiredRoles: ["admin", "pm", "creative", "operations", "finance"],
     subroutes: [
-      { id: "dashboard-overview", label: "Visao Geral", path: "/admin/dashboard" },
+      { id: "dashboard-overview", label: "Visão Geral", path: "/admin/dashboard" },
       { id: "dashboard-war-room", label: "War Room", path: "/admin/dashboard/war-room", requiredPermission: "dashboard:war_room:read" },
     ],
   },
@@ -151,9 +153,6 @@ export const CONVERSATION_STATUSES = ["open", "closed", "archived"] as const;
 
 // ─── Sidebar Module Groups ─────────────────────────────
 export const MODULE_GROUPS = [
-  { id: "commerce", label: "Comércio", moduleIds: ["checkout"] },
-  { id: "operations", label: "Operações", moduleIds: ["erp"] },
-  { id: "growth", label: "Crescimento", moduleIds: ["crm", "creators"] },
-  { id: "communication", label: "Comunicação", moduleIds: ["whatsapp"] },
-  { id: "intelligence", label: "Inteligência", moduleIds: ["dashboard"] },
+  { id: "growth", label: "Crescimento", moduleIds: ["creators"] },
+  { id: "soon", label: "Em breve", moduleIds: ["checkout", "crm", "erp", "whatsapp", "dashboard"] },
 ] as const;

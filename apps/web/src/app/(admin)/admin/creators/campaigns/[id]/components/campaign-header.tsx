@@ -59,13 +59,13 @@ export function CampaignHeader({
     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
-          <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">{name}</h1>
+          <h1 className="text-[32px] font-display font-medium leading-tight tracking-[-0.02em] text-text-bright">{name}</h1>
           <Badge variant="secondary">
             {CAMPAIGN_TYPE_LABELS[campaignType] ?? campaignType}
           </Badge>
           <StatusBadge status={status} statusMap={CAMPAIGN_STATUS_MAP} />
         </div>
-        <p className="text-sm text-text-secondary">
+        <p className="text-sm text-text-ghost">
           {formatDate(startDate)}
           {endDate ? ` — ${formatDate(endDate)}` : " — Sem data de fim"}
         </p>

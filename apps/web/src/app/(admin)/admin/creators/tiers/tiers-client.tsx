@@ -114,21 +114,21 @@ export function TiersClient({ initialTiers, initialError }: TiersClientProps) {
       key: "slug",
       label: "Slug",
       render: (_value, row) => (
-        <code className="rounded bg-bg-surface px-1.5 py-0.5 font-mono text-xs text-text-secondary">
+        <code className="rounded bg-bg-surface px-1.5 py-0.5 font-mono text-xs text-text-ghost">
           {row.slug as string}
         </code>
       ),
     },
     {
       key: "commissionRate",
-      label: "Comissao (%)",
+      label: "Comissão (%)",
       render: (_value, row) => (
         <span className="font-mono text-sm">{row.commissionRate as string}%</span>
       ),
     },
     {
       key: "minFollowers",
-      label: "Seg. Minimos",
+      label: "Seg. Mínimos",
       render: (_value, row) => (
         <span className="font-mono text-sm">
           {(row.minFollowers as number).toLocaleString("pt-BR")}
@@ -137,14 +137,14 @@ export function TiersClient({ initialTiers, initialError }: TiersClientProps) {
     },
     {
       key: "benefits",
-      label: "Beneficios",
+      label: "Benefícios",
       render: (_value, row) => {
         const b = row.benefits;
         if (!b || (typeof b === "object" && Object.keys(b as object).length === 0)) {
           return <span className="text-text-muted">-</span>;
         }
         return (
-          <pre className="max-w-[200px] truncate font-mono text-xs text-text-secondary">
+          <pre className="max-w-[200px] truncate font-mono text-xs text-text-ghost">
             {JSON.stringify(b)}
           </pre>
         );
@@ -157,7 +157,7 @@ export function TiersClient({ initialTiers, initialError }: TiersClientProps) {
     },
     {
       key: "actions",
-      label: "Acoes",
+      label: "Ações",
       render: (_value, row) => (
         <div className="flex items-center gap-2">
           <Button

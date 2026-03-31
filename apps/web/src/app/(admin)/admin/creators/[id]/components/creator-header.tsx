@@ -71,7 +71,7 @@ function CreatorHeader({ creator }: CreatorHeaderProps) {
         case "adjust-points": {
           const pts = parseInt(pointsAmount, 10);
           if (isNaN(pts) || pts === 0) {
-            setError("Pontos devem ser um numero diferente de zero");
+            setError("Pontos devem ser um número diferente de zero");
             setProcessing(false);
             return;
           }
@@ -139,14 +139,14 @@ function CreatorHeader({ creator }: CreatorHeaderProps) {
                 <Badge variant="secondary">{creator.tierName}</Badge>
               )}
             </div>
-            <div className="flex items-center gap-4 text-sm text-text-secondary">
+            <div className="flex items-center gap-4 text-sm text-text-ghost">
               {creator.couponCode && (
                 <span>
                   Cupom: <span className="font-mono">{creator.couponCode}</span>
                 </span>
               )}
               <span>
-                Comissao: <span className="font-mono">{creator.commissionRate}%</span>
+                Comissão: <span className="font-mono">{creator.commissionRate}%</span>
               </span>
               <span>
                 Vendas:{" "}
@@ -202,7 +202,7 @@ function CreatorHeader({ creator }: CreatorHeaderProps) {
               }}
             >
               <ExternalLink className="mr-1.5 h-4 w-4" />
-              Pre-visualizar portal
+              Pré-visualizar portal
             </Button>
           )}
         </div>
@@ -218,12 +218,12 @@ function CreatorHeader({ creator }: CreatorHeaderProps) {
         <div className="space-y-4">
           {/* Confirm message for simple actions */}
           {actionType === "approve" && (
-            <p className="text-sm text-text-secondary">
+            <p className="text-sm text-text-ghost">
               Confirma a aprovação de <strong>{creator.name}</strong>? Um cupom será gerado automaticamente e o creator será ativado.
             </p>
           )}
           {actionType === "reactivate" && (
-            <p className="text-sm text-text-secondary">
+            <p className="text-sm text-text-ghost">
               Confirma a reativação de <strong>{creator.name}</strong>? O status voltará para ativo.
             </p>
           )}

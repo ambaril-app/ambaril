@@ -43,7 +43,7 @@ const PLATFORM_COLORS: Record<string, string> = {
   youtube: "text-[#FF0000]",
   pinterest: "text-[#BD081C]",
   twitter: "text-text-primary",
-  other: "text-text-secondary",
+  other: "text-text-ghost",
 };
 
 // ---------------------------------------------------------------------------
@@ -84,7 +84,7 @@ function SocialTab({ socialAccounts }: SocialTabProps) {
             <div className="space-y-2">
               <p className="text-sm font-medium text-text-bright">@{account.handle}</p>
               {account.followers !== null && (
-                <p className="text-sm text-text-secondary">
+                <p className="text-sm text-text-ghost">
                   <span className="font-mono">{account.followers.toLocaleString("pt-BR")}</span> seguidores
                 </p>
               )}
@@ -93,7 +93,7 @@ function SocialTab({ socialAccounts }: SocialTabProps) {
                   href={account.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-text-secondary hover:text-text-primary transition-colors"
+                  className="inline-flex items-center gap-1 text-xs text-text-ghost hover:text-text-primary transition-colors"
                 >
                   <ExternalLink className="h-3 w-3" />
                   Abrir perfil

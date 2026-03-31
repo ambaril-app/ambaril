@@ -87,13 +87,13 @@ export function CalculatePayoutsModal({
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Calcular Pagamentos" size="md">
       <div className="space-y-4">
-        <p className="text-sm text-text-secondary">
-          Selecione o periodo para calcular os pagamentos dos creators com base nas vendas
-          atribuidas.
+        <p className="text-sm text-text-ghost">
+          Selecione o período para calcular os pagamentos dos creators com base nas vendas
+          atribuídas.
         </p>
 
         <FormDatePicker
-          label="Data de Inicio"
+          label="Data de Início"
           value={periodStart ?? undefined}
           onChange={(d) => setPeriodStart(d)}
           required
@@ -110,14 +110,14 @@ export function CalculatePayoutsModal({
 
         {result && (
           <div className="rounded-lg border border-success/20 bg-success/5 px-4 py-3 space-y-1">
-            <p className="text-sm font-medium text-success">Calculo concluido</p>
-            <p className="text-sm text-text-secondary">
+            <p className="text-sm font-medium text-success">Cálculo concluído</p>
+            <p className="text-sm text-text-ghost">
               <span className="font-mono">{result.created}</span> pagamento(s) criado(s)
             </p>
-            <p className="text-sm text-text-secondary">
-              <span className="font-mono">{result.skipped}</span> creator(s) abaixo do minimo
+            <p className="text-sm text-text-ghost">
+              <span className="font-mono">{result.skipped}</span> creator(s) abaixo do mínimo
             </p>
-            <p className="text-sm text-text-secondary">
+            <p className="text-sm text-text-ghost">
               Total bruto:{" "}
               <span className="font-mono font-medium text-text-bright">
                 R$ {result.totalGross}

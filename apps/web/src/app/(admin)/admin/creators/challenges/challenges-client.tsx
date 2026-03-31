@@ -69,14 +69,14 @@ const CHALLENGE_STATUS_MAP: Record<
   draft: { label: "Rascunho", variant: "default" },
   active: { label: "Ativo", variant: "success" },
   judging: { label: "Avaliando", variant: "info" },
-  completed: { label: "Concluido", variant: "success" },
+  completed: { label: "Concluído", variant: "success" },
   cancelled: { label: "Cancelado", variant: "danger" },
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
   engagement: "Engajamento",
   sales: "Vendas",
-  content: "Conteudo",
+  content: "Conteúdo",
   community: "Comunidade",
   drop: "Drop",
   style: "Estilo",
@@ -234,7 +234,7 @@ export function ChallengesClient({
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Expandir submissoes"
+          aria-label="Expandir submissões"
           onPress={() => handleToggleExpand(row.id as string)}
         >
           {expandedId === (row.id as string) ? (
@@ -257,16 +257,16 @@ export function ChallengesClient({
       key: "category",
       label: "Categoria",
       render: (_value, row) => (
-        <span className="text-sm text-text-secondary">
+        <span className="text-sm text-text-ghost">
           {CATEGORY_LABELS[row.category as string] ?? row.category}
         </span>
       ),
     },
     {
       key: "month",
-      label: "Mes/Ano",
+      label: "Mês/Ano",
       render: (_value, row) => (
-        <span className="text-sm text-text-secondary">
+        <span className="text-sm text-text-ghost">
           {String(row.month as number).padStart(2, "0")}/{row.year as number}
         </span>
       ),
@@ -292,14 +292,14 @@ export function ChallengesClient({
       key: "maxParticipants",
       label: "Participantes",
       render: (_value, row) => (
-        <span className="text-sm text-text-secondary">
+        <span className="text-sm text-text-ghost">
           {(row.maxParticipants as number | null) ?? "Sem limite"}
         </span>
       ),
     },
     {
       key: "actions",
-      label: "Acoes",
+      label: "Ações",
       render: (_value, row) => {
         const isDraft = (row.status as string) === "draft";
         return (

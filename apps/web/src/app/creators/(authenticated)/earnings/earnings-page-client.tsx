@@ -227,7 +227,11 @@ function EarningsPageClient({
             <EmptyState
               icon={Wallet}
               title="Nenhum ganho registrado"
-              description="Seus ganhos aparecerão quando vendas forem confirmadas."
+              description="Ganhos são calculados após vendas confirmadas. Compartilhe seu cupom para começar."
+              action={{
+                label: "Ver meu cupom",
+                onPress: () => { window.location.href = "/creators/coupons"; },
+              }}
             />
           }
         />

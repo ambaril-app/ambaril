@@ -102,76 +102,95 @@ export function TierFormModal({ isOpen, onClose, tier, onSubmit }: TierFormModal
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="lg">
-      <div className="space-y-4">
-        <Input
-          label="Nome"
-          placeholder="Ex: Seed"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          errorMessage={fieldErrors.name}
-          required
-        />
-
-        <Input
-          label="Slug"
-          placeholder="Ex: seed"
-          value={slug}
-          onChange={(e) => setSlug(e.target.value)}
-          errorMessage={fieldErrors.slug}
-          required
-        />
-
-        <Input
-          label="Taxa de Comissao (%)"
-          placeholder="Ex: 8.00"
-          value={commissionRate}
-          onChange={(e) => setCommissionRate(e.target.value)}
-          errorMessage={fieldErrors.commissionRate}
-          required
-        />
-
-        <Input
-          label="Seguidores Minimos"
-          type="number"
-          placeholder="0"
-          value={minFollowers}
-          onChange={(e) => setMinFollowers(e.target.value)}
-          errorMessage={fieldErrors.minFollowers}
-        />
-
-        <div className="space-y-1">
-          <label className="text-sm text-text-secondary">Beneficios (JSON)</label>
-          <textarea
-            className="w-full rounded-lg border border-border-default bg-bg-raised px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-ghost focus:border-border-strong focus:outline-none"
-            rows={4}
-            value={benefits}
-            onChange={(e) => setBenefits(e.target.value)}
-            placeholder='{"free_shipping": true, "early_access": false}'
-          />
-          {fieldErrors.benefits && (
-            <p className="text-xs text-danger">{fieldErrors.benefits}</p>
-          )}
+      <div className="space-y-6">
+        {/* Section: Identificação */}
+        <div className="space-y-3">
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
+            Identificação
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Nome"
+              placeholder="Ex: Seed"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              errorMessage={fieldErrors.name}
+              required
+            />
+            <Input
+              label="Slug"
+              placeholder="Ex: seed"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              errorMessage={fieldErrors.slug}
+              required
+            />
+          </div>
         </div>
 
-        <Input
-          label="Ordem"
-          type="number"
-          placeholder="0"
-          value={sortOrder}
-          onChange={(e) => setSortOrder(e.target.value)}
-          errorMessage={fieldErrors.sortOrder}
-        />
+        {/* Section: Comissão */}
+        <div className="space-y-3 border-t border-border-default/60 pt-5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
+            Comissão
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Taxa de Comissão (%)"
+              placeholder="Ex: 8.00"
+              value={commissionRate}
+              onChange={(e) => setCommissionRate(e.target.value)}
+              errorMessage={fieldErrors.commissionRate}
+              required
+            />
+            <Input
+              label="Seguidores Mínimos"
+              type="number"
+              placeholder="0"
+              value={minFollowers}
+              onChange={(e) => setMinFollowers(e.target.value)}
+              errorMessage={fieldErrors.minFollowers}
+            />
+          </div>
+        </div>
+
+        {/* Section: Configuração */}
+        <div className="space-y-3 border-t border-border-default/60 pt-5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
+            Configuração
+          </p>
+          <div className="space-y-1">
+            <label className="text-sm text-text-ghost">Benefícios (JSON)</label>
+            <textarea
+              className="w-full rounded-lg border border-border-default bg-bg-raised px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-ghost focus:border-border-strong focus:outline-none"
+              rows={3}
+              value={benefits}
+              onChange={(e) => setBenefits(e.target.value)}
+              placeholder='{"free_shipping": true, "early_access": false}'
+            />
+            {fieldErrors.benefits && (
+              <p className="text-xs text-danger">{fieldErrors.benefits}</p>
+            )}
+          </div>
+          <Input
+            label="Ordem de exibição"
+            type="number"
+            placeholder="0"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+            errorMessage={fieldErrors.sortOrder}
+          />
+        </div>
 
         {error && (
           <p className="text-sm text-danger">{error}</p>
         )}
 
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex justify-end gap-3 border-t border-border-default/60 pt-4">
           <Button variant="ghost" onPress={onClose} disabled={isPending}>
             Cancelar
           </Button>
           <Button onPress={handleSubmit} disabled={isPending}>
-            {isPending ? "Salvando..." : tier ? "Salvar Alteracoes" : "Criar Tier"}
+            {isPending ? "Salvando..." : tier ? "Salvar Alterações" : "Criar Tier"}
           </Button>
         </div>
       </div>

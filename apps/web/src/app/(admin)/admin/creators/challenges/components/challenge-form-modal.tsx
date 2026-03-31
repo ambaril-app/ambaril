@@ -43,7 +43,7 @@ interface ChallengeFormModalProps {
 const CATEGORY_OPTIONS = [
   { value: "engagement", label: "Engajamento" },
   { value: "sales", label: "Vendas" },
-  { value: "content", label: "Conteudo" },
+  { value: "content", label: "Conteúdo" },
   { value: "community", label: "Comunidade" },
 ];
 
@@ -169,122 +169,140 @@ export function ChallengeFormModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="xl">
-      <div className="space-y-4">
-        <Input
-          label="Nome"
-          placeholder="Ex: Desafio de Estilo do Mes"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          errorMessage={fieldErrors.name}
-          required
-        />
-
-        <FormTextarea
-          label="Descricao"
-          placeholder="Descreva o desafio em detalhes..."
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          errorMessage={fieldErrors.description}
-          rows={3}
-          maxLength={5000}
-          required
-        />
-
-        <div className="grid grid-cols-2 gap-4">
-          <FormSelect
-            label="Categoria"
-            options={CATEGORY_OPTIONS}
-            value={category}
-            onChange={setCategory}
-            errorMessage={fieldErrors.category}
-            required
-          />
-
+      <div className="space-y-6">
+        {/* Section: Desafio */}
+        <div className="space-y-3">
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
+            Desafio
+          </p>
           <Input
-            label="Pontos de Recompensa"
-            type="number"
-            placeholder="100"
-            value={pointsReward}
-            onChange={(e) => setPointsReward(e.target.value)}
-            errorMessage={fieldErrors.pointsReward}
+            label="Nome"
+            placeholder="Ex: Desafio de Estilo do Mês"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            errorMessage={fieldErrors.name}
             required
           />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <FormSelect
-            label="Mes"
-            options={MONTH_OPTIONS}
-            value={month}
-            onChange={setMonth}
-            errorMessage={fieldErrors.month}
-            required
-          />
-
-          <Input
-            label="Ano"
-            type="number"
-            placeholder="2026"
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            errorMessage={fieldErrors.year}
-            required
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <label className="text-sm text-text-secondary">Data/Hora de Inicio</label>
-            <input
-              type="datetime-local"
-              className="w-full rounded-lg border border-border-default bg-bg-raised px-3 py-2 text-sm text-text-primary focus:border-border-strong focus:outline-none"
-              value={startsAt}
-              onChange={(e) => setStartsAt(e.target.value)}
-            />
-            {fieldErrors.startsAt && (
-              <p className="text-xs text-danger">{fieldErrors.startsAt}</p>
-            )}
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-sm text-text-secondary">Data/Hora de Fim</label>
-            <input
-              type="datetime-local"
-              className="w-full rounded-lg border border-border-default bg-bg-raised px-3 py-2 text-sm text-text-primary focus:border-border-strong focus:outline-none"
-              value={endsAt}
-              onChange={(e) => setEndsAt(e.target.value)}
-            />
-            {fieldErrors.endsAt && (
-              <p className="text-xs text-danger">{fieldErrors.endsAt}</p>
-            )}
-          </div>
-        </div>
-
-        <Input
-          label="Maximo de Participantes (opcional)"
-          type="number"
-          placeholder="Sem limite"
-          value={maxParticipants}
-          onChange={(e) => setMaxParticipants(e.target.value)}
-        />
-
-        <div className="space-y-1">
-          <label className="text-sm text-text-secondary">Requisitos (JSON)</label>
-          <textarea
-            className="w-full rounded-lg border border-border-default bg-bg-raised px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-ghost focus:border-border-strong focus:outline-none"
+          <FormTextarea
+            label="Descrição"
+            placeholder="Descreva o desafio em detalhes..."
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            errorMessage={fieldErrors.description}
             rows={3}
-            value={requirements}
-            onChange={(e) => setRequirements(e.target.value)}
-            placeholder='{"min_posts": 3, "hashtag": "#ciena"}'
+            maxLength={5000}
+            required
           />
-          {fieldErrors.requirements && (
-            <p className="text-xs text-danger">{fieldErrors.requirements}</p>
-          )}
+        </div>
+
+        {/* Section: Recompensa */}
+        <div className="space-y-3 border-t border-border-default/60 pt-5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
+            Recompensa
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <FormSelect
+              label="Categoria"
+              options={CATEGORY_OPTIONS}
+              value={category}
+              onChange={setCategory}
+              errorMessage={fieldErrors.category}
+              required
+            />
+            <Input
+              label="Pontos de Recompensa"
+              type="number"
+              placeholder="100"
+              value={pointsReward}
+              onChange={(e) => setPointsReward(e.target.value)}
+              errorMessage={fieldErrors.pointsReward}
+              required
+            />
+          </div>
+        </div>
+
+        {/* Section: Período */}
+        <div className="space-y-3 border-t border-border-default/60 pt-5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
+            Período
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <FormSelect
+              label="Mês"
+              options={MONTH_OPTIONS}
+              value={month}
+              onChange={setMonth}
+              errorMessage={fieldErrors.month}
+              required
+            />
+            <Input
+              label="Ano"
+              type="number"
+              placeholder="2026"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              errorMessage={fieldErrors.year}
+              required
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="text-sm text-text-ghost">Início</label>
+              <input
+                type="datetime-local"
+                className="w-full rounded-lg border border-border-default bg-bg-raised px-3 py-2 text-sm text-text-primary focus:border-border-strong focus:outline-none"
+                value={startsAt}
+                onChange={(e) => setStartsAt(e.target.value)}
+              />
+              {fieldErrors.startsAt && (
+                <p className="text-xs text-danger">{fieldErrors.startsAt}</p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm text-text-ghost">Fim</label>
+              <input
+                type="datetime-local"
+                className="w-full rounded-lg border border-border-default bg-bg-raised px-3 py-2 text-sm text-text-primary focus:border-border-strong focus:outline-none"
+                value={endsAt}
+                onChange={(e) => setEndsAt(e.target.value)}
+              />
+              {fieldErrors.endsAt && (
+                <p className="text-xs text-danger">{fieldErrors.endsAt}</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Section: Avançado */}
+        <div className="space-y-3 border-t border-border-default/60 pt-5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
+            Avançado
+          </p>
+          <Input
+            label="Máximo de Participantes (opcional)"
+            type="number"
+            placeholder="Sem limite"
+            value={maxParticipants}
+            onChange={(e) => setMaxParticipants(e.target.value)}
+          />
+          <div className="space-y-1">
+            <label className="text-sm text-text-ghost">Requisitos (JSON)</label>
+            <textarea
+              className="w-full rounded-lg border border-border-default bg-bg-raised px-3 py-2 font-mono text-sm text-text-primary placeholder:text-text-ghost focus:border-border-strong focus:outline-none"
+              rows={3}
+              value={requirements}
+              onChange={(e) => setRequirements(e.target.value)}
+              placeholder='{"min_posts": 3, "hashtag": "#ciena"}'
+            />
+            {fieldErrors.requirements && (
+              <p className="text-xs text-danger">{fieldErrors.requirements}</p>
+            )}
+          </div>
         </div>
 
         {error && <p className="text-sm text-danger">{error}</p>}
 
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex justify-end gap-3 border-t border-border-default/60 pt-4">
           <Button variant="ghost" onPress={onClose} disabled={isPending}>
             Cancelar
           </Button>
@@ -292,7 +310,7 @@ export function ChallengeFormModal({
             {isPending
               ? "Salvando..."
               : challenge
-                ? "Salvar Alteracoes"
+                ? "Salvar Alterações"
                 : "Criar Desafio"}
           </Button>
         </div>

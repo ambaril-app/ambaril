@@ -1,0 +1,239 @@
+@import "tailwindcss";
+
+/* ===== AMBARIL DESIGN SYSTEM — MOONSTONE LIGHT ===== */
+
+:root {
+  --bg-void: #F7F8FA;
+  --bg-base: #FFFFFF;
+  --bg-raised: #F3F4F6;
+  --bg-surface: #E8EAF0;
+  --bg-elevated: #FFFFFF;
+
+  --border-subtle: rgba(15,23,42,0.06);
+  --border-default: rgba(15,23,42,0.10);
+  --border-strong: rgba(15,23,42,0.18);
+
+  --text-ghost: #94A3B8;
+  --text-muted: #64748B;
+  --text-secondary: #475569;
+  --text-tertiary: #475569;
+  --text-primary: #334155;
+  --text-bright: #1E293B;
+  --text-white: #0F172A;
+
+  --font-display: 'Bricolage Grotesque', 'DM Sans', -apple-system, sans-serif;
+  --font: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'DM Mono', 'SF Mono', 'Fira Code', monospace;
+
+  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
+  --shadow-md: 0 2px 8px rgba(15,23,42,0.06);
+  --shadow-lg: 0 4px 16px rgba(15,23,42,0.08);
+  --shadow-xl: 0 8px 32px rgba(15,23,42,0.12);
+
+  --input-bg: #F3F4F6;
+  --input-border: rgba(15,23,42,0.12);
+  --input-focus-border: #2563EB;
+
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background-color: var(--bg-void);
+  color: var(--text-primary);
+  font-family: var(--font);
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #94A3B8; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #64748B; }
+
+
+/* ══════════════════════════════════════════════════
+   HERO — Constellation canvas
+══════════════════════════════════════════════════ */
+
+.hero-constellation {
+  display: block;
+}
+
+
+/* ─── invite-only badge — hero H2 ─── */
+
+.invite-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.10em;
+  color: oklch(72% 0.052 215);
+  background: oklch(68% 0.052 215 / 0.08);
+  border: 1px solid oklch(68% 0.052 215 / 0.22);
+  border-radius: 4px;
+  padding: 3px 10px;
+  vertical-align: middle;
+  line-height: 1;
+  position: relative;
+  top: -1px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
+
+
+/* ─── Hero entrance animations ─── */
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up-1 {
+  opacity: 0;
+  animation: fade-up 0.9s 0.8s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+.animate-fade-up-2 {
+  opacity: 0;
+  animation: fade-up 0.9s 1.0s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+.animate-fade-up-3 {
+  opacity: 0;
+  animation: fade-up 0.9s 1.15s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+.animate-fade-up-4 {
+  opacity: 0;
+  animation: fade-up 0.9s 1.35s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+.animate-fade-up-5 {
+  opacity: 0;
+  animation: fade-up 0.9s 1.5s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+
+
+/* ─── Mockup frames ─── */
+
+.mockup-frame {
+  perspective: 1200px;
+  pointer-events: none;
+  user-select: none;
+}
+
+.mockup-inner {
+  transform: rotateX(4deg);
+  transform-style: preserve-3d;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.10);
+}
+
+
+/* ══════════════════════════════════════════════════
+   /acesso — Dark gate background Silmaril
+   (CSS-only, no spring physics — just a breathing glow)
+══════════════════════════════════════════════════ */
+
+.acesso-silmaril {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 640px;
+  height: 640px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse at 50% 50%,
+    oklch(78% 0.058 213 / 0.10)  0%,
+    oklch(68% 0.080 216 / 0.05) 44%,
+    transparent 72%
+  );
+  filter: blur(64px);
+  animation: acesso-breath 9s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes acesso-breath {
+  0%, 100% { transform: translate(-50%, -50%) scale(1);     opacity: 0.65; }
+  50%       { transform: translate(-50%, -50%) scale(1.12); opacity: 1;    }
+}
+
+
+/* ─── Interview form — step entrance animation ─── */
+
+@keyframes interview-step-in {
+  from { opacity: 0; transform: translateY(26px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.interview-step-enter {
+  animation: interview-step-in 0.44s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Placeholder color for dark interview inputs */
+.interview-field::placeholder {
+  color: oklch(26% 0.014 220);
+}
+
+
+/* ─── Code input — scan sweep line ─── */
+
+@keyframes code-scan-sweep {
+  from { transform: scaleX(0); transform-origin: left center; }
+  to   { transform: scaleX(1); transform-origin: left center; }
+}
+
+.code-scan-line {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: oklch(68% 0.052 215);
+  animation: code-scan-sweep 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  border-radius: 0 0 8px 8px;
+}
+
+
+/* ─── Reduced motion ─── */
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-constellation {
+    display: none !important;
+  }
+
+  .animate-fade-up-1,
+  .animate-fade-up-2,
+  .animate-fade-up-3,
+  .animate-fade-up-4,
+  .animate-fade-up-5 {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .acesso-silmaril {
+    animation: none !important;
+    opacity: 0.75 !important;
+    transform: translate(-50%, -50%) !important;
+  }
+
+  .interview-step-enter {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .code-scan-line {
+    animation: none !important;
+    transform: scaleX(1) !important;
+  }
+}

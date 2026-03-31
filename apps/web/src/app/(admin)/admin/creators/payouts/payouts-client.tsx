@@ -263,9 +263,9 @@ export function PayoutsClient({ initialPayouts, initialTotal, initialError }: Pa
     },
     {
       key: "periodStart",
-      label: "Periodo",
+      label: "Período",
       render: (_value, row) => (
-        <span className="text-sm text-text-secondary">
+        <span className="text-sm text-text-ghost">
           {row.periodStart as string} - {row.periodEnd as string}
         </span>
       ),
@@ -283,7 +283,7 @@ export function PayoutsClient({ initialPayouts, initialTotal, initialError }: Pa
       key: "irrfWithheld",
       label: "IRRF (R$)",
       render: (_value, row) => (
-        <span className="font-mono text-sm text-text-secondary">
+        <span className="font-mono text-sm text-text-ghost">
           R$ {row.irrfWithheld as string}
         </span>
       ),
@@ -292,14 +292,14 @@ export function PayoutsClient({ initialPayouts, initialTotal, initialError }: Pa
       key: "issWithheld",
       label: "ISS (R$)",
       render: (_value, row) => (
-        <span className="font-mono text-sm text-text-secondary">
+        <span className="font-mono text-sm text-text-ghost">
           R$ {row.issWithheld as string}
         </span>
       ),
     },
     {
       key: "netAmount",
-      label: "Liquido (R$)",
+      label: "Líquido (R$)",
       render: (_value, row) => (
         <span className="font-mono text-sm font-medium text-text-bright">
           R$ {row.netAmount as string}
@@ -310,7 +310,7 @@ export function PayoutsClient({ initialPayouts, initialTotal, initialError }: Pa
       key: "fiscalDocType",
       label: "Doc. Fiscal",
       render: (_value, row) => (
-        <span className="text-sm text-text-secondary">
+        <span className="text-sm text-text-ghost">
           {FISCAL_DOC_LABELS[row.fiscalDocType as string] ?? row.fiscalDocType}
         </span>
       ),
@@ -324,7 +324,7 @@ export function PayoutsClient({ initialPayouts, initialTotal, initialError }: Pa
     },
     {
       key: "actions",
-      label: "Acoes",
+      label: "Ações",
       render: (_value, row) => {
         const status = row.status as string;
         return (
@@ -369,10 +369,10 @@ export function PayoutsClient({ initialPayouts, initialTotal, initialError }: Pa
               variant="ghost"
               size="sm"
               onPress={() => handleOpenMethodSheet(row.creatorId as string)}
-              aria-label="Metodo de pagamento"
+              aria-label="Método de pagamento"
             >
               <CreditCard className="mr-1 h-3.5 w-3.5" />
-              Metodo
+              Método
             </Button>
           </div>
         );
@@ -427,7 +427,7 @@ export function PayoutsClient({ initialPayouts, initialTotal, initialError }: Pa
         <EmptyState
           icon={DollarSign}
           title="Nenhum pagamento encontrado"
-          description="Calcule os pagamentos do periodo para gerar registros"
+          description="Calcule os pagamentos do período para gerar registros"
           action={{
             label: "Calcular Pagamentos",
             onPress: () => setIsCalcModalOpen(true),

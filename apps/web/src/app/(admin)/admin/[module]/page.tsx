@@ -55,14 +55,14 @@ export default async function ModulePlaceholderPage({
         {mod.label}
       </h1>
 
-      <p className="mt-2 max-w-sm text-sm text-text-secondary">
+      <p className="mt-2 max-w-sm text-sm text-text-ghost">
         Este modulo estara disponivel em breve. Estamos trabalhando para
         trazer {mod.label.toLowerCase()} para voce o mais rapido possivel.
       </p>
 
       <Link
         href="/admin"
-        className="mt-8 inline-flex items-center gap-2 rounded-lg bg-bg-surface px-4 py-2.5 text-sm text-text-secondary transition-colors hover:bg-border-default hover:text-text-primary"
+        className="mt-8 inline-flex items-center gap-2 rounded-lg bg-bg-surface px-4 py-2.5 text-sm text-text-ghost transition-colors hover:bg-border-default hover:text-text-primary"
       >
         <ArrowLeft size={16} />
         Voltar ao inicio

@@ -35,7 +35,7 @@ const COLUMNS: DataTableColumn<Record<string, unknown>>[] = [
     key: "orderId",
     label: "Pedido",
     render: (value) => (
-      <span className="font-mono text-xs text-text-secondary">{(value as string).slice(0, 8)}...</span>
+      <span className="font-mono text-xs text-text-ghost">{(value as string).slice(0, 8)}...</span>
     ),
   },
   {
@@ -67,7 +67,7 @@ const COLUMNS: DataTableColumn<Record<string, unknown>>[] = [
     render: (value) => {
       const date = value instanceof Date ? value : new Date(value as string);
       return (
-        <span className="text-xs text-text-secondary">
+        <span className="text-xs text-text-ghost">
           {date.toLocaleDateString("pt-BR")}
         </span>
       );

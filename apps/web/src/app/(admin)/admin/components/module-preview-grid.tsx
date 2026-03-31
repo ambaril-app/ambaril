@@ -48,12 +48,24 @@ export function ModulePreviewGrid({ modules }: ModulePreviewGridProps) {
   if (modules.length === 0) return null;
 
   return (
-    <section>
-      <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-text-muted">
-        Em breve
-      </h2>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {modules.map((mod) => {
+    <>
+      <style>{`details[open] .details-chevron { transform: rotate(90deg); }`}</style>
+      <details>
+        <summary className="mb-4 flex cursor-pointer list-none items-center gap-1.5 text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost hover:text-text-ghost">
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 10 10"
+            fill="currentColor"
+            className="shrink-0 transition-transform details-chevron"
+            aria-hidden="true"
+          >
+            <path d="M3 2l4 3-4 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          </svg>
+          Em breve — {modules.length} {modules.length === 1 ? "módulo" : "módulos"}
+        </summary>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {modules.map((mod) => {
           const benefit = MODULE_BENEFITS[mod.id] ?? mod.description;
           const mockStats = MODULE_MOCK_STATS[mod.id] ?? [
             "Métrica 1",
@@ -68,7 +80,7 @@ export function ModulePreviewGrid({ modules }: ModulePreviewGridProps) {
             >
               {/* Header */}
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-medium text-text-secondary">
+                <h3 className="text-sm font-medium text-text-ghost">
                   {mod.label}
                 </h3>
                 <span className="flex shrink-0 items-center gap-1 rounded-full bg-bg-surface px-1.5 py-0.5 text-[10px] text-text-ghost">
@@ -83,7 +95,7 @@ export function ModulePreviewGrid({ modules }: ModulePreviewGridProps) {
                   <div key={statLabel} className="flex items-center justify-between gap-2">
                     <span className="text-[11px] text-text-ghost">{statLabel}</span>
                     <span
-                      className="select-none font-mono text-xs font-medium tabular-nums text-text-secondary"
+                      className="select-none font-mono text-xs font-medium tabular-nums text-text-ghost"
                       style={{ filter: "blur(4px)" }}
                     >
                       —&nbsp;—&nbsp;—
@@ -98,8 +110,9 @@ export function ModulePreviewGrid({ modules }: ModulePreviewGridProps) {
               </p>
             </div>
           );
-        })}
-      </div>
-    </section>
+          })}
+        </div>
+      </details>
+    </>
   );
 }

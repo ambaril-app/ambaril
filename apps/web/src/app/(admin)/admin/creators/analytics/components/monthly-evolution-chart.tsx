@@ -121,7 +121,7 @@ function MonthlyEvolutionChart({ data }: MonthlyEvolutionChartProps) {
   if (chartData.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-text-secondary">
+        <p className="text-sm text-text-ghost">
           Nenhuma venda registrada nos ultimos 6 meses
         </p>
       </div>

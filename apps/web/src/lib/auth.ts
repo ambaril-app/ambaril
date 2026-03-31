@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { db } from "@ambaril/db";
-import { sessions, users, permissions, roles, tenants, userTenants } from "@ambaril/db/schema";
-import { eq, and, gt } from "drizzle-orm";
+import { sessions, users, permissions, roles, tenants, userTenants, magicLinks } from "@ambaril/db/schema";
+import { eq, and, gt, gte, isNull, sql } from "drizzle-orm";
 import { SESSION_COOKIE_NAME, SESSION_TTL_DEFAULT, SESSION_TTL_REMEMBER } from "@ambaril/shared/constants";
 import type { BaseTenantSessionData, RoleCode } from "@ambaril/shared/types";
 import { hash, verify } from "@node-rs/argon2";
@@ -145,4 +145,105 @@ export async function destroySession(): Promise<void> {
     await db.delete(sessions).where(eq(sessions.token, token));
     cookieStore.delete(SESSION_COOKIE_NAME);
   }
+}
+
+// ===== Magic Links =====
+
+/**
+ * Rate limit: max 3 magic links per email in the last 10 minutes.
+ * Returns true if allowed, false if limit exceeded.
+ */
+export async function checkMagicLinkRateLimit(email: string): Promise<boolean> {
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+  const result = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(magicLinks)
+    .where(
+      and(
+        eq(magicLinks.email, email.toLowerCase()),
+        gte(magicLinks.createdAt, tenMinutesAgo)
+      )
+    );
+  const count = Number(result[0]?.count ?? 0);
+  return count < 3;
+}
+
+/**
+ * Create a magic link: 32-byte hex token, 15-minute TTL.
+ * Invalidates pending links for the same email + type.
+ */
+export async function createMagicLink(
+  email: string,
+  type: 'login' | 'signup' | 'invite' | 'password_reset',
+  opts?: { userId?: string; tenantId?: string; role?: string }
+): Promise<string> {
+  const token = generateToken();
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+  // Invalidate pending links for the same email/type
+  await db
+    .update(magicLinks)
+    .set({ usedAt: new Date() })
+    .where(
+      and(
+        eq(magicLinks.email, email.toLowerCase()),
+        eq(magicLinks.type, type),
+        isNull(magicLinks.usedAt)
+      )
+    );
+
+  await db.insert(magicLinks).values({
+    email: email.toLowerCase(),
+    token,
+    type,
+    role: (opts?.role as typeof magicLinks.$inferInsert.role) ?? null,
+    userId: opts?.userId ?? null,
+    tenantId: opts?.tenantId ?? null,
+    expiresAt,
+  });
+
+  return token;
+}
+
+/**
+ * Validate token: not expired, not used. Marks usedAt=now().
+ * Returns null if invalid.
+ */
+export async function verifyMagicLink(token: string): Promise<{
+  email: string;
+  type: string;
+  userId: string | null;
+  tenantId: string | null;
+  role: string | null;
+} | null> {
+  const now = new Date();
+
+  const links = await db
+    .select()
+    .from(magicLinks)
+    .where(
+      and(
+        eq(magicLinks.token, token),
+        isNull(magicLinks.usedAt),
+        gte(magicLinks.expiresAt, now)
+      )
+    )
+    .limit(1);
+
+  const link = links[0];
+  if (!link) return null;
+
+  // Mark as used
+  await db
+    .update(magicLinks)
+    .set({ usedAt: now })
+    .where(eq(magicLinks.id, link.id));
+
+  return {
+    email: link.email,
+    type: link.type,
+    userId: link.userId,
+    tenantId: link.tenantId,
+    role: link.role ?? null,
+  };
 }

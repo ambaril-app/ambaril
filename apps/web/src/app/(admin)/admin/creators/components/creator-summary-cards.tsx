@@ -49,7 +49,7 @@ function CreatorSummaryCards({ stats }: CreatorSummaryCardsProps) {
           <Card key={card.key}>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium uppercase tracking-wider text-text-secondary">
+                <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
                   {card.label}
                 </span>
                 <Icon className={`h-4 w-4 ${card.color}`} />

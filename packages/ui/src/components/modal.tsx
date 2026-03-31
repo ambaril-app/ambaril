@@ -57,6 +57,7 @@ function Modal({ isOpen, onClose, title, children, size = "md", className }: Mod
             "fixed top-1/2 left-1/2 z-50 w-full -translate-x-1/2 -translate-y-1/2",
             "bg-bg-base border border-border-default",
             "rounded-lg shadow-[var(--shadow-xl)] p-6",
+            "outline-none",
             "data-[state=open]:animate-in data-[state=closed]:animate-out",
             "data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
             "data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95",
@@ -79,6 +80,7 @@ function Modal({ isOpen, onClose, title, children, size = "md", className }: Mod
                 "absolute top-4 right-4",
                 "text-text-muted hover:text-text-primary",
                 "transition-colors duration-150 cursor-pointer",
+                "focus:outline-none",
               )}
               aria-label="Fechar"
             >

@@ -16,7 +16,7 @@ import {
   Clock,
 } from "lucide-react";
 import type { TenantSessionData } from "@ambaril/shared/types";
-import { MODULES } from "@ambaril/shared/constants";
+import { MODULES, MODULE_GROUPS } from "@ambaril/shared/constants";
 import { hasRole } from "@ambaril/shared/utils";
 import { cn } from "@ambaril/ui/lib/utils";
 
@@ -54,86 +54,115 @@ export function Sidebar({ session, setupState = {} }: SidebarProps) {
     <>
       {/* Logo */}
       <div className="flex h-14 items-center px-4">
-        <Link href="/admin" className="text-lg font-medium text-text-bright">
+        <Link href="/admin" className="font-display text-[15px] tracking-[-0.01em] text-text-bright">
           Ambaril
         </Link>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-2">
-        {visibleModules.map((mod) => {
-          const Icon = ICON_MAP[mod.icon];
-          const isComingSoon = mod.status === "coming_soon";
-          const isActive = !isComingSoon && pathname.startsWith(mod.basePath);
-          const isExpanded = expanded[mod.id] ?? isActive;
+      <nav className="flex-1 overflow-y-auto px-2 py-2">
+        {/* Static home link */}
+        <Link
+          href="/admin"
+          onClick={() => setMobileOpen(false)}
+          className={cn(
+            "flex w-full items-center gap-2 rounded-md border-l-2 py-2 pl-[10px] pr-3 text-sm transition-colors",
+            pathname === "/admin"
+              ? "border-accent bg-sidebar-item-active-bg font-medium text-sidebar-item-active-text"
+              : "border-transparent text-text-secondary hover:bg-sidebar-item-hover hover:text-text-primary",
+          )}
+        >
+          <LayoutDashboard size={18} />
+          <span className="min-w-0 flex-1 truncate">Início</span>
+        </Link>
+
+        {/* Module groups */}
+        {MODULE_GROUPS.map((group) => {
+          const groupModules = visibleModules.filter((m) =>
+            (group.moduleIds as readonly string[]).includes(m.id),
+          );
+          if (groupModules.length === 0) return null;
 
           return (
-            <div key={mod.id}>
-              {/* Module item */}
-              {isComingSoon ? (
-                <Link
-                  href={`/admin/${mod.id}`}
-                  onClick={() => setMobileOpen(false)}
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-text-ghost"
-                >
-                  {Icon ? <Icon size={18} /> : <Clock size={18} />}
-                  <span className="min-w-0 flex-1 truncate text-left">{mod.label}</span>
-                  <span className="rounded-full bg-bg-surface px-1.5 py-0.5 text-[10px] text-text-ghost">
-                    Em breve
-                  </span>
-                </Link>
-              ) : (
-                <button
-                  onClick={() => toggleModule(mod.id)}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-md py-2 pr-3 text-sm transition-colors",
-                    isActive
-                      ? "border-l-2 border-accent bg-sidebar-item-active-bg pl-[10px] text-sidebar-item-active-text font-medium"
-                      : "border-l-2 border-transparent pl-[10px] text-text-secondary hover:bg-sidebar-item-hover hover:text-text-primary",
-                  )}
-                >
-                  {Icon && <Icon size={18} />}
-                  <span className="min-w-0 flex-1 truncate text-left">{mod.label}</span>
-                  <ChevronRight
-                    size={14}
-                    className={cn(
-                      "transition-transform",
-                      isExpanded && "rotate-90",
-                    )}
-                  />
-                </button>
-              )}
+            <div key={group.id} className="mt-1">
+              <p className="px-3 pb-1.5 pt-6 text-[10px] uppercase tracking-widest text-text-ghost">
+                {group.label}
+              </p>
 
-              {/* Subroutes (only for active modules) */}
-              {!isComingSoon && isExpanded && (
-                <div className="ml-7 mt-0.5 space-y-0.5">
-                  {mod.subroutes
-                    .filter((sub) => {
-                      const isSetupComplete = setupState[mod.id] ?? true;
-                      if (sub.showOnlyBeforeSetup && isSetupComplete) return false;
-                      if (sub.showOnlyAfterSetup && !isSetupComplete) return false;
-                      return true;
-                    })
-                    .map((sub) => {
-                    const subActive = pathname === sub.path;
-                    return (
-                      <Link
-                        key={sub.id}
-                        href={sub.path}
-                        onClick={() => setMobileOpen(false)}
-                        className={cn(
-                          "block rounded-md px-3 py-1.5 text-sm transition-colors",
-                          subActive
-                            ? "text-text-bright font-medium"
-                            : "text-text-secondary hover:text-text-primary",
-                        )}
-                      >
-                        {sub.label}
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
+              <div className="space-y-1">
+                {groupModules.map((mod) => {
+                  const Icon = ICON_MAP[mod.icon];
+                  const isComingSoon = mod.status === "coming_soon";
+                  const isActive = !isComingSoon && pathname.startsWith(mod.basePath);
+                  const isExpanded = expanded[mod.id] ?? isActive;
+
+                  return (
+                    <div key={mod.id}>
+                      {/* Module item */}
+                      {isComingSoon ? (
+                        <div className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-text-ghost">
+                          {Icon ? <Icon size={18} /> : <Clock size={18} />}
+                          <span className="min-w-0 flex-1 truncate text-left">{mod.label}</span>
+                          <span className="rounded-full bg-bg-surface px-1.5 py-0.5 text-[10px] text-text-ghost">
+                            Em breve
+                          </span>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => toggleModule(mod.id)}
+                          className={cn(
+                            "flex w-full items-center gap-2 rounded-md border-l-2 py-2 pr-3 text-sm transition-colors focus:outline-none",
+                            isActive
+                              ? "border-accent bg-sidebar-item-active-bg pl-[10px] font-medium text-sidebar-item-active-text"
+                              : "border-transparent pl-[10px] text-text-secondary hover:bg-sidebar-item-hover hover:text-text-primary",
+                          )}
+                        >
+                          {Icon && <Icon size={18} />}
+                          <span className="min-w-0 flex-1 truncate text-left">{mod.label}</span>
+                          <ChevronRight
+                            size={14}
+                            className={cn(
+                              "transition-transform",
+                              isExpanded && "rotate-90",
+                            )}
+                          />
+                        </button>
+                      )}
+
+                      {/* Subroutes (only for active modules) */}
+                      {!isComingSoon && isExpanded && (
+                        <div className="ml-7 mt-1 space-y-0.5">
+                          {mod.subroutes
+                            .filter((sub) => {
+                              const isSetupComplete = setupState[mod.id] ?? true;
+                              if (sub.showOnlyBeforeSetup && isSetupComplete) return false;
+                              if (sub.showOnlyAfterSetup && !isSetupComplete) return false;
+                              return true;
+                            })
+                            .map((sub) => {
+                              const subActive = pathname === sub.path;
+                              return (
+                                <Link
+                                  key={sub.id}
+                                  href={sub.path}
+                                  onClick={() => setMobileOpen(false)}
+                                  className={cn(
+                                    "block rounded-md px-3 py-1.5 text-sm transition-colors",
+                                    subActive
+                                      ? "font-medium text-text-bright"
+                                      : "text-text-secondary hover:text-text-primary",
+                                  )}
+                                >
+                                  {sub.label}
+                                </Link>
+                              );
+                            })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           );
         })}
@@ -146,10 +175,10 @@ export function Sidebar({ session, setupState = {} }: SidebarProps) {
           className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-bg-surface hover:text-text-primary"
         >
           <Settings size={18} />
-          <span>Configuracoes</span>
+          <span>Configurações</span>
         </Link>
         <div className="mt-1 flex items-center gap-2 px-3 py-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-border-strong text-xs font-medium text-text-white">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full border border-border-default bg-bg-surface text-xs font-medium text-text-secondary">
             {session.name.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">

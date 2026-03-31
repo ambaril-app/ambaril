@@ -47,7 +47,7 @@ const PLATFORM_OPTIONS: FormSelectOption[] = [
 const PAYMENT_OPTIONS: FormSelectOption[] = [
   { value: "", label: "Nenhuma" },
   { value: "pix", label: "PIX" },
-  { value: "store_credit", label: "Credito em loja" },
+  { value: "store_credit", label: "Crédito em loja" },
   { value: "product", label: "Produto" },
 ];
 
@@ -206,7 +206,7 @@ function NewCreatorForm({ tiers }: NewCreatorFormProps) {
       {/* Step 1: Personal info */}
       <Card>
         <CardHeader>
-          <CardTitle>1. Informacoes Pessoais</CardTitle>
+          <CardTitle>1. Informações Pessoais</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -355,7 +355,7 @@ function NewCreatorForm({ tiers }: NewCreatorFormProps) {
                 label="Fonte de descoberta"
                 value={discoverySource}
                 onChange={(e) => setDiscoverySource(e.target.value)}
-                placeholder="Instagram, indicacao, etc."
+                placeholder="Instagram, indicação, etc."
               />
             </div>
           </div>
@@ -365,7 +365,7 @@ function NewCreatorForm({ tiers }: NewCreatorFormProps) {
       {/* Address */}
       <Card>
         <CardHeader>
-          <CardTitle>Endereco</CardTitle>
+          <CardTitle>4. Endereço</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -376,7 +376,7 @@ function NewCreatorForm({ tiers }: NewCreatorFormProps) {
               placeholder="Nome da rua"
             />
             <Input
-              label="Numero"
+              label="Número"
               value={streetNumber}
               onChange={(e) => setStreetNumber(e.target.value)}
               placeholder="123"
@@ -453,7 +453,7 @@ function NewCreatorForm({ tiers }: NewCreatorFormProps) {
                   label="Chave PIX"
                   value={pixKey}
                   onChange={(e) => setPixKey(e.target.value)}
-                  placeholder="CPF, email, telefone ou chave aleatoria"
+                  placeholder="CPF, e-mail, telefone ou chave aleatória"
                 />
                 <FormSelect
                   label="Tipo da chave PIX"
@@ -462,7 +462,7 @@ function NewCreatorForm({ tiers }: NewCreatorFormProps) {
                     { value: "cpf", label: "CPF" },
                     { value: "email", label: "Email" },
                     { value: "phone", label: "Telefone" },
-                    { value: "random", label: "Chave aleatoria" },
+                    { value: "random", label: "Chave aleatória" },
                   ]}
                   value={pixKeyType}
                   onChange={setPixKeyType}

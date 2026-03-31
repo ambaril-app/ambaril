@@ -58,6 +58,7 @@ function buildColumns(): DataTableColumn<Record<string, unknown>>[] {
       key: "name",
       label: "Creator",
       sortable: true,
+      className: "w-[220px] max-w-[220px]",
       render: (_value, row) => {
         const name = row["name"] as string;
         const id = row["id"] as string;
@@ -75,10 +76,11 @@ function buildColumns(): DataTableColumn<Record<string, unknown>>[] {
     {
       key: "couponCode",
       label: "Cupom",
+      className: "w-[120px]",
       render: (value) => {
         const code = value as string | null;
         return code ? (
-          <span className="font-mono text-xs text-text-secondary">{code}</span>
+          <span className="font-mono text-xs text-text-ghost">{code}</span>
         ) : (
           <span className="text-text-ghost">-</span>
         );
@@ -88,6 +90,7 @@ function buildColumns(): DataTableColumn<Record<string, unknown>>[] {
       key: "tierName",
       label: "Tier",
       sortable: true,
+      className: "w-[120px]",
       render: (value) => {
         const tier = value as string | null;
         return tier ? <Badge variant="secondary">{tier}</Badge> : <span className="text-text-ghost">-</span>;
@@ -96,12 +99,14 @@ function buildColumns(): DataTableColumn<Record<string, unknown>>[] {
     {
       key: "status",
       label: "Status",
+      className: "w-[110px]",
       render: (value) => <StatusBadge status={value as string} />,
     },
     {
       key: "totalSalesAmount",
       label: "Vendas",
       sortable: true,
+      className: "w-[130px]",
       render: (value) => (
         <span className="font-mono text-sm text-text-primary">
           R$ {Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
@@ -112,6 +117,7 @@ function buildColumns(): DataTableColumn<Record<string, unknown>>[] {
       key: "totalPoints",
       label: "Pontos",
       sortable: true,
+      className: "w-[100px]",
       render: (value) => (
         <span className="font-mono text-sm text-text-primary">
           {Number(value).toLocaleString("pt-BR")}
@@ -122,10 +128,11 @@ function buildColumns(): DataTableColumn<Record<string, unknown>>[] {
       key: "createdAt",
       label: "Criado em",
       sortable: true,
+      className: "w-[110px]",
       render: (value) => {
         const date = value instanceof Date ? value : new Date(value as string);
         return (
-          <span className="text-xs text-text-secondary">
+          <span className="text-xs text-text-ghost">
             {date.toLocaleDateString("pt-BR")}
           </span>
         );
@@ -161,6 +168,8 @@ function CreatorsTable({ initialData, tiers, stats }: CreatorsTableProps) {
   // Debounced search
   const searchTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [debouncedSearch, setDebouncedSearch] = React.useState(filters.search);
+  // Skip the first fetch — SSR already provides fresh initialData
+  const isInitialMount = React.useRef(true);
 
   React.useEffect(() => {
     if (searchTimerRef.current) {
@@ -204,6 +213,10 @@ function CreatorsTable({ initialData, tiers, stats }: CreatorsTableProps) {
   }, [page, filters.status, filters.tierId, filters.managed, debouncedSearch, sortKey, sortDirection]);
 
   React.useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     fetchData();
   }, [fetchData]);
 
@@ -288,7 +301,7 @@ function CreatorsTable({ initialData, tiers, stats }: CreatorsTableProps) {
       {/* Bulk actions bar */}
       {selectedKeys.size > 0 && (
         <div className="flex items-center gap-3 rounded-lg border border-border-default bg-bg-raised px-4 py-3">
-          <span className="text-sm text-text-secondary">
+          <span className="text-sm text-text-ghost">
             {selectedKeys.size} selecionado(s)
           </span>
           <Button
@@ -331,7 +344,11 @@ function CreatorsTable({ initialData, tiers, stats }: CreatorsTableProps) {
           <EmptyState
             icon={Users}
             title="Nenhum creator encontrado"
-            description="Ajuste os filtros ou cadastre um novo creator."
+            description="Cadastre o primeiro creator do programa."
+            action={{
+              label: "Cadastrar creator",
+              onPress: () => { window.location.href = "/admin/creators/new"; },
+            }}
           />
         }
       />
@@ -344,7 +361,7 @@ function CreatorsTable({ initialData, tiers, stats }: CreatorsTableProps) {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-text-secondary">
+          <p className="text-sm text-text-ghost">
             Confirma a aprovação de {selectedKeys.size} creator(s)? Cada um
             receberá um cupom e será ativado automaticamente.
           </p>
@@ -373,7 +390,7 @@ function CreatorsTable({ initialData, tiers, stats }: CreatorsTableProps) {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-text-secondary">
+          <p className="text-sm text-text-ghost">
             Suspender {selectedKeys.size} creator(s). Informe o motivo:
           </p>
           <FormTextarea

@@ -10,10 +10,10 @@ export default async function TiersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">
-          Configuração de Tiers
+        <h1 className="font-display text-[32px] font-medium leading-tight tracking-[-0.02em] text-text-bright">
+          Tiers
         </h1>
-        <p className="text-sm text-text-secondary">
+        <p className="mt-1 text-sm text-text-ghost">
           Gerencie os níveis de comissão dos creators
         </p>
       </div>

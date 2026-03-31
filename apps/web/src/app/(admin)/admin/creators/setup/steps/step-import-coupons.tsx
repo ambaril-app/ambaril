@@ -80,7 +80,7 @@ export function StepImportCoupons({ onImported }: StepImportCouponsProps) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-text-secondary">
+      <p className="text-sm text-text-ghost">
         Importe cupons existentes da sua plataforma de e-commerce para vincular
         a creators.
       </p>
@@ -88,7 +88,7 @@ export function StepImportCoupons({ onImported }: StepImportCouponsProps) {
       {!imported ? (
         <div className="flex flex-col items-center gap-4 py-8">
           <Download className="h-10 w-10 text-text-muted" strokeWidth={1.5} />
-          <p className="text-sm text-text-secondary">
+          <p className="text-sm text-text-ghost">
             Clique para buscar cupons da sua loja
           </p>
           <Button onPress={handleImport} disabled={isPending}>
@@ -99,7 +99,7 @@ export function StepImportCoupons({ onImported }: StepImportCouponsProps) {
       ) : (
         <>
           <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-text-secondary">
+            <p className="text-sm text-text-ghost">
               {coupons.length} cupons encontrados. Selecione os que deseja
               vincular a creators.
             </p>
@@ -107,7 +107,7 @@ export function StepImportCoupons({ onImported }: StepImportCouponsProps) {
               <button
                 type="button"
                 onClick={toggleAll}
-                className="shrink-0 text-xs text-text-secondary hover:text-text-primary transition-colors underline-offset-2 hover:underline"
+                className="shrink-0 text-xs text-text-ghost hover:text-text-primary transition-colors underline-offset-2 hover:underline"
               >
                 {allSelected ? "Desmarcar todos" : "Selecionar todos"}
               </button>
@@ -116,7 +116,7 @@ export function StepImportCoupons({ onImported }: StepImportCouponsProps) {
 
           {coupons.length === 0 ? (
             <p className="py-4 text-center text-sm text-text-ghost">
-              Nenhum cupom encontrado. Voce pode pular esta etapa e criar cupons
+              Nenhum cupom encontrado. Você pode pular esta etapa e criar cupons
               manualmente.
             </p>
           ) : (
@@ -151,7 +151,7 @@ export function StepImportCoupons({ onImported }: StepImportCouponsProps) {
                       <p className="font-mono text-sm text-text-bright">
                         {coupon.code}
                       </p>
-                      <p className="text-xs text-text-secondary">
+                      <p className="text-xs text-text-ghost">
                         {coupon.discountType === "percent"
                           ? `${coupon.discountValue}% off`
                           : `R$\u00a0${coupon.discountValue} off`}

@@ -32,7 +32,7 @@ export default async function CreatorDetailPage({ params }: CreatorDetailPagePro
       {/* Back link */}
       <Link
         href="/admin/creators"
-        className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-text-ghost hover:text-text-primary transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
         Voltar para lista de creators

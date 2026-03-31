@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getTenantSession } from "@/lib/tenant";
 import { listCreators } from "@/app/actions/creators/crud";
 import { listTiers } from "@/app/actions/creators/tiers";
-import { Plus } from "lucide-react";
+import { Plus, Download } from "lucide-react";
 import { Button } from "@ambaril/ui/components/button";
 import { db } from "@ambaril/db";
 import { eq, and } from "drizzle-orm";
@@ -97,7 +97,7 @@ export default async function CreatorsPage() {
         <div className="flex items-center justify-between rounded-lg border border-warning/30 bg-warning-muted px-4 py-3">
           <div>
             <p className="text-sm font-medium text-text-bright">Configuração pendente</p>
-            <p className="text-xs text-text-secondary">
+            <p className="text-xs text-text-ghost">
               Configure as integrações e importe dados existentes para ativar o programa.
             </p>
           </div>
@@ -112,17 +112,27 @@ export default async function CreatorsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">Creators</h1>
-          <p className="text-sm text-text-secondary">
+          <h1 className="font-display text-[32px] font-medium leading-tight tracking-[-0.02em] text-text-bright">Creators</h1>
+          <p className="mt-1 text-sm text-text-ghost">
             Gerencie os creators e seus perfis, vendas e comissões.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/creators/new">
-            <Plus className="h-4 w-4" />
-            Novo Creator
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {isSetupComplete && stats.total > 0 && (
+            <Button variant="secondary" asChild>
+              <Link href="/admin/creators/setup?step=import-coupons">
+                <Download className="h-4 w-4" />
+                Importar cupons
+              </Link>
+            </Button>
+          )}
+          <Button asChild>
+            <Link href="/admin/creators/new">
+              <Plus className="h-4 w-4" />
+              Novo Creator
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Client-side interactive table */}

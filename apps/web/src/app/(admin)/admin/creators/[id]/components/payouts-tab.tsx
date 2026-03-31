@@ -58,7 +58,7 @@ const COLUMNS: DataTableColumn<Record<string, unknown>>[] = [
     key: "irrfWithheld",
     label: "IRRF",
     render: (value) => (
-      <span className="font-mono text-sm text-text-secondary">
+      <span className="font-mono text-sm text-text-ghost">
         R$ {Number(value).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
       </span>
     ),
@@ -83,7 +83,7 @@ const COLUMNS: DataTableColumn<Record<string, unknown>>[] = [
     render: (value) => {
       const date = value instanceof Date ? value : new Date(value as string);
       return (
-        <span className="text-xs text-text-secondary">
+        <span className="text-xs text-text-ghost">
           {date.toLocaleDateString("pt-BR")}
         </span>
       );

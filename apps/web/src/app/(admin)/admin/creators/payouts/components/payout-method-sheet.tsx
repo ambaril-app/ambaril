@@ -28,7 +28,7 @@ interface PayoutMethodSheetProps {
 
 const METHOD_OPTIONS = [
   { value: "pix", label: "PIX" },
-  { value: "store_credit", label: "Credito na Loja" },
+  { value: "store_credit", label: "Crédito na Loja" },
   { value: "product", label: "Produto" },
 ];
 
@@ -56,7 +56,7 @@ export function PayoutMethodSheet({
     setError(null);
 
     if (!paymentMethod) {
-      setError("Selecione um metodo de pagamento");
+      setError("Selecione um método de pagamento");
       return;
     }
 
@@ -98,17 +98,17 @@ export function PayoutMethodSheet({
   }, [paymentMethod, pixKey, storeCreditAmount, productId, productQty, creatorId, onSubmit, onClose]);
 
   return (
-    <Sheet isOpen={isOpen} onClose={onClose} title="Metodo de Pagamento" width="md">
+    <Sheet isOpen={isOpen} onClose={onClose} title="Método de Pagamento" width="md">
       <div className="space-y-5">
         <div>
-          <p className="text-sm text-text-secondary">
-            Configurar metodo de pagamento para{" "}
+          <p className="text-sm text-text-ghost">
+            Configurar método de pagamento para{" "}
             <span className="font-medium text-text-bright">{creatorName}</span>
           </p>
         </div>
 
         <FormSelect
-          label="Metodo"
+          label="Método"
           options={METHOD_OPTIONS}
           value={paymentMethod}
           onChange={setPaymentMethod}
@@ -118,7 +118,7 @@ export function PayoutMethodSheet({
         {paymentMethod === "pix" && (
           <Input
             label="Chave PIX"
-            placeholder="CPF, email, telefone ou chave aleatoria"
+            placeholder="CPF, e-mail, telefone ou chave aleatória"
             value={pixKey}
             onChange={(e) => setPixKey(e.target.value)}
             required
@@ -127,7 +127,7 @@ export function PayoutMethodSheet({
 
         {paymentMethod === "store_credit" && (
           <Input
-            label="Valor do Credito (R$)"
+            label="Valor do Crédito (R$)"
             placeholder="0.00"
             value={storeCreditAmount}
             onChange={(e) => setStoreCreditAmount(e.target.value)}
@@ -160,7 +160,7 @@ export function PayoutMethodSheet({
             Cancelar
           </Button>
           <Button onPress={handleSubmit} disabled={isPending}>
-            {isPending ? "Salvando..." : "Salvar Metodo"}
+            {isPending ? "Salvando..." : "Salvar Método"}
           </Button>
         </div>
       </div>

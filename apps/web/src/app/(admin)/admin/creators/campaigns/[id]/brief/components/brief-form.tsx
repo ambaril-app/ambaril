@@ -254,7 +254,7 @@ export function BriefForm({ campaignId, existingBrief }: BriefFormProps) {
 
       {/* Hashtags */}
       <div className="space-y-2">
-        <label className="text-sm text-text-secondary">Hashtags</label>
+        <label className="text-sm text-text-ghost">Hashtags</label>
         <div className="flex gap-2">
           <Input
             placeholder="#hashtag"
@@ -299,7 +299,7 @@ export function BriefForm({ campaignId, existingBrief }: BriefFormProps) {
 
       {/* Target Tiers */}
       <div className="space-y-2">
-        <label className="text-sm text-text-secondary">Tiers alvo</label>
+        <label className="text-sm text-text-ghost">Tiers alvo</label>
         <div className="flex gap-2">
           <Input
             placeholder="Ex: seed, grow, bloom"
@@ -334,7 +334,7 @@ export function BriefForm({ campaignId, existingBrief }: BriefFormProps) {
 
       {/* Examples */}
       <div className="space-y-3">
-        <label className="text-sm text-text-secondary">Exemplos</label>
+        <label className="text-sm text-text-ghost">Exemplos</label>
         {examples.length > 0 && (
           <div className="space-y-2">
             {examples.map((ex, i) => (
@@ -342,7 +342,7 @@ export function BriefForm({ campaignId, existingBrief }: BriefFormProps) {
                 key={i}
                 className="flex items-center gap-3 rounded-md border border-border-subtle bg-bg-raised px-3 py-2"
               >
-                <span className="text-xs font-medium text-text-secondary uppercase">
+                <span className="text-xs font-medium text-text-ghost uppercase">
                   {ex.type}
                 </span>
                 <a
@@ -426,7 +426,7 @@ export function BriefForm({ campaignId, existingBrief }: BriefFormProps) {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-text-secondary">
+          <p className="text-sm text-text-ghost">
             Tem certeza que deseja excluir este briefing? Esta ação não pode ser desfeita.
           </p>
           <div className="flex justify-end gap-3">

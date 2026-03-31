@@ -23,7 +23,7 @@ export default async function NewCreatorPage() {
       {/* Back link */}
       <Link
         href="/admin/creators"
-        className="inline-flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-text-ghost hover:text-text-primary transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
         Voltar para lista de creators
@@ -31,10 +31,10 @@ export default async function NewCreatorPage() {
 
       {/* Header */}
       <div>
-        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">
+        <h1 className="text-[32px] font-display font-medium leading-tight tracking-[-0.02em] text-text-bright">
           Novo Creator (Cadastro Manual)
         </h1>
-        <p className="text-sm text-text-secondary">
+        <p className="text-sm text-text-ghost">
           Preencha os dados para cadastrar um creator gerenciado pela equipe.
         </p>
       </div>

@@ -29,11 +29,11 @@ const CAPABILITY_LABELS: Record<string, { label: string; description: string }> 
   {
     ecommerce: {
       label: "E-commerce",
-      description: "Catalogo de produtos e cupons",
+      description: "Catálogo de produtos e cupons",
     },
     checkout: {
       label: "Checkout",
-      description: "Atribuicao de vendas por cupom",
+      description: "Atribuição de vendas por cupom",
     },
     messaging: {
       label: "Mensageria",
@@ -45,7 +45,7 @@ const CAPABILITY_LABELS: Record<string, { label: string; description: string }> 
     },
     social: {
       label: "Redes Sociais",
-      description: "Monitoramento de mencoes",
+      description: "Monitoramento de menções",
     },
   };
 
@@ -61,7 +61,7 @@ export function StepIntegrations({
 }: StepIntegrationsProps) {
   return (
     <div className="space-y-4">
-      <p className="text-sm text-text-secondary">
+      <p className="text-sm text-text-ghost">
         Verifique se as integrações necessárias estão configuradas. Integrações
         obrigatórias estão marcadas abaixo.
       </p>
@@ -84,12 +84,12 @@ export function StepIntegrations({
                       {info?.label ?? integration.capability}
                     </p>
                     {isRequired && (
-                      <span className="rounded bg-bg-raised px-1.5 py-0.5 text-[10px] text-text-secondary">
+                      <span className="rounded bg-bg-raised px-1.5 py-0.5 text-[10px] text-text-ghost">
                         Obrigatório
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-text-secondary">
+                  <p className="text-xs text-text-ghost">
                     {integration.providerName} — Conectado
                   </p>
                 </div>
@@ -106,13 +106,13 @@ export function StepIntegrations({
           return (
             <Card
               key={capability}
-              className={cn("p-0", isRequired && "border-yellow-500/30")}
+              className={cn("p-0", isRequired && "border-warning/30")}
             >
               <CardContent className="flex items-start gap-3 p-4">
                 <AlertTriangle
                   className={cn(
                     "mt-0.5 h-5 w-5 shrink-0",
-                    isRequired ? "text-yellow-500" : "text-text-ghost",
+                    isRequired ? "text-warning" : "text-text-ghost",
                   )}
                 />
                 <div className="min-w-0 flex-1">
@@ -121,12 +121,12 @@ export function StepIntegrations({
                       {info?.label ?? capability}
                     </p>
                     {isRequired && (
-                      <span className="rounded bg-yellow-500/10 px-1.5 py-0.5 text-[10px] text-yellow-500">
+                      <span className="rounded bg-warning/10 px-1.5 py-0.5 text-[10px] text-warning">
                         Obrigatório
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-text-secondary">
+                  <p className="text-xs text-text-ghost">
                     {info?.description ?? "Não configurado"}
                   </p>
                 </div>
@@ -137,7 +137,7 @@ export function StepIntegrations({
       </div>
 
       {missing.some((c) => REQUIRED_CAPABILITIES.includes(c)) && (
-        <p className="text-xs text-yellow-500">
+        <p className="text-xs text-warning">
           Integrações obrigatórias pendentes. Você pode continuar, mas algumas
           funções não estarão disponíveis.
         </p>

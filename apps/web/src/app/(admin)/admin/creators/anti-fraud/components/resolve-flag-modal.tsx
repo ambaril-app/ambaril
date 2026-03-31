@@ -82,10 +82,10 @@ export function ResolveFlagModal({
           </div>
         )}
 
-        <p className="text-sm text-text-secondary">
+        <p className="text-sm text-text-ghost">
           {isSuspend
-            ? "O creator sera suspenso e a atribuicao sera cancelada. Descreva o motivo."
-            : "A atribuicao sera confirmada como valida. Descreva o motivo da liberacao."}
+            ? "O creator será suspenso e a atribuição será cancelada. Descreva o motivo."
+            : "A atribuição será confirmada como válida. Descreva o motivo da liberação."}
         </p>
 
         <FormTextarea
@@ -102,7 +102,7 @@ export function ResolveFlagModal({
           required
         />
 
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex justify-end gap-3 border-t border-border-default/60 pt-4">
           <Button variant="ghost" onPress={handleClose}>
             Cancelar
           </Button>

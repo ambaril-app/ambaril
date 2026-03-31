@@ -59,7 +59,7 @@ function formatPaymentPref(pref: string | null): string {
   if (!pref) return "-";
   const map: Record<string, string> = {
     pix: "PIX",
-    store_credit: "Credito em loja",
+    store_credit: "Crédito em loja",
     product: "Produto",
   };
   return map[pref] ?? pref;
@@ -72,7 +72,7 @@ function formatPaymentPref(pref: string | null): string {
 function InfoRow({ label, value }: { label: string; value: string | React.ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5 py-2">
-      <span className="text-xs font-medium uppercase tracking-wider text-text-secondary">
+      <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
         {label}
       </span>
       <span className="text-sm text-text-primary">{value}</span>
@@ -131,7 +131,7 @@ function ProfileTab({ creator }: ProfileTabProps) {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Informacoes Pessoais</CardTitle>
+              <CardTitle>Informações Pessoais</CardTitle>
               <Button variant="ghost" size="sm" onPress={() => setIsEditOpen(true)}>
                 <Pencil className="mr-1 h-3.5 w-3.5" />
                 Editar
@@ -151,7 +151,7 @@ function ProfileTab({ creator }: ProfileTabProps) {
               <InfoRow label="Tamanho" value={creator.clothingSize ?? "-"} />
               <InfoRow
                 label="Gerenciado pela equipe"
-                value={creator.managedByStaff ? "Sim" : "Nao"}
+                value={creator.managedByStaff ? "Sim" : "Não"}
               />
             </div>
           </CardContent>
@@ -188,7 +188,7 @@ function ProfileTab({ creator }: ProfileTabProps) {
         {/* Address */}
         <Card>
           <CardHeader>
-            <CardTitle>Endereco</CardTitle>
+            <CardTitle>Endereço</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-text-primary">{formatAddress(creator.address)}</p>
@@ -259,7 +259,7 @@ function ProfileTab({ creator }: ProfileTabProps) {
               label="Chave PIX"
               value={editPixKey}
               onChange={(e) => setEditPixKey(e.target.value)}
-              placeholder="CPF, email, telefone ou chave aleatoria"
+              placeholder="CPF, e-mail, telefone ou chave aleatória"
             />
           )}
 

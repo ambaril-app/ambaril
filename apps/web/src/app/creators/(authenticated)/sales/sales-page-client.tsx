@@ -286,7 +286,11 @@ function SalesPageClient({ creatorId }: SalesPageClientProps) {
           <EmptyState
             icon={ShoppingBag}
             title="Nenhuma venda ainda"
-            description="Quando seus seguidores usarem seu cupom, as vendas aparecerão aqui."
+            description="Compartilhe seu cupom de desconto para começar a gerar vendas."
+            action={{
+              label: "Ver meu cupom",
+              onPress: () => { window.location.href = "/creators/coupons"; },
+            }}
           />
         }
       />

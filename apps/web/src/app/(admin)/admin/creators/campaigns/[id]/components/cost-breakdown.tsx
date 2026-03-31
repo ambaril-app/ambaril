@@ -71,7 +71,7 @@ export function CostBreakdown({
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Icon className="h-4 w-4 text-text-muted" />
-                  <span className="text-xs text-text-secondary">{card.label}</span>
+                  <span className="text-xs text-text-ghost">{card.label}</span>
                 </div>
               </CardHeader>
               <CardContent>
@@ -85,7 +85,7 @@ export function CostBreakdown({
 
         <Card className="border-border-strong bg-bg-raised">
           <CardHeader>
-            <CardTitle className="text-xs text-text-secondary">Custo Total</CardTitle>
+            <CardTitle className="text-xs text-text-ghost">Custo Total</CardTitle>
           </CardHeader>
           <CardContent>
             <span className="font-mono text-lg font-medium text-text-bright">

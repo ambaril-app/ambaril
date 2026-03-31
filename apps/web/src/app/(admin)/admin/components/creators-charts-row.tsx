@@ -96,13 +96,13 @@ export function CreatorsChartsRow({
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       {/* Area chart — col-span-2 */}
       <div className="rounded-xl border border-border-default bg-bg-base p-5 shadow-[var(--shadow-sm)] lg:col-span-2">
-        <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-text-muted">
+        <h2 className="mb-4 text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
           Evolução GMV — Últimos 6 Meses
         </h2>
-        <div className="h-[200px]">
+        <div className="h-[230px]">
           {chartData.length === 0 ? (
             <div className="flex h-full items-center justify-center">
-              <p className="text-sm text-text-secondary">
+              <p className="text-sm text-text-ghost">
                 Nenhuma venda registrada nos últimos 6 meses
               </p>
             </div>
@@ -192,12 +192,12 @@ export function CreatorsChartsRow({
 
       {/* Top 5 performers list — col-span-1 */}
       <div className="rounded-xl border border-border-default bg-bg-base p-5 shadow-[var(--shadow-sm)]">
-        <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-text-muted">
+        <h2 className="mb-4 text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
           Top Criadores — Este Mês
         </h2>
 
         {topPerformers.length === 0 ? (
-          <p className="text-sm text-text-secondary">
+          <p className="text-sm text-text-ghost">
             Nenhuma venda atribuída este mês.
           </p>
         ) : (
@@ -225,7 +225,7 @@ export function CreatorsChartsRow({
                 </div>
 
                 {/* GMV */}
-                <span className="shrink-0 font-mono text-xs tabular-nums text-text-secondary">
+                <span className="shrink-0 font-mono text-xs tabular-nums text-text-ghost">
                   R$&nbsp;
                   {Number(
                     performer.currentMonthSalesAmount,
@@ -239,7 +239,7 @@ export function CreatorsChartsRow({
         <div className="mt-4 border-t border-border-default/60 pt-3">
           <Link
             href="/admin/creators/analytics"
-            className="text-xs text-text-secondary transition-colors hover:text-text-bright"
+            className="text-xs text-text-ghost transition-colors hover:text-text-bright"
           >
             Ver analytics completo →
           </Link>

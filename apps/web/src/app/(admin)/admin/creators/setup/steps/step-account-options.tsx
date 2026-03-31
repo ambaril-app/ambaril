@@ -70,7 +70,7 @@ export function StepAccountOptions({ onChange }: StepAccountOptionsProps) {
   return (
     <div className="space-y-6">
       <div className="space-y-4">
-        <p className="text-sm text-text-secondary">
+        <p className="text-sm text-text-ghost">
           Como você quer cadastrar novos creators?
         </p>
 
@@ -101,7 +101,7 @@ export function StepAccountOptions({ onChange }: StepAccountOptionsProps) {
                   <p className="text-sm font-medium text-text-bright">
                     {option.label}
                   </p>
-                  <p className="mt-1 text-xs text-text-secondary">
+                  <p className="mt-1 text-xs text-text-ghost">
                     {option.description}
                   </p>
                 </div>
@@ -117,7 +117,7 @@ export function StepAccountOptions({ onChange }: StepAccountOptionsProps) {
           onCheckedChange={handleEmailToggle}
           label="Enviar email de boas-vindas"
         />
-        <p className="pl-[26px] text-xs text-text-secondary">
+        <p className="pl-[26px] text-xs text-text-ghost">
           Creators importados recebem email com acesso ao portal e cupom.
         </p>
       </div>

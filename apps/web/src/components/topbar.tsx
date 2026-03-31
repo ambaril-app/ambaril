@@ -26,8 +26,8 @@ function getBreadcrumbs(pathname: string): { label: string; path: string }[] {
     challenges: "Desafios",
     campaigns: "Campanhas",
     payouts: "Pagamentos",
-    analytics: "Analytics",
-    settings: "Configuracoes",
+    analytics: "Visão Geral",
+    settings: "Configurações",
     new: "Novo",
     edit: "Editar",
     checkout: "Checkout",
@@ -198,7 +198,7 @@ export function Topbar({ session }: TopbarProps) {
                           </span>
                           {isCurrentReal && (
                             <span className="text-xs text-text-ghost">
-                              (Voce)
+                              (Você)
                             </span>
                           )}
                         </button>
@@ -227,7 +227,7 @@ export function Topbar({ session }: TopbarProps) {
 
           <button
             className="rounded-md p-2 text-text-secondary transition-colors hover:bg-bg-surface hover:text-text-primary"
-            aria-label="Notificacoes"
+            aria-label="Notificações"
           >
             <Bell size={18} />
           </button>

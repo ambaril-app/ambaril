@@ -21,12 +21,12 @@ import { StepReview } from "./steps/step-review";
 // ---------------------------------------------------------------------------
 
 const STEPS = [
-  { label: "Integracoes" },
+  { label: "Integrações" },
   { label: "Tiers" },
   { label: "Cupons" },
   { label: "Vincular" },
   { label: "Convites" },
-  { label: "Revisao" },
+  { label: "Revisão" },
 ];
 
 const STEP_KEYS = [
@@ -77,6 +77,7 @@ export function SetupWizard({
 }: SetupWizardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [tiers, setTiers] = useState(initialTiers);
 
   const initialIndex = Math.max(
     STEP_KEYS.indexOf(initialStep as (typeof STEP_KEYS)[number]),
@@ -156,7 +157,7 @@ export function SetupWizard({
             missing={missingIntegrations}
           />
         )}
-        {currentStep === 1 && <StepTiers tiers={initialTiers} />}
+        {currentStep === 1 && <StepTiers tiers={tiers} onTiersChanged={setTiers} />}
         {currentStep === 2 && (
           <StepImportCoupons
             onImported={(importedCoupons) =>
@@ -169,7 +170,7 @@ export function SetupWizard({
             importedCoupons={
               (wizardData.importedCoupons as Array<{ code: string }>) ?? []
             }
-            tiers={initialTiers}
+            tiers={tiers}
             onLinked={(links) => updateData("couponLinks", links)}
           />
         )}
@@ -179,7 +180,7 @@ export function SetupWizard({
           />
         )}
         {currentStep === 5 && (
-          <StepReview wizardData={wizardData} tiers={initialTiers} />
+          <StepReview wizardData={wizardData} tiers={tiers} />
         )}
       </div>
 
@@ -195,7 +196,7 @@ export function SetupWizard({
 
         {currentStep < STEPS.length - 1 ? (
           <Button onPress={goNext} disabled={isPending}>
-            {isPending ? "Salvando..." : "Proximo"}
+            {isPending ? "Salvando..." : "Próximo"}
           </Button>
         ) : (
           <Button onPress={handleComplete} disabled={isPending}>

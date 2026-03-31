@@ -51,7 +51,7 @@ export default async function BriefPage({ params }: BriefPageProps) {
       {/* Back link */}
       <Link
         href={`/admin/creators/campaigns/${campaignId}`}
-        className="inline-flex items-center gap-1.5 text-sm text-text-secondary transition-colors hover:text-text-primary"
+        className="inline-flex items-center gap-1.5 text-sm text-text-ghost transition-colors hover:text-text-primary"
       >
         <ArrowLeft className="h-4 w-4" />
         Voltar para campanha
@@ -59,10 +59,10 @@ export default async function BriefPage({ params }: BriefPageProps) {
 
       {/* Header */}
       <div>
-        <h1 className="text-[32px] font-display font-medium leading-tight tracking-tight text-text-bright">
+        <h1 className="text-[32px] font-display font-medium leading-tight tracking-[-0.02em] text-text-bright">
           Briefing da Campanha
         </h1>
-        <p className="text-sm text-text-secondary">
+        <p className="text-sm text-text-ghost">
           {campaignResult.data.campaign.name}
         </p>
       </div>

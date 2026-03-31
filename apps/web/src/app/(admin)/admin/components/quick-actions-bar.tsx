@@ -90,33 +90,18 @@ function getActions(role: RoleCode, pendingCount: number): ActionConfig[] {
 // ---------------------------------------------------------------------------
 
 export function QuickActionsBar({ role, pendingCount }: QuickActionsBarProps) {
-  const actions = getActions(role, pendingCount);
+  const actions = getActions(role, pendingCount).filter((a) => !a.disabled);
 
   if (actions.length === 0) return null;
 
   return (
     <section>
-      <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-text-muted">
+      <h2 className="mb-3 text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
         Ações rápidas
       </h2>
       <div className="flex flex-wrap gap-2">
         {actions.map((action) => {
-          if (action.disabled || !action.href) {
-            return (
-              <Button
-                key={action.label}
-                variant="outline"
-                size="sm"
-                disabled
-                className="cursor-not-allowed opacity-40"
-              >
-                {action.label}
-                <span className="ml-1.5 rounded-full bg-bg-raised px-1 py-0.5 text-[9px] text-text-ghost">
-                  Em breve
-                </span>
-              </Button>
-            );
-          }
+          if (!action.href) return null;
 
           return (
             <Button key={action.label} variant="secondary" size="sm" asChild>

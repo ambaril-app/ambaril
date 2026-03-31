@@ -86,7 +86,7 @@ export const users = globalSchema.table(
       .default(sql`gen_random_uuid()`),
     email: varchar("email", { length: 255 }).notNull().unique(),
     name: varchar("name", { length: 255 }).notNull(),
-    passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+    passwordHash: varchar("password_hash", { length: 255 }),
     role: userRoleEnum("role").notNull(),
     avatarUrl: text("avatar_url"),
     isActive: boolean("is_active").notNull().default(true),
@@ -474,3 +474,22 @@ export const moduleSetupState = globalSchema.table(
     }),
   ],
 ).enableRLS();
+
+// global.magic_links — passwordless authentication tokens
+export const magicLinks = globalSchema.table("magic_links", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email", { length: 255 }).notNull(),
+  token: varchar("token", { length: 64 }).notNull().unique(),
+  type: varchar("type", { length: 20 }).notNull(), // 'login' | 'signup' | 'invite' | 'password_reset'
+  role: userRoleEnum("role"),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+  tenantId: uuid("tenant_id").references(() => tenants.id),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  ipAddress: inet("ip_address"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex("idx_magic_links_token").on(t.token),
+  index("idx_magic_links_email").on(t.email),
+  index("idx_magic_links_expires").on(t.expiresAt),
+]);

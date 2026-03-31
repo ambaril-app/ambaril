@@ -23,10 +23,10 @@ interface CampaignFormModalProps {
 
 // Values must match campaignCrudSchema enum (shared/schemas/creators.ts)
 const CAMPAIGN_TYPE_OPTIONS = [
-  { value: "launch", label: "Lancamento" },
+  { value: "launch", label: "Lançamento" },
   { value: "seasonal", label: "Sazonal" },
-  { value: "collab", label: "Colaboracao" },
-  { value: "organic", label: "Organica" },
+  { value: "collab", label: "Colaboração" },
+  { value: "organic", label: "Orgânica" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -116,73 +116,87 @@ export function CampaignFormModal({ isOpen, onClose }: CampaignFormModalProps) {
 
   return (
     <Modal isOpen={isOpen} onClose={handleClose} title="Nova Campanha" size="lg">
-      <div className="space-y-4">
+      <div className="space-y-6">
         {error && (
           <div className="rounded-md bg-[var(--danger-muted)] px-3 py-2 text-sm text-danger">
             {error}
           </div>
         )}
 
-        <Input
-          label="Nome da campanha"
-          placeholder="Ex: Drop Inverno 2026"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-
-        <FormSelect
-          label="Tipo"
-          options={CAMPAIGN_TYPE_OPTIONS}
-          value={campaignType}
-          onChange={(v) => setCampaignType(v as CampaignType)}
-        />
-
-        <div className="grid grid-cols-2 gap-4">
-          <FormDatePicker
-            label="Data de início"
-            value={startDate ?? undefined}
-            onChange={(d) => setStartDate(d)}
+        {/* Section: Campanha */}
+        <div className="space-y-3">
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
+            Campanha
+          </p>
+          <Input
+            label="Nome da campanha"
+            placeholder="Ex: Drop Inverno 2026"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             required
           />
-          <FormDatePicker
-            label="Data de fim"
-            value={endDate ?? undefined}
-            onChange={(d) => setEndDate(d)}
+          <FormSelect
+            label="Tipo"
+            options={CAMPAIGN_TYPE_OPTIONS}
+            value={campaignType}
+            onChange={(v) => setCampaignType(v as CampaignType)}
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            label="Custo de produto (R$)"
-            placeholder="0.00"
-            value={costProduct}
-            onChange={(e) => setCostProduct(e.target.value)}
-          />
-          <Input
-            label="Custo de frete (R$)"
-            placeholder="0.00"
-            value={costShipping}
-            onChange={(e) => setCostShipping(e.target.value)}
-          />
+        {/* Section: Período */}
+        <div className="space-y-3 border-t border-border-default/60 pt-5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
+            Período
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <FormDatePicker
+              label="Data de início"
+              value={startDate ?? undefined}
+              onChange={(d) => setStartDate(d)}
+              required
+            />
+            <FormDatePicker
+              label="Data de fim"
+              value={endDate ?? undefined}
+              onChange={(d) => setEndDate(d)}
+            />
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <Input
-            label="Custo do creator (R$)"
-            placeholder="0.00"
-            value={costCreator}
-            onChange={(e) => setCostCreator(e.target.value)}
-          />
-          <Input
-            label="Outros custos (R$)"
-            placeholder="0.00"
-            value={costOther}
-            onChange={(e) => setCostOther(e.target.value)}
-          />
+        {/* Section: Custos */}
+        <div className="space-y-3 border-t border-border-default/60 pt-5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
+            Custos (R$)
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Produto"
+              placeholder="0.00"
+              value={costProduct}
+              onChange={(e) => setCostProduct(e.target.value)}
+            />
+            <Input
+              label="Frete"
+              placeholder="0.00"
+              value={costShipping}
+              onChange={(e) => setCostShipping(e.target.value)}
+            />
+            <Input
+              label="Creator"
+              placeholder="0.00"
+              value={costCreator}
+              onChange={(e) => setCostCreator(e.target.value)}
+            />
+            <Input
+              label="Outros"
+              placeholder="0.00"
+              value={costOther}
+              onChange={(e) => setCostOther(e.target.value)}
+            />
+          </div>
         </div>
 
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex justify-end gap-3 border-t border-border-default/60 pt-4">
           <Button variant="ghost" onPress={handleClose}>
             Cancelar
           </Button>

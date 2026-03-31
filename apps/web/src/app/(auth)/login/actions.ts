@@ -1,32 +1,97 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { z } from "zod";
 import { db } from "@ambaril/db";
 import { users, userTenants } from "@ambaril/db/schema";
-import { eq, and } from "drizzle-orm";
-import { createSession, verifyPassword } from "@/lib/auth";
+import { eq } from "drizzle-orm";
+import {
+  createSession,
+  verifyPassword,
+  checkMagicLinkRateLimit,
+  createMagicLink,
+} from "@/lib/auth";
+import { sendMagicLinkEmail } from "@/lib/email";
 import { loginSchema } from "@ambaril/shared/validators";
 
-interface LoginState {
-  error?: string;
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+
+const emailSchema = z.object({
+  email: z.string().email("Email inválido."),
+});
+
+// Magic link action
+export async function sendMagicLinkAction(
+  _prev: unknown,
+  formData: FormData,
+): Promise<{ sent?: boolean; email?: string; error?: string } | null> {
+  const parsed = emailSchema.safeParse({
+    email: formData.get("email"),
+  });
+
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? "Email inválido." };
+  }
+
+  const { email } = parsed.data;
+  const normalizedEmail = email.toLowerCase();
+
+  // Rate limit
+  const allowed = await checkMagicLinkRateLimit(normalizedEmail);
+  if (!allowed) {
+    return { error: "Muitas tentativas. Aguarde alguns minutos." };
+  }
+
+  // Find user
+  const result = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, normalizedEmail))
+    .limit(1);
+
+  // Enumeration prevention: always return success
+  if (result.length === 0) {
+    return { sent: true, email: normalizedEmail };
+  }
+
+  const user = result[0]!;
+
+  // Find default tenant
+  const tenantRows = await db
+    .select()
+    .from(userTenants)
+    .where(eq(userTenants.userId, user.id))
+    .limit(1);
+
+  const tenantId = tenantRows[0]?.tenantId ?? undefined;
+
+  const token = await createMagicLink(normalizedEmail, "login", {
+    userId: user.id,
+    tenantId,
+  });
+
+  await sendMagicLinkEmail(normalizedEmail, `${BASE_URL}/login/verify?token=${token}`);
+
+  return { sent: true, email: normalizedEmail };
 }
 
-export async function login(
-  _prevState: LoginState | null,
+// Password login action (kept as fallback)
+export async function loginWithPasswordAction(
+  _prev: unknown,
   formData: FormData,
-): Promise<LoginState> {
+): Promise<{ error?: string } | null> {
   const raw = {
     email: formData.get("email"),
     password: formData.get("password"),
-    remember: formData.get("remember") === "on",
+    remember: false,
   };
 
   const parsed = loginSchema.safeParse(raw);
   if (!parsed.success) {
-    return { error: "Email ou senha invalidos." };
+    return { error: "Email ou senha inválidos." };
   }
 
-  const { email, password, remember } = parsed.data;
+  const { email, password } = parsed.data;
 
   // Find user by email
   const result = await db
@@ -37,13 +102,17 @@ export async function login(
 
   const user = result[0];
   if (!user || !user.isActive) {
-    return { error: "Email ou senha invalidos." };
+    return { error: "Email ou senha inválidos." };
   }
 
-  // Verify password
+  // passwordHash may be null for magic-link-only users
+  if (!user.passwordHash) {
+    return { error: "Esta conta usa login por link. Use a aba \"Link de acesso\"." };
+  }
+
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) {
-    return { error: "Email ou senha invalidos." };
+    return { error: "Email ou senha inválidos." };
   }
 
   // Find user's tenant(s)
@@ -53,7 +122,7 @@ export async function login(
     .where(eq(userTenants.userId, user.id));
 
   if (tenantRows.length === 0) {
-    return { error: "Nenhuma organizacao vinculada a este usuario." };
+    return { error: "Nenhuma organização vinculada a este usuário." };
   }
 
   // Select tenant: use default, or first available
@@ -66,7 +135,7 @@ export async function login(
     .where(eq(users.id, user.id));
 
   // Create session with tenant context
-  await createSession(user.id, defaultTenant.tenantId, defaultTenant.role, remember);
+  await createSession(user.id, defaultTenant.tenantId, defaultTenant.role, false);
 
   redirect("/admin");
 }

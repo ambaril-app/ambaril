@@ -45,15 +45,15 @@ export function RejectModal({ isOpen, onClose, submissionId, onReject }: RejectM
   }, [reason, submissionId, onReject, onClose]);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Rejeitar Submissao" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title="Rejeitar Submissão" size="md">
       <div className="space-y-4">
-        <p className="text-sm text-text-secondary">
-          Informe o motivo da rejeicao. O creator sera notificado.
+        <p className="text-sm text-text-ghost">
+          Informe o motivo da rejeição. O creator será notificado.
         </p>
 
         <FormTextarea
-          label="Motivo da Rejeicao"
-          placeholder="Descreva o motivo da rejeicao (minimo 10 caracteres)..."
+          label="Motivo da Rejeição"
+          placeholder="Descreva o motivo da rejeição (mínimo 10 caracteres)..."
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           rows={3}
@@ -63,7 +63,7 @@ export function RejectModal({ isOpen, onClose, submissionId, onReject }: RejectM
 
         {error && <p className="text-sm text-danger">{error}</p>}
 
-        <div className="flex justify-end gap-3 pt-2">
+        <div className="flex justify-end gap-3 border-t border-border-default/60 pt-4">
           <Button variant="ghost" onPress={onClose} disabled={isPending}>
             Cancelar
           </Button>

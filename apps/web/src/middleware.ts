@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { SESSION_COOKIE_NAME } from "@ambaril/shared/constants";
 
 // Routes that don't require authentication
-const PUBLIC_ROUTES = ["/login", "/forgot-password", "/creators/login", "/creators/apply"];
+const PUBLIC_ROUTES = ["/login", "/signup", "/forgot-password", "/creators/login", "/creators/apply"];
 
 // Route prefix → allowed roles
 const ROUTE_ROLES: Record<string, string[]> = {

@@ -18,6 +18,8 @@ export interface DataTableColumn<T> {
   sortable?: boolean;
   /** Custom cell renderer */
   render?: (value: unknown, row: T) => React.ReactNode;
+  /** Optional className applied to both <th> and <td> for this column (e.g. width constraints) */
+  className?: string;
 }
 
 export interface DataTablePagination {
@@ -199,7 +201,7 @@ function DataTableInner<T extends Record<string, unknown>>(
             </div>
           )}
 
-          <table className="min-w-full">
+          <table className="w-full table-fixed">
             <thead>
               <tr className="border-b border-border-default bg-table-header-bg">
                 {selectable && (
@@ -217,6 +219,7 @@ function DataTableInner<T extends Record<string, unknown>>(
                     className={cn(
                       "px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-text-muted",
                       col.sortable && "cursor-pointer select-none hover:text-text-secondary",
+                      col.className,
                     )}
                     onClick={col.sortable ? () => handleSortClick(col.key) : undefined}
                   >
@@ -275,7 +278,7 @@ function DataTableInner<T extends Record<string, unknown>>(
                         return (
                           <td
                             key={col.key}
-                            className="min-w-0 px-4 py-3 text-sm text-text-primary"
+                            className={cn("min-w-0 px-4 py-3 text-sm text-text-primary", col.className)}
                           >
                             {col.render
                               ? col.render(cellValue, row)
@@ -309,6 +312,7 @@ function DataTableInner<T extends Record<string, unknown>>(
                 "inline-flex h-8 w-8 items-center justify-center rounded-md text-sm",
                 "text-text-secondary hover:bg-bg-surface",
                 "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent",
+                "focus:outline-none",
               )}
               aria-label="Pagina anterior"
             >
@@ -325,6 +329,7 @@ function DataTableInner<T extends Record<string, unknown>>(
                 "inline-flex h-8 w-8 items-center justify-center rounded-md text-sm",
                 "text-text-secondary hover:bg-bg-surface",
                 "disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent",
+                "focus:outline-none",
               )}
               aria-label="Proxima pagina"
             >

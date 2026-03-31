@@ -1,4 +1,3 @@
-import { DollarSign, Percent, Users, Target } from "lucide-react";
 import type { OverviewKPIs } from "@/app/actions/creators/analytics";
 
 // ---------------------------------------------------------------------------
@@ -12,7 +11,7 @@ interface KpiCardsProps {
 interface KpiCardConfig {
   key: keyof OverviewKPIs;
   label: string;
-  icon: typeof DollarSign;
+  abbrTitle?: string;
   format: (value: string | number) => string;
   placeholder?: boolean;
 }
@@ -25,27 +24,25 @@ const CARDS: KpiCardConfig[] = [
   {
     key: "totalGMV",
     label: "GMV Total",
-    icon: DollarSign,
+    abbrTitle: "Gross Merchandise Value — total de vendas brutas geradas pelo programa de criadores",
     format: (v) =>
       `R$ ${Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
   },
   {
     key: "totalCommissions",
-    label: "Comissoes Totais",
-    icon: Percent,
+    label: "Comissões Totais",
     format: (v) =>
       `R$ ${Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
   },
   {
     key: "activeCreators",
     label: "Creators Ativos",
-    icon: Users,
     format: (v) => String(v),
   },
   {
     key: "avgCAC",
-    label: "CAC Medio",
-    icon: Target,
+    label: "CAC Médio",
+    abbrTitle: "Custo de Aquisição de Criador — comissão média paga por cada novo criador ativo",
     format: (v) => (Number(v) === 0 ? "R$ \u2014" : `R$ ${Number(v).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`),
     placeholder: true,
   },
@@ -57,44 +54,39 @@ const CARDS: KpiCardConfig[] = [
 
 function KpiCards({ kpis }: KpiCardsProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {CARDS.map((card) => {
-        const Icon = card.icon;
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      {CARDS.map((card, index) => {
         const value = kpis[card.key];
+        const isPrimary = index === 0;
 
         return (
           <div
             key={card.key}
-            className="kpi-card relative overflow-hidden rounded-lg border border-border-default p-4"
-            style={{
-              background:
-                "linear-gradient(150deg, var(--bg-raised) 40%, var(--bg-surface))",
-            }}
+            className={
+              isPrimary
+                ? "col-span-2 flex flex-col justify-between rounded-lg border border-border-subtle bg-bg-elevated p-5 shadow-[var(--shadow-sm)] lg:col-span-2"
+                : "rounded-lg border border-border-default bg-bg-raised p-4"
+            }
           >
-            {/* Brilho — radial gradient ::after equivalent */}
-            <div
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background:
-                  "radial-gradient(ellipse at 90% 10%, rgba(247,248,250,0.025) 0%, transparent 60%)",
-              }}
-            />
-
-            <div className="relative z-10">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-medium uppercase tracking-[0.04em] text-text-muted">
-                  {card.label}
-                </span>
-                <Icon className="h-4 w-4 text-text-ghost" />
-              </div>
-              <div className="mt-3">
-                <span
-                  className="font-display text-2xl font-semibold tabular-nums text-text-bright"
-                >
-                  {card.format(value)}
-                </span>
-              </div>
-            </div>
+            <span
+              className={
+                isPrimary
+                  ? "font-display text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost"
+                  : "text-[11px] font-medium uppercase tracking-[0.04em] text-text-muted"
+              }
+              title={card.abbrTitle}
+            >
+              {card.label}
+            </span>
+            <span
+              className={
+                isPrimary
+                  ? "mt-4 block font-mono text-[32px] font-semibold leading-none tabular-nums text-text-bright"
+                  : "mt-3 block font-mono text-2xl font-semibold tabular-nums text-text-bright"
+              }
+            >
+              {card.format(value)}
+            </span>
           </div>
         );
       })}

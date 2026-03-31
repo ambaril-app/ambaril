@@ -160,7 +160,7 @@ export function CampaignCreatorsTable({
       key: "creatorId",
       label: "Creator ID",
       render: (value) => (
-        <span className="font-mono text-xs text-text-secondary">
+        <span className="font-mono text-xs text-text-ghost">
           {String(value).substring(0, 8)}...
         </span>
       ),
@@ -215,7 +215,7 @@ export function CampaignCreatorsTable({
       key: "notes",
       label: "Notas",
       render: (value) => (
-        <span className="max-w-[200px] truncate text-text-secondary">
+        <span className="max-w-[200px] truncate text-text-ghost">
           {value ? String(value) : "-"}
         </span>
       ),

@@ -56,7 +56,7 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
 
   return (
     <div className="rounded-md border border-border-default bg-bg-elevated px-3 py-2 shadow-md">
-      <p className="text-xs text-text-secondary">{item.payload.name}</p>
+      <p className="text-xs text-text-ghost">{item.payload.name}</p>
       <p className="font-mono text-sm font-medium text-text-bright">
         {formatCurrency(item.value)}
       </p>
@@ -83,7 +83,7 @@ export function RoiChart({ totalCosts, totalRevenue, roi }: RoiChartProps) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-xs text-text-secondary">Custo Total</CardTitle>
+            <CardTitle className="text-xs text-text-ghost">Custo Total</CardTitle>
           </CardHeader>
           <CardContent>
             <span className="font-mono text-lg font-medium text-danger">
@@ -94,7 +94,7 @@ export function RoiChart({ totalCosts, totalRevenue, roi }: RoiChartProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-xs text-text-secondary">
+            <CardTitle className="text-xs text-text-ghost">
               Receita Atribuida (GMV)
             </CardTitle>
           </CardHeader>
@@ -107,7 +107,7 @@ export function RoiChart({ totalCosts, totalRevenue, roi }: RoiChartProps) {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-xs text-text-secondary">ROI</CardTitle>
+            <CardTitle className="text-xs text-text-ghost">ROI</CardTitle>
           </CardHeader>
           <CardContent>
             <span className="font-mono text-lg font-medium text-text-bright">

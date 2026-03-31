@@ -73,7 +73,7 @@ export function ActiveChallenges({ challenges }: ActiveChallengesProps) {
             <h4 className="mt-2 text-sm font-medium text-text-bright">
               {challenge.name}
             </h4>
-            <p className="mt-1 line-clamp-2 text-xs text-text-secondary">
+            <p className="mt-1 line-clamp-2 text-xs text-text-secondary" title={challenge.description}>
               {challenge.description}
             </p>
 

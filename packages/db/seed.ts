@@ -1,10 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-http";
-import { hash } from "@node-rs/argon2";
 import {
   tenants,
-  users,
-  userTenants,
   roles,
   permissions,
   integrationProviders,
@@ -12,19 +9,6 @@ import {
 } from "./src/schema/global";
 import { creatorTiers, creators, coupons } from "./src/schema/creators";
 import { and, eq } from "drizzle-orm";
-
-// Default password for all seed users — MUST be changed after first login
-const DEFAULT_PASSWORD = "ambaril2026";
-
-// Argon2id config (same as auth.ts)
-async function hashPassword(password: string): Promise<string> {
-  return hash(password, {
-    memoryCost: 19456,
-    timeCost: 2,
-    outputLen: 32,
-    parallelism: 1,
-  });
-}
 
 // ─── Seed Data ──────────────────────────────────────────
 
@@ -39,18 +23,6 @@ const CIENA_TENANT = {
     logo: null,
   },
 };
-
-const TEAM = [
-  { name: "Marcus", email: "marcus@ciena.com.br", role: "admin" as const },
-  { name: "Caio", email: "caio@ciena.com.br", role: "pm" as const },
-  { name: "Tavares", email: "tavares@ciena.com.br", role: "operations" as const },
-  { name: "Pedro", email: "pedro@ciena.com.br", role: "finance" as const },
-  { name: "Yuri", email: "yuri@ciena.com.br", role: "creative" as const },
-  { name: "Sick", email: "sick@ciena.com.br", role: "creative" as const },
-  { name: "Slimgust", email: "slimgust@ciena.com.br", role: "support" as const },
-  { name: "Ana Clara", email: "ana@ciena.com.br", role: "operations" as const },
-  { name: "Guilherme", email: "guilherme@ciena.com.br", role: "commercial" as const },
-];
 
 const CREATOR_TIERS_DATA = [
   { name: "Ambassador", slug: "ambassador", commissionRate: "0.00", minFollowers: 0, sortOrder: 0, benefits: { discount: 8 } },
@@ -197,53 +169,9 @@ async function seed() {
   }
   console.log(`   ${permCount} permissions created`);
 
-  // 4. Create users (idempotent)
-  console.log("4. Creating users...");
-  const passwordHash = await hashPassword(DEFAULT_PASSWORD);
-  const insertedUsers: { id: string; role: string }[] = [];
-
-  for (const member of TEAM) {
-    const [user] = await db
-      .insert(users)
-      .values({
-        email: member.email,
-        name: member.name,
-        passwordHash,
-        role: member.role,
-      })
-      .onConflictDoNothing()
-      .returning({ id: users.id });
-
-    if (user) {
-      insertedUsers.push({ id: user.id, role: member.role });
-      console.log(`   User created: ${member.name} <${member.email}> [${member.role}]`);
-    } else {
-      const existing = await db
-        .select({ id: users.id })
-        .from(users)
-        .where(eq(users.email, member.email))
-        .limit(1);
-      if (existing[0]) {
-        insertedUsers.push({ id: existing[0].id, role: member.role });
-        console.log(`   User exists: ${member.name} <${member.email}> [${member.role}]`);
-      }
-    }
-  }
-
-  // 5. Create user_tenants (link all users to CIENA)
-  console.log("5. Linking users to CIENA tenant...");
-  for (const user of insertedUsers) {
-    await db
-      .insert(userTenants)
-      .values({
-        userId: user.id,
-        tenantId: tenant.id,
-        role: user.role as typeof userTenants.$inferInsert.role,
-        isDefault: true,
-      })
-      .onConflictDoNothing();
-  }
-  console.log(`   ${insertedUsers.length} user-tenant links processed`);
+  // 4-5. Users are now created via /signup with magic links
+  console.log("4. Skipping user creation — use /signup to create your admin account.");
+  console.log("5. Skipping user-tenant links — created automatically on signup.");
 
   // 6. Create creator tiers for CIENA
   console.log("6. Creating creator tiers...");
@@ -446,10 +374,8 @@ async function seed() {
     .onConflictDoNothing();
   console.log("   Module: creators (setup pending)");
 
-  console.log("\nSeed completed successfully!");
-  console.log(`\nDefault password for all users: ${DEFAULT_PASSWORD}`);
-  console.log("Creator login: creator@cienalab.com.br (uses 6-digit code, check terminal)");
-  console.log("IMPORTANT: Change all passwords after first login.\n");
+  console.log("\n✓ Seed completed successfully!");
+  console.log("✓ Tenant CIENA criado. Acesse /signup para criar sua conta de admin.\n");
 }
 
 seed().catch((err) => {

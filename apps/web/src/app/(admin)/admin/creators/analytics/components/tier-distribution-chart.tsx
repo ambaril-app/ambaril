@@ -121,7 +121,7 @@ function TierDistributionChart({ data }: TierDistributionChartProps) {
   if (data.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
-        <p className="text-sm text-text-secondary">
+        <p className="text-sm text-text-ghost">
           Nenhum creator cadastrado
         </p>
       </div>
@@ -160,13 +160,14 @@ function TierDistributionChart({ data }: TierDistributionChartProps) {
         {data.map((entry, index) => (
           <div key={entry.tierName} className="flex items-center gap-1.5">
             <div
-              className="h-2 w-2 rounded-sm"
+              className="h-2 w-2 rounded-sm shrink-0"
               style={{
                 backgroundColor: PIE_COLORS[index % PIE_COLORS.length],
               }}
             />
-            <span className="text-[11px] text-text-secondary">
+            <span className="text-[11px] text-text-ghost">
               {entry.tierName}
+              <span className="ml-1 text-text-ghost">({entry.count})</span>
             </span>
           </div>
         ))}

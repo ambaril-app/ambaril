@@ -63,7 +63,7 @@ const COLUMNS: DataTableColumn<Record<string, unknown>>[] = [
     key: "description",
     label: "Descricao",
     render: (value) => (
-      <span className="text-sm text-text-secondary">{value as string}</span>
+      <span className="text-sm text-text-ghost">{value as string}</span>
     ),
   },
   {
@@ -72,7 +72,7 @@ const COLUMNS: DataTableColumn<Record<string, unknown>>[] = [
     render: (value) => {
       const date = value instanceof Date ? value : new Date(value as string);
       return (
-        <span className="text-xs text-text-secondary">
+        <span className="text-xs text-text-ghost">
           {date.toLocaleDateString("pt-BR")} {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
         </span>
       );
@@ -122,7 +122,7 @@ function PointsTab({ creatorId }: PointsTabProps) {
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
           <Card>
             <CardHeader>
-              <span className="text-xs font-medium uppercase tracking-wider text-text-secondary">
+              <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
                 Saldo Total
               </span>
             </CardHeader>
@@ -134,8 +134,8 @@ function PointsTab({ creatorId }: PointsTabProps) {
           </Card>
           <Card>
             <CardHeader>
-              <span className="text-xs font-medium uppercase tracking-wider text-text-secondary">
-                Pontos este mes
+              <span className="text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
+                Pontos este mês
               </span>
             </CardHeader>
             <CardContent>

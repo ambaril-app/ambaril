@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import * as Select from "@radix-ui/react-select";
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown, ChevronUp, Check } from "lucide-react";
 import { cn } from "../lib/utils";
 
 // Radix Select forbids value="". We use a sentinel internally so consumers
@@ -41,7 +41,7 @@ const FormSelect = React.forwardRef<HTMLButtonElement, FormSelectProps>(
     {
       className,
       label,
-      placeholder = "Selecione uma opcao",
+      placeholder = "Selecione uma opção",
       errorMessage,
       required,
       disabled,
@@ -107,14 +107,22 @@ const FormSelect = React.forwardRef<HTMLButtonElement, FormSelectProps>(
             <Select.Content
               position="popper"
               sideOffset={4}
+              avoidCollisions
               className={cn(
-                "z-50 max-h-60 overflow-hidden rounded-lg border border-border-default bg-bg-base shadow-[var(--shadow-lg)]",
+                // z-[200] ensures dropdown appears above modals (z-50) and sidebars (z-50)
+                "z-[200] overflow-hidden rounded-lg border border-border-default bg-bg-base shadow-[var(--shadow-lg)]",
                 "min-w-[var(--radix-select-trigger-width)]",
+                "max-h-[min(var(--radix-select-content-available-height,240px),240px)]",
                 "data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95",
                 "data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
+                "data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2",
               )}
             >
-              <Select.Viewport className="p-1">
+              <Select.ScrollUpButton className="flex cursor-default items-center justify-center py-1 text-text-muted">
+                <ChevronUp className="h-3.5 w-3.5" />
+              </Select.ScrollUpButton>
+
+              <Select.Viewport className="overflow-y-auto p-1">
                 {options.map((option) => (
                   <Select.Item
                     key={option.value || EMPTY_SENTINEL}
@@ -129,13 +137,17 @@ const FormSelect = React.forwardRef<HTMLButtonElement, FormSelectProps>(
                   >
                     <span className="absolute left-2 flex h-4 w-4 items-center justify-center">
                       <Select.ItemIndicator>
-                        <Check className="h-3.5 w-3.5 text-info" />
+                        <Check className="h-3.5 w-3.5 text-accent" />
                       </Select.ItemIndicator>
                     </span>
                     <Select.ItemText>{option.label}</Select.ItemText>
                   </Select.Item>
                 ))}
               </Select.Viewport>
+
+              <Select.ScrollDownButton className="flex cursor-default items-center justify-center py-1 text-text-muted">
+                <ChevronDown className="h-3.5 w-3.5" />
+              </Select.ScrollDownButton>
             </Select.Content>
           </Select.Portal>
         </Select.Root>

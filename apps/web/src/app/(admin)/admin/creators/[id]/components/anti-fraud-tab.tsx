@@ -38,7 +38,7 @@ function buildColumns(onResolve: (id: string) => void): DataTableColumn<Record<s
         const attr = value as Record<string, unknown>;
         const orderId = attr["orderId"] as string;
         return (
-          <span className="font-mono text-xs text-text-secondary">
+          <span className="font-mono text-xs text-text-ghost">
             {orderId.slice(0, 8)}...
           </span>
         );
@@ -191,7 +191,7 @@ function AntiFraudTab({ creatorId }: AntiFraudTabProps) {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-text-secondary">
+          <p className="text-sm text-text-ghost">
             Escolha uma ação para resolver esta flag de fraude.
           </p>
 

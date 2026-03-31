@@ -77,22 +77,22 @@ export default async function AdminHomePage() {
 
       {isCreatorsRole ? (
         <>
-          {/* 4 KPI cards: GMV, Comissões, Criadores Ativos, Aprovações */}
-          <CreatorsKpiRow kpis={kpis} pendingCount={pendingTotal} />
-
-          {/* AreaChart evolução + Top 5 list */}
-          <CreatorsChartsRow
-            evolution={evolution}
-            topPerformers={topPerformers}
-          />
-
-          {/* Pending approvals — only renders if total > 0 */}
+          {/* Pending approvals — first when urgent */}
           <PendingApprovalsWidget
             creators={pendingCreators}
             total={pendingTotal}
           />
 
-          {/* Quick actions: approve, challenges, campaigns, analytics */}
+          {/* KPI overview */}
+          <CreatorsKpiRow kpis={kpis} pendingCount={pendingTotal} />
+
+          {/* Charts: GMV evolution + top performers */}
+          <CreatorsChartsRow
+            evolution={evolution}
+            topPerformers={topPerformers}
+          />
+
+          {/* Quick actions */}
           <QuickActionsBar
             role={session.effectiveRole}
             pendingCount={pendingTotal}
