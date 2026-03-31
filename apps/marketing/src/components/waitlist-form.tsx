@@ -99,7 +99,7 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const step = STEPS[currentStep];
+  const step = STEPS[currentStep]!;
   const currentValue = answers[step.id] ?? "";
 
   // Clear error + autofocus on every step transition
