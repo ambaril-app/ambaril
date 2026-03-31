@@ -2,8 +2,5 @@
   "framework": "nextjs",
   "buildCommand": "cd ../.. && npx turbo run build --filter=marketing",
   "outputDirectory": "apps/marketing/.next",
-  "installCommand": "npm install",
-  "rewrites": [
-    { "source": "/", "destination": "/" }
-  ]
+  "installCommand": "pnpm install"
 }
