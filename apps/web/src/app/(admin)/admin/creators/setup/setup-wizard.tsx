@@ -7,6 +7,7 @@ import { Button } from "@ambaril/ui/components/button";
 import {
   saveSetupStep,
   completeCreatorsSetup,
+  bulkImportCreatorsFromCoupons,
 } from "@/app/actions/creators/setup";
 import { StepIntegrations } from "./steps/step-integrations";
 import { StepTiers } from "./steps/step-tiers";
@@ -107,13 +108,42 @@ export function SetupWizard({
 
   const handleComplete = useCallback(() => {
     startTransition(async () => {
+      // Persist creator+coupon links collected during the wizard
+      const couponLinks = wizardData.couponLinks as
+        | Array<{
+            creatorName: string;
+            creatorEmail: string;
+            couponCode: string;
+            tierId: string;
+          }>
+        | undefined;
+
+      if (couponLinks && couponLinks.length > 0) {
+        const entries = couponLinks
+          .filter((l) => l.creatorName && l.creatorEmail)
+          .map((l) => ({
+            name: l.creatorName,
+            email: l.creatorEmail,
+            couponCode: l.couponCode,
+            tierId: l.tierId || undefined,
+          }));
+
+        if (entries.length > 0) {
+          const importResult = await bulkImportCreatorsFromCoupons(entries);
+          if (importResult.error) {
+            // Non-fatal: log and continue so setup is still marked complete
+            console.error("[handleComplete] bulkImport error:", importResult.error);
+          }
+        }
+      }
+
       const result = await completeCreatorsSetup();
       if (!result.error) {
         router.push("/admin/creators");
         router.refresh();
       }
     });
-  }, [router]);
+  }, [router, wizardData]);
 
   return (
     <div className="space-y-8">
