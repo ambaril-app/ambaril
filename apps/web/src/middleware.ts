@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { SESSION_COOKIE_NAME } from "@ambaril/shared/constants";
 
-// Routes that don't require authentication
+// Routes that don't require authentication (prefix match)
 const PUBLIC_ROUTES = ["/login", "/signup", "/forgot-password", "/creators/login", "/creators/apply"];
+// Routes that don't require auth — exact match only (can't use startsWith for "/")
+const PUBLIC_EXACT_ROUTES = ["/"];
 
 // Route prefix → allowed roles
 const ROUTE_ROLES: Record<string, string[]> = {
@@ -24,7 +26,10 @@ export function middleware(request: NextRequest) {
   }
 
   // Public routes — no auth needed
-  if (PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
+  if (
+    PUBLIC_EXACT_ROUTES.includes(pathname) ||
+    PUBLIC_ROUTES.some((route) => pathname.startsWith(route))
+  ) {
     return NextResponse.next();
   }
 

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { HeroLumens } from '@/components/hero-lumens';
 
 export default function RootPage() {
-  redirect("/login");
+  return <HeroLumens />;
 }
