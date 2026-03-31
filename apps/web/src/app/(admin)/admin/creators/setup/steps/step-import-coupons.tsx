@@ -50,6 +50,19 @@ export function StepImportCoupons({ onImported }: StepImportCouponsProps) {
     });
   };
 
+  const allSelected = coupons.length > 0 && selected.size === coupons.length;
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected(new Set());
+      onImported([]);
+    } else {
+      const all = new Set(coupons.map((c) => c.code));
+      setSelected(all);
+      onImported(coupons);
+    }
+  };
+
   const toggleCoupon = (code: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -85,10 +98,21 @@ export function StepImportCoupons({ onImported }: StepImportCouponsProps) {
         </div>
       ) : (
         <>
-          <p className="text-sm text-text-secondary">
-            {coupons.length} cupons encontrados. Selecione os que deseja
-            vincular a creators.
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-text-secondary">
+              {coupons.length} cupons encontrados. Selecione os que deseja
+              vincular a creators.
+            </p>
+            {coupons.length > 0 && (
+              <button
+                type="button"
+                onClick={toggleAll}
+                className="shrink-0 text-xs text-text-secondary hover:text-text-primary transition-colors underline-offset-2 hover:underline"
+              >
+                {allSelected ? "Desmarcar todos" : "Selecionar todos"}
+              </button>
+            )}
+          </div>
 
           {coupons.length === 0 ? (
             <p className="py-4 text-center text-sm text-text-ghost">
