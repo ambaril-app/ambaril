@@ -134,8 +134,7 @@ export function HeroLumens() {
     function draw() {
       ctx!.clearRect(0, 0, W, H);
 
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
+      for (const p of particles) {
 
         p.pulsePhase += p.pulseSpeed;
         const pulseFactor = 0.85 + 0.15 * Math.sin(p.pulsePhase);
@@ -230,6 +229,7 @@ export function HeroLumens() {
           if (p.y > H) p.y = rand(0, H);
         }
       };
+
 
       window.addEventListener('resize', handleResize);
       window.addEventListener('mousemove', onMouseMove);
