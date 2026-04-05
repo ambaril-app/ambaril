@@ -1,0 +1,3 @@
+# Known false positives for gitleaks
+# .env.example contains placeholder values, not real secrets
+.env.example

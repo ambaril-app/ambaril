@@ -1,0 +1,13 @@
+# Ambaril — Code Owners
+# Security-sensitive files require review
+
+# Global ownership
+* @boromarl
+
+# Security-critical files
+apps/web/src/lib/auth.ts @boromarl
+apps/web/src/lib/crypto.ts @boromarl
+apps/web/src/lib/credentials.ts @boromarl
+apps/web/src/middleware.ts @boromarl
+apps/web/next.config.ts @boromarl
+packages/db/src/schema/global.ts @boromarl
