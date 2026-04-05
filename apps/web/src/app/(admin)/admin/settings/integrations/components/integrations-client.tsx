@@ -8,14 +8,17 @@ import {
   Mail,
   HardDrive,
   CheckCircle2,
-  Circle,
+  Check,
   Loader2,
   Plug,
   Unplug,
   RefreshCw,
+  AlertTriangle,
+  Clock,
 } from "lucide-react";
 import { Button } from "@ambaril/ui/components/button";
 import { Badge } from "@ambaril/ui/components/badge";
+import { Card } from "@ambaril/ui/components/card";
 import { Modal } from "@ambaril/ui/components/modal";
 import { cn } from "@ambaril/ui/lib/utils";
 import { ConnectModal } from "./connect-modal";
@@ -46,12 +49,7 @@ const CAPABILITY_ORDER = [
   "storage",
 ];
 
-type IconName =
-  | "shopify"
-  | "yever"
-  | "instagram"
-  | "resend"
-  | "cloudflare-r2";
+type IconName = "shopify" | "yever" | "instagram" | "resend" | "cloudflare-r2";
 
 const ICON_MAP: Record<IconName, React.ElementType> = {
   shopify: ShoppingBag,
@@ -61,11 +59,96 @@ const ICON_MAP: Record<IconName, React.ElementType> = {
   "cloudflare-r2": HardDrive,
 };
 
+const PROVIDER_STYLE: Record<
+  IconName,
+  { bg: string; text: string; stripe: string }
+> = {
+  shopify: {
+    bg: "bg-org-emerald-bg",
+    text: "text-org-emerald-text",
+    stripe: "from-org-emerald-bg",
+  },
+  yever: {
+    bg: "bg-org-blue-bg",
+    text: "text-org-blue-text",
+    stripe: "from-org-blue-bg",
+  },
+  instagram: {
+    bg: "bg-org-violet-bg",
+    text: "text-org-violet-text",
+    stripe: "from-org-violet-bg",
+  },
+  resend: {
+    bg: "bg-org-cyan-bg",
+    text: "text-org-cyan-text",
+    stripe: "from-org-cyan-bg",
+  },
+  "cloudflare-r2": {
+    bg: "bg-org-orange-bg",
+    text: "text-org-orange-text",
+    stripe: "from-org-orange-bg",
+  },
+};
+
+// Capabilities each provider enables (for benefit display)
+const PROVIDER_CAPABILITIES: Record<string, string[]> = {
+  shopify: [
+    "Sync de produtos e estoque",
+    "Importação de pedidos",
+    "Webhooks em tempo real",
+  ],
+  yever: ["Dados de vendas para Dashboard", "Tracking de conversão"],
+  instagram: [
+    "Monitoramento de menções",
+    "UGC automático",
+    "Métricas de engajamento",
+  ],
+  resend: [
+    "Emails transacionais",
+    "Campanhas de marketing",
+    "Templates personalizados",
+  ],
+  "cloudflare-r2": [
+    "Fotos de produto",
+    "Assets de marketing",
+    "Backup automático",
+  ],
+};
+
 function getProviderIcon(icon: string | null): React.ElementType {
-  if (icon && icon in ICON_MAP) {
-    return ICON_MAP[icon as IconName];
-  }
+  if (icon && icon in ICON_MAP) return ICON_MAP[icon as IconName];
   return Plug;
+}
+
+function getProviderStyle(icon: string | null): {
+  bg: string;
+  text: string;
+  stripe: string;
+} {
+  if (icon && icon in PROVIDER_STYLE) return PROVIDER_STYLE[icon as IconName];
+  return {
+    bg: "bg-org-slate-bg",
+    text: "text-org-slate-text",
+    stripe: "from-org-slate-bg",
+  };
+}
+
+function getProviderCapabilities(icon: string | null): string[] {
+  if (icon && icon in PROVIDER_CAPABILITIES)
+    return PROVIDER_CAPABILITIES[icon] ?? [];
+  return [];
+}
+
+// ---------------------------------------------------------------------------
+// Section label (DS pattern)
+// ---------------------------------------------------------------------------
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="font-display text-[10px] font-semibold uppercase tracking-[0.15em] text-text-muted mb-3">
+      {children}
+    </p>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -89,7 +172,7 @@ interface IntegrationsClientProps {
 }
 
 // ---------------------------------------------------------------------------
-// Provider Card
+// Provider Card — rich card layout inspired by empty-states upsell pattern
 // ---------------------------------------------------------------------------
 
 interface ProviderCardProps {
@@ -110,114 +193,147 @@ function ProviderCard({
   onDisconnect,
 }: ProviderCardProps) {
   const Icon = getProviderIcon(provider.icon);
+  const style = getProviderStyle(provider.icon);
+  const capabilities = getProviderCapabilities(provider.icon);
 
   return (
-    <div
-      className={cn(
-        "rounded-lg border p-5 transition-opacity",
-        provider.isConnected
-          ? "bg-bg-surface border-border-subtle"
-          : "bg-bg-elevated border-border-subtle opacity-75",
-      )}
-    >
-      {/* Card header */}
-      <div className="flex items-start justify-between gap-3 min-w-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="shrink-0 flex h-9 w-9 items-center justify-center rounded-md border border-border-subtle bg-bg-raised">
-            <Icon className="h-4 w-4 text-text-secondary" />
+    <Card className="p-0 overflow-hidden shadow-[var(--shadow-sm)]">
+      {/* Top color stripe — like empty-states upsell cards */}
+      <div
+        className={cn(
+          "h-1 w-full bg-gradient-to-r to-transparent",
+          style.stripe,
+        )}
+      />
+
+      <div className="p-5">
+        {/* Header: icon + name + status */}
+        <div className="flex items-start gap-3 mb-3">
+          <div
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
+              style.bg,
+            )}
+          >
+            <Icon className={cn("h-5 w-5", style.text)} />
           </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-text-bright">
-              {provider.name}
-            </p>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-[15px] font-medium text-text-white">
+                {provider.name}
+              </p>
+              {provider.isConnected ? (
+                <Badge variant="success" className="gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Ativo
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-text-muted">
+                  Disponível
+                </Badge>
+              )}
+            </div>
+            {provider.description && (
+              <p className="text-[12px] text-text-muted mt-0.5">
+                {provider.description}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Status badge */}
-        {provider.isConnected ? (
-          <Badge variant="success" className="shrink-0 gap-1">
-            <CheckCircle2 className="h-3 w-3" />
-            Conectado
-          </Badge>
-        ) : (
-          <Badge variant="secondary" className="shrink-0 gap-1">
-            <Circle className="h-3 w-3" />
-            Não conectado
-          </Badge>
+        {/* Capabilities list — like empty-states CRM upsell checklist */}
+        {capabilities.length > 0 && (
+          <ul className="flex flex-col gap-1.5 mb-4">
+            {capabilities.map((cap) => (
+              <li
+                key={cap}
+                className="flex items-center gap-2 text-[13px] text-text-primary"
+              >
+                <Check
+                  className={cn(
+                    "h-3.5 w-3.5 shrink-0",
+                    provider.isConnected ? "text-success" : "text-text-ghost",
+                  )}
+                />
+                <span
+                  className={
+                    provider.isConnected ? undefined : "text-text-secondary"
+                  }
+                >
+                  {cap}
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
-      </div>
 
-      {/* Description */}
-      {provider.description && (
-        <p className="mt-3 text-xs text-text-muted line-clamp-2 min-w-0">
-          {provider.description}
-        </p>
-      )}
+        {/* Test result inline feedback */}
+        {testResult && (
+          <div
+            className={cn(
+              "mb-4 rounded-lg px-3 py-2 text-[12px]",
+              testResult.success
+                ? "bg-success-muted text-success"
+                : "bg-danger-muted text-danger",
+            )}
+          >
+            {testResult.message}
+          </div>
+        )}
 
-      {/* Last tested timestamp */}
-      {provider.isConnected && provider.lastTestedAt && (
-        <p className="mt-2 text-xs text-text-ghost">
-          Testado em{" "}
-          {new Intl.DateTimeFormat("pt-BR", {
-            day: "2-digit",
-            month: "2-digit",
-            year: "numeric",
-            hour: "2-digit",
-            minute: "2-digit",
-          }).format(new Date(provider.lastTestedAt))}
-        </p>
-      )}
+        {/* Footer: actions + metadata */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {provider.isConnected ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onTest}
+                  disabled={isTesting}
+                >
+                  {isTesting ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  {isTesting ? "Testando…" : "Testar conexão"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onDisconnect}
+                  className="text-danger hover:text-danger hover:bg-danger-muted"
+                >
+                  <Unplug className="mr-1.5 h-3.5 w-3.5" />
+                  Desconectar
+                </Button>
+              </>
+            ) : (
+              <Button size="sm" onClick={onConnect}>
+                <Plug className="mr-1.5 h-3.5 w-3.5" />
+                Conectar
+              </Button>
+            )}
+          </div>
 
-      {/* Test result inline feedback */}
-      {testResult && (
-        <p
-          className={cn(
-            "mt-3 rounded-md px-3 py-2 text-xs",
-            testResult.success
-              ? "bg-green-500/10 text-green-600 dark:text-green-400"
-              : "bg-danger-muted text-danger",
+          {/* Last tested timestamp */}
+          {provider.isConnected && provider.lastTestedAt && (
+            <div className="flex items-center gap-1.5 text-[11px] text-text-ghost">
+              <Clock className="h-3 w-3" />
+              <span className="font-mono tabular-nums">
+                {new Intl.DateTimeFormat("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }).format(new Date(provider.lastTestedAt))}
+              </span>
+            </div>
           )}
-        >
-          {testResult.message}
-        </p>
-      )}
-
-      {/* Actions */}
-      <div className="mt-4 flex items-center gap-2">
-        {provider.isConnected ? (
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onTest}
-              disabled={isTesting}
-              className="gap-1.5"
-            >
-              {isTesting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="h-3.5 w-3.5" />
-              )}
-              {isTesting ? "Testando..." : "Testar"}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onDisconnect}
-              className="gap-1.5 text-danger hover:text-danger hover:bg-danger-muted"
-            >
-              <Unplug className="h-3.5 w-3.5" />
-              Desconectar
-            </Button>
-          </>
-        ) : (
-          <Button size="sm" onClick={onConnect} className="gap-1.5">
-            <Plug className="h-3.5 w-3.5" />
-            Conectar
-          </Button>
-        )}
+        </div>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -234,8 +350,9 @@ export function IntegrationsClient({
   // Modal state
   const [connectingProvider, setConnectingProvider] =
     React.useState<ProviderWithStatus | null>(null);
-  const [disconnectState, setDisconnectState] =
-    React.useState<DisconnectState>({ open: false, capability: "", name: "" });
+  const [disconnectState, setDisconnectState] = React.useState<DisconnectState>(
+    { open: false, capability: "", name: "" },
+  );
 
   // Per-provider loading state (keyed by capability)
   const [testingMap, setTestingMap] = React.useState<Record<string, boolean>>(
@@ -259,7 +376,6 @@ export function IntegrationsClient({
 
   const orderedCapabilities = React.useMemo(() => {
     const inOrder = CAPABILITY_ORDER.filter((c) => grouped.has(c));
-    // Add any capabilities not in the predefined order
     for (const key of grouped.keys()) {
       if (!inOrder.includes(key)) inOrder.push(key);
     }
@@ -277,11 +393,9 @@ export function IntegrationsClient({
     );
 
     if (!result.success) {
-      // Keep modal open — let form show the error
       throw new Error(result.error ?? "Erro ao salvar integração");
     }
 
-    // Optimistic update: mark as connected
     setProviders((prev) =>
       prev.map((p) =>
         p.capability === connectingProvider.capability
@@ -294,7 +408,6 @@ export function IntegrationsClient({
 
   const handleTest = async (capability: string) => {
     setTestingMap((prev) => ({ ...prev, [capability]: true }));
-    // Clear previous result
     setTestResultMap((prev) => {
       const next = { ...prev };
       delete next[capability];
@@ -316,15 +429,11 @@ export function IntegrationsClient({
     }));
 
     if (result.success) {
-      // Update lastTestedAt optimistically
       setProviders((prev) =>
         prev.map((p) =>
-          p.capability === capability
-            ? { ...p, lastTestedAt: new Date() }
-            : p,
+          p.capability === capability ? { ...p, lastTestedAt: new Date() } : p,
         ),
       );
-      // Auto-clear success message after 5s
       setTimeout(() => {
         setTestResultMap((prev) => {
           const next = { ...prev };
@@ -342,7 +451,6 @@ export function IntegrationsClient({
     const result = await disconnectIntegration(capability);
     if (!result.success) return;
 
-    // Optimistic update
     setProviders((prev) =>
       prev.map((p) =>
         p.capability === capability
@@ -350,7 +458,6 @@ export function IntegrationsClient({
           : p,
       ),
     );
-    // Clear any test result for this capability
     setTestResultMap((prev) => {
       const next = { ...prev };
       delete next[capability];
@@ -362,7 +469,7 @@ export function IntegrationsClient({
 
   return (
     <>
-      <div className="space-y-8">
+      <div className="flex flex-col gap-8">
         {orderedCapabilities.map((capability) => {
           const capabilityProviders = grouped.get(capability) ?? [];
           const label =
@@ -370,11 +477,10 @@ export function IntegrationsClient({
             capability.charAt(0).toUpperCase() + capability.slice(1);
 
           return (
-            <section key={capability}>
-              <h2 className="mb-3 text-sm font-medium text-text-secondary">
-                {label}
-              </h2>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <section key={capability} className="flex flex-col gap-3">
+              <SectionLabel>{label}</SectionLabel>
+              {/* 2-col grid like empty-states upsell — not 3-col, gives cards room to breathe */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {capabilityProviders.map((provider) => (
                   <ProviderCard
                     key={provider.providerId}
@@ -398,15 +504,20 @@ export function IntegrationsClient({
         })}
 
         {orderedCapabilities.length === 0 && (
-          <div className="rounded-lg border border-border-subtle bg-bg-surface px-6 py-12 text-center">
-            <Plug className="mx-auto mb-3 h-8 w-8 text-text-ghost" />
-            <p className="text-sm font-medium text-text-secondary">
-              Nenhuma integração disponível
-            </p>
-            <p className="mt-1 text-xs text-text-muted">
-              Integrações serão exibidas aqui conforme forem habilitadas.
-            </p>
-          </div>
+          <Card className="p-0 overflow-hidden shadow-[var(--shadow-sm)]">
+            <div className="flex flex-col items-center justify-center px-6 py-12">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-info-muted mb-3">
+                <Plug className="h-5 w-5 text-info" />
+              </div>
+              <p className="text-[14px] font-medium text-text-primary mb-1">
+                Nenhuma integração disponível
+              </p>
+              <p className="text-[12px] text-text-muted text-center max-w-xs">
+                Integrações serão exibidas aqui conforme forem habilitadas pelo
+                administrador.
+              </p>
+            </div>
+          </Card>
         )}
       </div>
 
@@ -426,35 +537,38 @@ export function IntegrationsClient({
         onClose={() =>
           setDisconnectState({ open: false, capability: "", name: "" })
         }
-        title="Desconectar integração"
         size="sm"
       >
-        <div className="space-y-4">
-          <p className="text-sm text-text-secondary">
-            Tem certeza que deseja desconectar o{" "}
-            <span className="font-medium text-text-primary">
-              {disconnectState.name}
-            </span>
-            ? Os módulos que dependem desta integração deixarão de funcionar.
-          </p>
-          <div className="flex items-center justify-end gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                setDisconnectState({ open: false, capability: "", name: "" })
-              }
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleDisconnectConfirm}
-            >
-              Desconectar
-            </Button>
+        <div className="px-5 pt-5 pb-4">
+          <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-danger-muted">
+            <AlertTriangle className="h-4 w-4 text-danger" strokeWidth={1.75} />
           </div>
+          <p className="text-[14px] font-semibold text-text-white">
+            Desconectar {disconnectState.name}?
+          </p>
+          <p className="mt-1.5 text-[13px] leading-[1.6] text-text-secondary">
+            Os módulos que dependem desta integração deixarão de funcionar. Você
+            pode reconectar a qualquer momento.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 border-t border-border-subtle px-5 py-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              setDisconnectState({ open: false, capability: "", name: "" })
+            }
+          >
+            Cancelar
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleDisconnectConfirm}
+          >
+            Desconectar
+          </Button>
         </div>
       </Modal>
     </>

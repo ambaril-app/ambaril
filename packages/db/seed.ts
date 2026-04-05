@@ -5,10 +5,8 @@ import {
   roles,
   permissions,
   integrationProviders,
-  moduleSetupState,
 } from "./src/schema/global";
-import { creatorTiers, creators, coupons } from "./src/schema/creators";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 // ─── Seed Data ──────────────────────────────────────────
 
@@ -24,68 +22,183 @@ const CIENA_TENANT = {
   },
 };
 
-const CREATOR_TIERS_DATA = [
-  { name: "Ambassador", slug: "ambassador", commissionRate: "0.00", minFollowers: 0, sortOrder: 0, benefits: { discount: 8 } },
-  { name: "Seed", slug: "seed", commissionRate: "8.00", minFollowers: 0, sortOrder: 1, benefits: { discount: 10 } },
-  { name: "Grow", slug: "grow", commissionRate: "10.00", minFollowers: 5000, sortOrder: 2, benefits: { discount: 15, earlyAccess: true } },
-  { name: "Bloom", slug: "bloom", commissionRate: "12.00", minFollowers: 20000, sortOrder: 3, benefits: { discount: 20, earlyAccess: true, exclusiveProducts: true } },
-  { name: "Core", slug: "core", commissionRate: "15.00", minFollowers: 50000, sortOrder: 4, benefits: { discount: 25, earlyAccess: true, exclusiveProducts: true, monthlyGifting: true } },
-];
-
 // Role definitions with display names
 const ROLE_DEFINITIONS = [
-  { name: "admin", displayName: "Administrador", description: "Full system access" },
-  { name: "pm", displayName: "Product Manager", description: "CRM, Creators, Marketing, Dashboard" },
-  { name: "creative", displayName: "Criativo", description: "DAM, Tasks, Marketing Intel (read-only)" },
-  { name: "operations", displayName: "Operacoes", description: "ERP, PCP, Exchanges, Inventory" },
-  { name: "support", displayName: "Suporte", description: "Inbox, Exchanges, CRM (read-only)" },
-  { name: "finance", displayName: "Financeiro", description: "ERP financial, DRE, Margins" },
+  {
+    name: "admin",
+    displayName: "Administrador",
+    description: "Full system access",
+  },
+  {
+    name: "pm",
+    displayName: "Product Manager",
+    description: "CRM, Creators, Marketing, Dashboard",
+  },
+  {
+    name: "creative",
+    displayName: "Criativo",
+    description: "DAM, Tasks, Marketing Intel (read-only)",
+  },
+  {
+    name: "operations",
+    displayName: "Operacoes",
+    description: "ERP, PCP, Exchanges, Inventory",
+  },
+  {
+    name: "support",
+    displayName: "Suporte",
+    description: "Inbox, Exchanges, CRM (read-only)",
+  },
+  {
+    name: "finance",
+    displayName: "Financeiro",
+    description: "ERP financial, DRE, Margins",
+  },
   { name: "commercial", displayName: "Comercial", description: "B2B Portal" },
 ];
 
 // Permission matrix (resource:action format)
 const ROLE_PERMISSIONS: Record<string, string[]> = {
-  admin: [
-    "system:impersonate",
-  ],
+  admin: ["system:impersonate", "admin:settings:read", "admin:settings:write"],
   pm: [
-    "creators:profiles:read", "creators:profiles:write",
-    "creators:challenges:read", "creators:challenges:write",
-    "creators:campaigns:read", "creators:campaigns:write",
-    "creators:payouts:read", "creators:payouts:write",
-    "creators:analytics:read",
-    "crm:contacts:read", "crm:contacts:write",
-    "crm:segments:read", "crm:segments:write",
-    "crm:automations:read", "crm:automations:write",
-    "crm:campaigns:read", "crm:campaigns:write",
+    // CRM
+    "crm:contacts:read",
+    "crm:contacts:write",
+    "crm:segments:read",
+    "crm:segments:write",
+    "crm:automations:read",
+    "crm:automations:write",
+    "crm:campaigns:read",
+    "crm:campaigns:write",
+    // Checkout (read-only analytics)
     "checkout:orders:read",
-    "checkout:carts:read", "checkout:abandoned:read",
-    "checkout:ab_tests:read", "checkout:ab_tests:write",
-    "dashboard:overview:read", "dashboard:war_room:read",
+    "checkout:carts:read",
+    "checkout:abandoned:read",
+    "checkout:ab_tests:read",
+    "checkout:ab_tests:write",
+    // Dashboard
+    "dashboard:overview:read",
+    "dashboard:war_room:read",
+    "dashboard:marketing:read",
+    // Tarefas
+    "tarefas:boards:read",
+    "tarefas:boards:write",
+    "tarefas:tasks:read",
+    "tarefas:tasks:write",
+    "tarefas:calendar:read",
+    "tarefas:calendar:write",
+    // Marketing
+    "marketing:campaigns:read",
+    "marketing:campaigns:write",
+    "marketing:analytics:read",
+    // Creators
+    "creators:profiles:read",
+    "creators:profiles:write",
+    "creators:campaigns:read",
+    "creators:campaigns:write",
+    "creators:payouts:read",
+    // DAM (read + upload)
+    "dam:assets:read",
+    "dam:assets:upload",
   ],
   creative: [
+    // DAM (full)
+    "dam:assets:read",
+    "dam:assets:upload",
+    "dam:assets:write",
+    "dam:assets:delete",
+    "dam:collections:read",
+    "dam:collections:write",
+    // Tarefas (own tasks only)
+    "tarefas:tasks:read",
+    "tarefas:tasks:write",
+    "tarefas:calendar:read",
+    // Marketing (read-only)
+    "marketing:campaigns:read",
+    "marketing:analytics:read",
+    // Dashboard (marketing panel)
     "dashboard:overview:read",
+    "dashboard:marketing:read",
   ],
   operations: [
-    "erp:products:read", "erp:products:write",
-    "erp:inventory:read", "erp:inventory:write",
-    "erp:nfe:read", "erp:nfe:write",
-    "erp:shipping:read", "erp:shipping:write",
-    "checkout:orders:read", "checkout:orders:write",
+    // ERP (full)
+    "erp:products:read",
+    "erp:products:write",
+    "erp:inventory:read",
+    "erp:inventory:write",
+    "erp:nfe:read",
+    "erp:nfe:write",
+    "erp:shipping:read",
+    "erp:shipping:write",
+    // PLM (full)
+    "plm:orders:read",
+    "plm:orders:write",
+    "plm:stages:read",
+    "plm:stages:write",
+    "plm:suppliers:read",
+    "plm:suppliers:write",
+    "plm:materials:read",
+    "plm:materials:write",
+    // Trocas (full)
+    "trocas:requests:read",
+    "trocas:requests:write",
+    "trocas:reverse:read",
+    "trocas:reverse:write",
+    // Checkout orders
+    "checkout:orders:read",
+    "checkout:orders:write",
+    // Dashboard
     "dashboard:overview:read",
+    "dashboard:operations:read",
+    // Tarefas
+    "tarefas:tasks:read",
+    "tarefas:tasks:write",
+    "tarefas:calendar:read",
   ],
   support: [
+    // Mensageria (full inbox)
+    "messaging:conversations:read",
+    "messaging:conversations:write",
+    "messaging:templates:read",
+    "messaging:broadcasts:read",
+    // CRM (read-only)
     "crm:contacts:read",
-    "whatsapp:conversations:read", "whatsapp:conversations:write",
-    "whatsapp:templates:read",
+    "crm:segments:read",
+    // Trocas
+    "trocas:requests:read",
+    "trocas:requests:write",
+    // Tarefas (own)
+    "tarefas:tasks:read",
+    "tarefas:tasks:write",
   ],
   finance: [
+    // ERP financial
     "erp:products:read",
-    "erp:finance:read", "erp:finance:write",
+    "erp:finance:read",
+    "erp:finance:write",
+    "erp:nfe:read",
+    // Dashboard financial
     "dashboard:overview:read",
+    "dashboard:finance:read",
+    // Checkout orders (read)
+    "checkout:orders:read",
+    // Creators payouts
+    "creators:payouts:read",
+    "creators:payouts:write",
   ],
   commercial: [
+    // B2B
+    "b2b:retailers:read",
+    "b2b:retailers:write",
+    "b2b:orders:read",
+    "b2b:orders:write",
+    "b2b:price_tables:read",
+    "b2b:price_tables:write",
+    // Checkout orders (read)
     "checkout:orders:read",
+    // Dashboard
+    "dashboard:overview:read",
+    "dashboard:commercial:read",
   ],
 };
 
@@ -170,114 +283,17 @@ async function seed() {
   console.log(`   ${permCount} permissions created`);
 
   // 4-5. Users are now created via /signup with magic links
-  console.log("4. Skipping user creation — use /signup to create your admin account.");
-  console.log("5. Skipping user-tenant links — created automatically on signup.");
+  console.log(
+    "4. Skipping user creation — use /signup to create your admin account.",
+  );
+  console.log(
+    "5. Skipping user-tenant links — created automatically on signup.",
+  );
 
-  // 6. Create creator tiers for CIENA
-  console.log("6. Creating creator tiers...");
-  for (const tier of CREATOR_TIERS_DATA) {
-    await db
-      .insert(creatorTiers)
-      .values({
-        tenantId: tenant.id,
-        name: tier.name,
-        slug: tier.slug,
-        commissionRate: tier.commissionRate,
-        minFollowers: tier.minFollowers,
-        benefits: tier.benefits,
-        sortOrder: tier.sortOrder,
-      })
-      .onConflictDoNothing();
-    console.log(`   Tier: ${tier.name} (${tier.commissionRate}%)`);
-  }
-
-  // 7. Create demo creators for testing
-  console.log("7. Creating demo creators...");
-
-  // Find the "Seed" tier for the demo creator
-  const seedTierResult = await db
-    .select({ id: creatorTiers.id })
-    .from(creatorTiers)
-    .where(
-      and(
-        eq(creatorTiers.tenantId, tenant.id),
-        eq(creatorTiers.slug, "seed"),
-      ),
-    )
-    .limit(1);
-
-  const seedTierId = seedTierResult[0]?.id ?? null;
-
-  // Demo creator (active, with coupon)
-  const [demoCreator] = await db
-    .insert(creators)
-    .values({
-      tenantId: tenant.id,
-      name: "Demo Creator",
-      email: "creator@cienalab.com.br",
-      phone: "21999990001",
-      cpf: "000.000.000-01",
-      status: "active",
-      tierId: seedTierId,
-      commissionRate: "8.00",
-      joinedAt: new Date(),
-      contentRightsAccepted: true,
-      motivation: "Demo creator for testing",
-    })
-    .onConflictDoNothing()
-    .returning({ id: creators.id });
-
-  if (demoCreator) {
-    // Create coupon for demo creator
-    await db
-      .insert(coupons)
-      .values({
-        tenantId: tenant.id,
-        creatorId: demoCreator.id,
-        code: "DEMO10",
-        type: "creator",
-        discountType: "percent",
-        discountPercent: "10.00",
-        isActive: true,
-      })
-      .onConflictDoNothing();
-
-    // Link coupon to creator
-    const couponResult = await db
-      .select({ id: coupons.id })
-      .from(coupons)
-      .where(
-        and(
-          eq(coupons.tenantId, tenant.id),
-          eq(coupons.code, "DEMO10"),
-        ),
-      )
-      .limit(1);
-
-    if (couponResult[0]) {
-      await db
-        .update(creators)
-        .set({ couponId: couponResult[0].id })
-        .where(eq(creators.id, demoCreator.id));
-    }
-
-    console.log("   Creator: Demo Creator <creator@cienalab.com.br> [active]");
-  }
-
-  // Pending creator
-  await db
-    .insert(creators)
-    .values({
-      tenantId: tenant.id,
-      name: "Creator Pendente",
-      email: "pendente@cienalab.com.br",
-      phone: "21999990002",
-      cpf: "000.000.000-02",
-      status: "pending",
-      motivation: "Quero divulgar a marca nas minhas redes sociais",
-    })
-    .onConflictDoNothing();
-  console.log("   Creator: Creator Pendente <pendente@cienalab.com.br> [pending]");
+  // 6-7. Creators module removed (Inbazz contracted). Skipping tiers and demo creators.
+  console.log(
+    "6-7. Skipping creators seeding — module paused (Inbazz contracted).",
+  );
 
   // 8. Seed integration providers catalog
   console.log("8. Creating integration providers...");
@@ -291,7 +307,12 @@ async function seed() {
       configSchema: [
         { key: "shop", label: "Shopify Store", type: "text", required: true },
         { key: "clientId", label: "Client ID", type: "text", required: true },
-        { key: "clientSecret", label: "Client Secret", type: "password", required: true },
+        {
+          key: "clientSecret",
+          label: "Client Secret",
+          type: "password",
+          required: true,
+        },
       ],
     },
     {
@@ -324,9 +345,24 @@ async function seed() {
       icon: "HardDrive",
       configSchema: [
         { key: "accountId", label: "Account ID", type: "text", required: true },
-        { key: "accessKeyId", label: "Access Key ID", type: "text", required: true },
-        { key: "secretAccessKey", label: "Secret Access Key", type: "password", required: true },
-        { key: "bucketName", label: "Bucket Name", type: "text", required: true },
+        {
+          key: "accessKeyId",
+          label: "Access Key ID",
+          type: "text",
+          required: true,
+        },
+        {
+          key: "secretAccessKey",
+          label: "Secret Access Key",
+          type: "password",
+          required: true,
+        },
+        {
+          key: "bucketName",
+          label: "Bucket Name",
+          type: "text",
+          required: true,
+        },
         { key: "publicUrl", label: "Public URL", type: "url", required: false },
       ],
     },
@@ -337,8 +373,18 @@ async function seed() {
       description: "Monitoramento de menções e perfis",
       icon: "Camera",
       configSchema: [
-        { key: "accessToken", label: "Access Token", type: "password", required: true },
-        { key: "businessAccountId", label: "Business Account ID", type: "text", required: true },
+        {
+          key: "accessToken",
+          label: "Access Token",
+          type: "password",
+          required: true,
+        },
+        {
+          key: "businessAccountId",
+          label: "Business Account ID",
+          type: "text",
+          required: true,
+        },
       ],
     },
   ];
@@ -358,24 +404,14 @@ async function seed() {
   // - Instagram (social capability)
   // Credentials are encrypted and stored in global.tenant_integrations.
   // Platform infrastructure (Resend, Cloudflare R2) uses env vars — not per-tenant.
-  console.log("9. Skipping CIENA integrations — configure via /admin/settings/integrations");
-
-  // 10. Create module setup state (creators = not yet set up)
-  console.log("10. Creating module setup state...");
-  await db
-    .insert(moduleSetupState)
-    .values({
-      tenantId: tenant.id,
-      moduleId: "creators",
-      isSetupComplete: false,
-      currentStep: "integrations",
-      stepData: {},
-    })
-    .onConflictDoNothing();
-  console.log("   Module: creators (setup pending)");
+  console.log(
+    "9. Skipping CIENA integrations — configure via /admin/settings/integrations",
+  );
 
   console.log("\n✓ Seed completed successfully!");
-  console.log("✓ Tenant CIENA criado. Acesse /signup para criar sua conta de admin.\n");
+  console.log(
+    "✓ Tenant CIENA criado. Acesse /signup para criar sua conta de admin.\n",
+  );
 }
 
 seed().catch((err) => {

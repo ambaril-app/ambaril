@@ -42,13 +42,13 @@ function Tabs({ tabs, selectedKey, onSelectionChange, className }: TabsProps) {
       onValueChange={onSelectionChange}
       className={cn("w-full", className)}
     >
-      <TabsPrimitive.List className="flex gap-6 w-full border-b border-border-default px-0">
+      <TabsPrimitive.List className="flex gap-4 w-full border-b border-border-default px-0">
         {tabs.map((tab) => (
           <TabsPrimitive.Trigger
             key={tab.key}
             value={tab.key}
             className={cn(
-              "relative px-0 h-10 text-sm font-medium transition-colors duration-150",
+              "relative px-0 py-1.5 text-sm font-medium transition-colors duration-150",
               "text-text-secondary hover:text-text-primary",
               "data-[state=active]:text-text-bright",
               "border-b-2 border-transparent data-[state=active]:border-text-bright",

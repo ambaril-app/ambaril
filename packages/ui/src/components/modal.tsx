@@ -1,96 +1,115 @@
 "use client";
 
 import * as React from "react";
-import * as Dialog from "@radix-ui/react-dialog";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "../lib/utils";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+/* ==========================================================================
+   Modal — Ambaril Design System
 
-type ModalSize = "sm" | "md" | "lg" | "xl";
+   Referência: modals-2.jpg (Ironclad), modals-5.jpg (collection)
+
+   Uses createPortal to render on document.body, escaping any overflow
+   or transform containment from parent layouts.
+
+   Key design decisions:
+   - backdrop-blur-md (12px) makes page content UNREADABLE behind modal
+   - Strong shadow + ring create unmistakable modal boundary
+   - No internal padding — caller controls section padding for full-bleed bands
+   ========================================================================== */
 
 export interface ModalProps {
-  /** Whether the modal is open */
   isOpen: boolean;
-  /** Callback when the modal requests to close */
   onClose: () => void;
-  /** Modal title displayed in the header */
-  title?: string;
-  /** Modal body content */
   children: React.ReactNode;
-  /** Size preset */
-  size?: ModalSize;
-  /** Additional className on the modal content */
+  /** Width preset. sm=380px, md=480px, lg=600px, xl=740px */
+  size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Size mapping
-// ---------------------------------------------------------------------------
-
-const SIZE_MAP: Record<ModalSize, string> = {
-  sm: "max-w-[400px]",
-  md: "max-w-[500px]",
-  lg: "max-w-[640px]",
-  xl: "max-w-[800px]",
+const WIDTHS: Record<string, string> = {
+  sm: "w-full max-w-[400px]",
+  md: "w-full max-w-[480px]",
+  lg: "w-full max-w-[600px]",
+  xl: "w-full max-w-[740px]",
 };
 
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+export function Modal({
+  isOpen,
+  onClose,
+  children,
+  size = "md",
+  className,
+}: ModalProps) {
+  const [mounted, setMounted] = React.useState(false);
 
-function Modal({ isOpen, onClose, title, children, size = "md", className }: ModalProps) {
-  return (
-    <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <Dialog.Portal>
-        <Dialog.Overlay
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Close on Escape
+  React.useEffect(() => {
+    if (!isOpen) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [isOpen, onClose]);
+
+  // Prevent body scroll when open
+  React.useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !mounted) return null;
+
+  const modal = (
+    <>
+      {/* Backdrop — dark overlay matching DS.md (20% opacity) */}
+      <div
+        className="fixed inset-0 z-50 bg-black/20 animate-backdrop-enter"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      {/* Dialog */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div
+          role="dialog"
+          aria-modal="true"
           className={cn(
-            "fixed inset-0 z-50 bg-black/50 backdrop-blur-sm",
-            "data-[state=open]:animate-in data-[state=closed]:animate-out",
-            "data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
-          )}
-        />
-        <Dialog.Content
-          className={cn(
-            "fixed top-1/2 left-1/2 z-50 w-full -translate-x-1/2 -translate-y-1/2",
-            "bg-bg-base border border-border-default",
-            "rounded-lg shadow-[var(--shadow-xl)] p-6",
-            "outline-none",
-            "data-[state=open]:animate-in data-[state=closed]:animate-out",
-            "data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
-            "data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95",
-            SIZE_MAP[size],
+            "pointer-events-auto relative",
+            "rounded-xl bg-bg-elevated overflow-hidden",
+            "shadow-[var(--shadow-xl)] ring-1 ring-border-subtle",
+            "animate-modal-enter",
+            WIDTHS[size ?? "md"],
             className,
           )}
         >
-          {title && (
-            <Dialog.Title className="text-lg font-medium text-text-bright mb-4">
-              {title}
-            </Dialog.Title>
-          )}
-
           {children}
 
-          <Dialog.Close asChild>
-            <button
-              type="button"
-              className={cn(
-                "absolute top-4 right-4",
-                "text-text-muted hover:text-text-primary",
-                "transition-colors duration-150 cursor-pointer",
-                "focus:outline-none",
-              )}
-              aria-label="Fechar"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </Dialog.Close>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute top-3 right-3 flex h-7 w-7 items-center justify-center rounded-md text-text-ghost hover:text-text-primary hover:bg-bg-surface transition-colors cursor-pointer"
+            aria-label="Fechar"
+          >
+            <X className="h-4 w-4" strokeWidth={1.75} />
+          </button>
+        </div>
+      </div>
+    </>
   );
-}
 
-export { Modal };
+  return createPortal(modal, document.body);
+}

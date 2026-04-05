@@ -7,5 +7,18 @@ export default defineConfig({
   dbCredentials: {
     url: process.env.DATABASE_URL!,
   },
-  schemaFilter: ["global", "creators", "checkout", "crm", "erp", "whatsapp", "dashboard", "marketing"],
+  schemaFilter: [
+    "global",
+    "checkout",
+    "crm",
+    "erp",
+    "messaging",
+    "dashboard",
+    "marketing",
+    "plm",
+    "tarefas",
+    "dam",
+    "b2b",
+    "creators",
+  ],
 });

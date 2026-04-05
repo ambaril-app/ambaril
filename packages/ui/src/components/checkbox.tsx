@@ -49,23 +49,23 @@ const Checkbox = React.forwardRef<HTMLButtonElement, CheckboxProps>(
           onCheckedChange={(val) => resolvedOnChange?.(val === true)}
           disabled={disabled}
           className={cn(
-            "peer flex h-[18px] w-[18px] shrink-0 appearance-none items-center justify-center rounded border border-border-strong bg-transparent transition-colors",
-            "data-[state=checked]:border-info data-[state=checked]:bg-info",
+            "peer flex h-[18px] w-[18px] shrink-0 appearance-none items-center justify-center rounded border border-border-strong bg-transparent transition-all duration-150",
+            "data-[state=checked]:border-btn-primary-bg data-[state=checked]:bg-btn-primary-bg",
             "hover:border-text-muted",
             "disabled:cursor-not-allowed disabled:opacity-50",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-focus focus-visible:ring-offset-1",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-info focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base",
             className,
           )}
           {...props}
         >
-          <CheckboxPrimitive.Indicator className="flex items-center justify-center text-white">
-            <Check className="h-3 w-3" strokeWidth={3} />
+          <CheckboxPrimitive.Indicator className="flex items-center justify-center text-btn-primary-text">
+            <Check className="h-3 w-3" strokeWidth={3.5} />
           </CheckboxPrimitive.Indicator>
         </CheckboxPrimitive.Root>
         {label && (
           <label
             htmlFor={checkboxId}
-            className="cursor-pointer select-none text-sm text-text-primary"
+            className="cursor-pointer select-none font-sans text-[13px] leading-none text-text-primary"
           >
             {label}
           </label>

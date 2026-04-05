@@ -195,37 +195,15 @@ export interface SkuSummary {
   tier: SkuTier | null;
 }
 
-// ─── Creators ──────────────────────────────────────────
-
-// Tiers are configurable per tenant (stored in creators.creator_tiers table).
-// CIENA defaults: seed (8%), grow (10%), bloom (12%), core (15%).
-export type CreatorStatus = "pending" | "active" | "suspended" | "inactive";
-
-export interface CreatorTierConfig {
-  id: string;
-  name: string;
-  slug: string;
-  commissionRate: string; // NUMERIC(5,2) as string
-  minFollowers: number;
-  benefits: Record<string, unknown>;
-  sortOrder: number;
-}
-
-export interface CreatorSummary {
-  id: string;
-  name: string;
-  instagramHandle: string;
-  tierName: string; // Dynamic — comes from creator_tiers table
-  status: CreatorStatus;
-  totalSales: string; // NUMERIC(12,2) as string
-  totalEarnings: string; // NUMERIC(12,2) as string
-  couponCode: string | null;
-}
-
 // ─── WhatsApp ──────────────────────────────────────────
 
 export type MessageDirection = "inbound" | "outbound";
-export type MessageStatus = "pending" | "sent" | "delivered" | "read" | "failed";
+export type MessageStatus =
+  | "pending"
+  | "sent"
+  | "delivered"
+  | "read"
+  | "failed";
 export type ConversationStatus = "open" | "closed" | "archived";
 
 // ─── Dashboard ─────────────────────────────────────────

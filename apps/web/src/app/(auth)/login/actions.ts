@@ -58,7 +58,7 @@ export async function sendMagicLinkAction(
 
   // Find default tenant
   const tenantRows = await db
-    .select()
+    .select({ tenantId: userTenants.tenantId })
     .from(userTenants)
     .where(eq(userTenants.userId, user.id))
     .limit(1);
@@ -70,7 +70,10 @@ export async function sendMagicLinkAction(
     tenantId,
   });
 
-  await sendMagicLinkEmail(normalizedEmail, `${BASE_URL}/login/verify?token=${token}`);
+  await sendMagicLinkEmail(
+    normalizedEmail,
+    `${BASE_URL}/login/verify?token=${token}`,
+  );
 
   return { sent: true, email: normalizedEmail };
 }
@@ -93,9 +96,21 @@ export async function loginWithPasswordAction(
 
   const { email, password } = parsed.data;
 
+  // Rate limit: max 5 password attempts per email in 15 minutes
+  const { checkLoginRateLimit, recordFailedLogin } = await import("@/lib/auth");
+  const loginAllowed = await checkLoginRateLimit(email);
+  if (!loginAllowed) {
+    return { error: "Muitas tentativas. Aguarde 15 minutos." };
+  }
+
   // Find user by email
   const result = await db
-    .select()
+    .select({
+      id: users.id,
+      email: users.email,
+      passwordHash: users.passwordHash,
+      isActive: users.isActive,
+    })
     .from(users)
     .where(eq(users.email, email))
     .limit(1);
@@ -107,17 +122,33 @@ export async function loginWithPasswordAction(
 
   // passwordHash may be null for magic-link-only users
   if (!user.passwordHash) {
-    return { error: "Esta conta usa login por link. Use a aba \"Link de acesso\"." };
+    return {
+      error: 'Esta conta usa login por link. Use a aba "Link de acesso".',
+    };
   }
 
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) {
+    await recordFailedLogin(email);
+
+    // Audit: failed login attempt
+    const { auditAnonymous: auditFailed } = await import("@/lib/audit");
+    auditFailed(null, {
+      action: "login_failed",
+      resourceType: "session",
+      email: email,
+    });
+
     return { error: "Email ou senha inválidos." };
   }
 
   // Find user's tenant(s)
   const tenantRows = await db
-    .select()
+    .select({
+      tenantId: userTenants.tenantId,
+      role: userTenants.role,
+      isDefault: userTenants.isDefault,
+    })
     .from(userTenants)
     .where(eq(userTenants.userId, user.id));
 
@@ -135,7 +166,21 @@ export async function loginWithPasswordAction(
     .where(eq(users.id, user.id));
 
   // Create session with tenant context
-  await createSession(user.id, defaultTenant.tenantId, defaultTenant.role, false);
+  await createSession(
+    user.id,
+    defaultTenant.tenantId,
+    defaultTenant.role,
+    false,
+  );
+
+  // Audit: successful login
+  const { auditAnonymous } = await import("@/lib/audit");
+  auditAnonymous(defaultTenant.tenantId, {
+    action: "login",
+    resourceType: "session",
+    resourceId: user.id,
+    email: email,
+  });
 
   redirect("/admin");
 }

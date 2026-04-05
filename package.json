@@ -15,10 +15,26 @@
     "shopify": "shopify",
     "shopify:dev": "shopify app dev",
     "shopify:build": "shopify app build",
-    "shopify:deploy": "shopify app deploy"
+    "shopify:deploy": "shopify app deploy",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "turbo": "^2"
+    "@typescript-eslint/parser": "^8.58.0",
+    "eslint": "^10.2.0",
+    "eslint-plugin-security": "^4.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.8.1",
+    "turbo": "^2",
+    "typescript-eslint": "^8.58.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --quiet --max-warnings=0"
+    ],
+    "*.{ts,tsx,js,jsx,json,md}": [
+      "prettier --check"
+    ]
   },
   "packageManager": "pnpm@10.33.0",
   "pnpm": {
@@ -26,6 +42,9 @@
       "esbuild",
       "sharp",
       "@node-rs/argon2"
-    ]
+    ],
+    "overrides": {
+      "lodash": ">=4.17.21"
+    }
   }
 }

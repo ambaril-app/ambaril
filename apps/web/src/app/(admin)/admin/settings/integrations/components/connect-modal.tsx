@@ -2,11 +2,10 @@
 
 import * as React from "react";
 import { useForm } from "react-hook-form";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Plug, ShieldCheck } from "lucide-react";
 import { Modal } from "@ambaril/ui/components/modal";
 import { Button } from "@ambaril/ui/components/button";
 import { Input } from "@ambaril/ui/components/input";
-import { cn } from "@ambaril/ui/lib/utils";
 import type { ProviderWithStatus, ConfigField } from "../actions";
 
 // ---------------------------------------------------------------------------
@@ -48,7 +47,7 @@ function PasswordField({ field, value, error, onChange }: PasswordFieldProps) {
         <button
           type="button"
           onClick={() => setVisible((v) => !v)}
-          className="text-text-muted hover:text-text-secondary transition-colors shrink-0"
+          className="text-text-muted hover:text-text-secondary transition-colors shrink-0 cursor-pointer"
           aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
         >
           {visible ? (
@@ -86,7 +85,6 @@ export function ConnectModal({
     }, {}),
   });
 
-  // Reset form when modal closes
   React.useEffect(() => {
     if (!open) {
       reset();
@@ -98,77 +96,85 @@ export function ConnectModal({
   };
 
   return (
-    <Modal
-      isOpen={open}
-      onClose={onClose}
-      title={`Conectar ${provider.name}`}
-      size="md"
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-        {provider.configSchema.map((field) => {
-          const fieldError = errors[field.key]?.message;
+    <Modal isOpen={open} onClose={onClose} size="md">
+      {/* Header */}
+      <div className="px-5 pt-5 pb-4">
+        <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-lg bg-info-muted">
+          <Plug className="h-4 w-4 text-info" strokeWidth={1.75} />
+        </div>
+        <p className="text-[14px] font-semibold text-text-white">
+          Conectar {provider.name}
+        </p>
+        <p className="mt-1 text-[13px] leading-[1.6] text-text-secondary">
+          Insira as credenciais para ativar esta integração.
+        </p>
+      </div>
 
-          if (field.type === "password") {
-            const currentValue = watch(field.key) ?? "";
+      {/* Form */}
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="flex flex-col gap-3 px-5 pb-4">
+          {provider.configSchema.map((field) => {
+            const fieldError = errors[field.key]?.message;
+
+            if (field.type === "password") {
+              const currentValue = watch(field.key) ?? "";
+              return (
+                <PasswordField
+                  key={field.key}
+                  field={field}
+                  value={currentValue}
+                  error={fieldError}
+                  onChange={(val) => setValue(field.key, val)}
+                />
+              );
+            }
+
             return (
-              <PasswordField
+              <Input
                 key={field.key}
-                field={field}
-                value={currentValue}
+                type={field.type === "url" ? "url" : "text"}
+                label={field.required ? `${field.label} *` : field.label}
+                placeholder={field.type === "url" ? "https://…" : undefined}
                 error={fieldError}
-                onChange={(val) => setValue(field.key, val)}
+                {...register(field.key, {
+                  required: field.required ? "Este campo é obrigatório" : false,
+                  validate: (val) => {
+                    if (!val && !field.required) return true;
+                    if (field.type === "url" && val) {
+                      try {
+                        new URL(val);
+                        return true;
+                      } catch {
+                        return "URL inválida";
+                      }
+                    }
+                    return true;
+                  },
+                })}
               />
             );
-          }
+          })}
 
-          return (
-            <Input
-              key={field.key}
-              type={field.type === "url" ? "url" : "text"}
-              label={field.required ? `${field.label} *` : field.label}
-              placeholder={field.type === "url" ? "https://" : undefined}
-              error={fieldError}
-              {...register(field.key, {
-                required: field.required ? "Este campo é obrigatório" : false,
-                validate: (val) => {
-                  if (!val && !field.required) return true;
-                  if (field.type === "url" && val) {
-                    try {
-                      new URL(val);
-                      return true;
-                    } catch {
-                      return "URL inválida";
-                    }
-                  }
-                  return true;
-                },
-              })}
-            />
-          );
-        })}
-
-        {provider.configSchema.length === 0 && (
-          <p className="text-sm text-text-secondary">
-            Nenhuma configuração necessária para este provedor.
-          </p>
-        )}
+          {provider.configSchema.length === 0 && (
+            <p className="text-[13px] text-text-secondary">
+              Nenhuma configuração necessária para este provedor.
+            </p>
+          )}
+        </div>
 
         {/* Security notice */}
-        <p
-          className={cn(
-            "rounded-md border border-border-subtle bg-bg-raised px-3 py-2",
-            "text-xs text-text-muted",
-          )}
-        >
-          Suas credenciais são criptografadas com AES-256-GCM antes de serem
-          salvas.
-        </p>
+        <div className="border-t border-border-subtle bg-bg-raised/50 px-5 py-3">
+          <div className="flex items-center gap-2 text-[12px] text-text-muted">
+            <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-text-ghost" />
+            Credenciais criptografadas com AES-256-GCM antes de serem salvas.
+          </div>
+        </div>
 
-        {/* Actions */}
-        <div className="flex items-center justify-end gap-3 pt-2">
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-2 border-t border-border-subtle px-5 py-3">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={onClose}
             disabled={isSubmitting}
@@ -176,7 +182,7 @@ export function ConnectModal({
             Cancelar
           </Button>
           <Button type="submit" size="sm" disabled={isSubmitting}>
-            {isSubmitting ? "Salvando..." : "Salvar"}
+            {isSubmitting ? "Salvando…" : "Salvar e conectar"}
           </Button>
         </div>
       </form>

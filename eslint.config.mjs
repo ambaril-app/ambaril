@@ -9,6 +9,11 @@ export default [
       security,
     },
     rules: {
+      // Allow underscore-prefixed unused vars (standard convention for intentionally unused params)
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
       // Prevent eval and similar dangerous constructs
       "security/detect-eval-with-expression": "error",
       "security/detect-non-literal-regexp": "warn",

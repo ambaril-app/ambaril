@@ -4,14 +4,20 @@ import { z } from "zod";
 import { db, txDb } from "@ambaril/db";
 import { users, tenants, userTenants } from "@ambaril/db/schema";
 import { eq } from "drizzle-orm";
-import { createMagicLink, checkMagicLinkRateLimit, hashPassword } from "@/lib/auth";
+import {
+  createMagicLink,
+  checkMagicLinkRateLimit,
+  hashPassword,
+} from "@/lib/auth";
 import { sendSignupEmail } from "@/lib/email";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 const signupSchema = z.object({
   email: z.string().email("Email inválido."),
-  companyName: z.string().min(2, "Nome da empresa deve ter pelo menos 2 caracteres."),
+  companyName: z
+    .string()
+    .min(2, "Nome da empresa deve ter pelo menos 2 caracteres."),
 });
 
 function slugify(str: string): string {
@@ -54,7 +60,8 @@ export async function signupAction(
     .limit(1);
 
   if (existing.length > 0) {
-    return { error: "Este email já está cadastrado. Faça login." };
+    // Enumeration prevention: always return success
+    return { sent: true, email: normalizedEmail };
   }
 
   // Generate unique slug
@@ -77,7 +84,7 @@ export async function signupAction(
   const passwordHash = await hashPassword(randomPassword);
 
   if (process.env.NODE_ENV !== "production") {
-    console.info(`\n[Signup] Admin criado\n  Email: ${normalizedEmail}\n  Senha: ${randomPassword}\n`);
+    console.info(`[Signup] Admin created for ${normalizedEmail}`);
   }
 
   // Transaction: create tenant + user + user_tenant (txDb = WebSocket driver, supports transactions)
@@ -112,8 +119,15 @@ export async function signupAction(
     return { userId: user!.id, tenantId: tenant!.id };
   });
 
-  const token = await createMagicLink(normalizedEmail, "signup", { userId, tenantId });
-  await sendSignupEmail(normalizedEmail, `${BASE_URL}/login/verify?token=${token}`, companyName);
+  const token = await createMagicLink(normalizedEmail, "signup", {
+    userId,
+    tenantId,
+  });
+  await sendSignupEmail(
+    normalizedEmail,
+    `${BASE_URL}/login/verify?token=${token}`,
+    companyName,
+  );
 
   return { sent: true, email: normalizedEmail };
 }

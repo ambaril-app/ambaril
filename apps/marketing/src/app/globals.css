@@ -3,36 +3,36 @@
 /* ===== AMBARIL DESIGN SYSTEM — MOONSTONE LIGHT ===== */
 
 :root {
-  --bg-void: #F7F8FA;
-  --bg-base: #FFFFFF;
-  --bg-raised: #F3F4F6;
-  --bg-surface: #E8EAF0;
-  --bg-elevated: #FFFFFF;
+  --bg-void: #f7f8fa;
+  --bg-base: #ffffff;
+  --bg-raised: #f3f4f6;
+  --bg-surface: #e8eaf0;
+  --bg-elevated: #ffffff;
 
-  --border-subtle: rgba(15,23,42,0.06);
-  --border-default: rgba(15,23,42,0.10);
-  --border-strong: rgba(15,23,42,0.18);
+  --border-subtle: rgba(15, 23, 42, 0.06);
+  --border-default: rgba(15, 23, 42, 0.1);
+  --border-strong: rgba(15, 23, 42, 0.18);
 
-  --text-ghost: #94A3B8;
-  --text-muted: #64748B;
+  --text-ghost: #94a3b8;
+  --text-muted: #64748b;
   --text-secondary: #475569;
   --text-tertiary: #475569;
   --text-primary: #334155;
-  --text-bright: #1E293B;
-  --text-white: #0F172A;
+  --text-bright: #1e293b;
+  --text-white: #0f172a;
 
-  --font-display: 'Bricolage Grotesque', 'DM Sans', -apple-system, sans-serif;
-  --font: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'DM Mono', 'SF Mono', 'Fira Code', monospace;
+  --font-display: "Bricolage Grotesque", "DM Sans", -apple-system, sans-serif;
+  --font: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "DM Mono", "SF Mono", "Fira Code", monospace;
 
-  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
-  --shadow-md: 0 2px 8px rgba(15,23,42,0.06);
-  --shadow-lg: 0 4px 16px rgba(15,23,42,0.08);
-  --shadow-xl: 0 8px 32px rgba(15,23,42,0.12);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-xl: 0 8px 32px rgba(15, 23, 42, 0.12);
 
-  --input-bg: #F3F4F6;
-  --input-border: rgba(15,23,42,0.12);
-  --input-focus-border: #2563EB;
+  --input-bg: #f3f4f6;
+  --input-border: rgba(15, 23, 42, 0.12);
+  --input-focus-border: #2563eb;
 
   --transition-fast: 150ms ease;
   --transition-normal: 200ms ease;
@@ -41,7 +41,11 @@
   -moz-osx-font-smoothing: auto;
 }
 
-*, *::before, *::after { box-sizing: border-box; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
 
 body {
   background-color: var(--bg-void);
@@ -52,11 +56,20 @@ body {
   overflow-x: hidden;
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #94A3B8; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #64748B; }
-
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
 
 /* ══════════════════════════════════════════════════
    HERO — Constellation canvas
@@ -66,6 +79,61 @@ body {
   display: block;
 }
 
+/* ─── "quase" — alive with potential ─── */
+
+.hero-quase {
+  position: relative;
+  display: inline-block;
+  font-style: italic;
+  color: oklch(92% 0.04 60);
+  text-shadow:
+    0 0 28px oklch(65% 0.12 60 / 0.14),
+    0 0 56px oklch(65% 0.12 60 / 0.05);
+  animation: quase-breathe 5s ease-in-out 3.2s infinite;
+}
+
+.hero-quase::after {
+  content: "";
+  position: absolute;
+  left: -4%;
+  right: -4%;
+  top: 46%;
+  height: 2.5px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(80% 0.06 60 / 0.55) 15%,
+    oklch(80% 0.06 60 / 0.55) 85%,
+    transparent 100%
+  );
+  transform: rotate(-6deg);
+  transform-origin: center;
+  border-radius: 1px;
+  pointer-events: none;
+  filter: drop-shadow(0 0 3px oklch(65% 0.12 60 / 0.25));
+  clip-path: inset(0 100% 0 0);
+  animation: slash-draw 0.5s 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slash-draw {
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes quase-breathe {
+  0%,
+  100% {
+    text-shadow:
+      0 0 28px oklch(65% 0.12 60 / 0.14),
+      0 0 56px oklch(65% 0.12 60 / 0.05);
+  }
+  50% {
+    text-shadow:
+      0 0 32px oklch(65% 0.12 60 / 0.24),
+      0 0 64px oklch(65% 0.12 60 / 0.09);
+  }
+}
 
 /* ─── invite-only badge — hero H2 ─── */
 
@@ -75,7 +143,7 @@ body {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 400;
-  letter-spacing: 0.10em;
+  letter-spacing: 0.1em;
   color: oklch(72% 0.052 215);
   background: oklch(68% 0.052 215 / 0.08);
   border: 1px solid oklch(68% 0.052 215 / 0.22);
@@ -87,43 +155,74 @@ body {
   top: -1px;
   margin-left: 6px;
   white-space: nowrap;
+  overflow: hidden;
 }
 
+.invite-badge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 30%,
+    oklch(80% 0.06 60 / 0.14) 48%,
+    oklch(88% 0.04 60 / 0.22) 50%,
+    oklch(80% 0.06 60 / 0.14) 52%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  pointer-events: none;
+  animation: badge-shimmer 6s linear 3.5s infinite;
+}
+
+@keyframes badge-shimmer {
+  0%,
+  83% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
 
 /* ─── Hero entrance animations ─── */
 
 @keyframes fade-up {
-  from { opacity: 0; transform: translateY(18px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .animate-fade-up-1 {
   opacity: 0;
-  animation: fade-up 0.9s 0.8s cubic-bezier(0.16,1,0.3,1) forwards;
+  animation: fade-up 0.9s 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .animate-fade-up-2 {
   opacity: 0;
-  animation: fade-up 0.9s 1.0s cubic-bezier(0.16,1,0.3,1) forwards;
+  animation: fade-up 0.9s 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .animate-fade-up-3 {
   opacity: 0;
-  animation: fade-up 0.9s 1.15s cubic-bezier(0.16,1,0.3,1) forwards;
+  animation: fade-up 0.9s 1.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .animate-fade-up-4 {
   opacity: 0;
-  animation: fade-up 0.9s 1.35s cubic-bezier(0.16,1,0.3,1) forwards;
+  animation: fade-up 0.9s 1.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .animate-fade-up-5 {
   opacity: 0;
-  animation: fade-up 0.9s 1.5s cubic-bezier(0.16,1,0.3,1) forwards;
+  animation: fade-up 0.9s 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-
 
 /* ─── Mockup frames ─── */
 
 .mockup-frame {
   perspective: 1200px;
-  pointer-events: none;
   user-select: none;
 }
 
@@ -132,9 +231,263 @@ body {
   transform-style: preserve-3d;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 24px 80px rgba(0,0,0,0.18), 0 8px 24px rgba(0,0,0,0.10);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.18),
+    0 8px 24px rgba(0, 0, 0, 0.1);
+  transition:
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.mockup-inner:hover {
+  transform: rotateX(2deg) translateY(-4px);
+  box-shadow:
+    0 32px 100px rgba(0, 0, 0, 0.22),
+    0 12px 32px rgba(0, 0, 0, 0.14);
+}
+
+/* ─── Feature section grid ─── */
+
+.feature-grid {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 80px;
+  align-items: center;
+}
+
+/* ─── Scroll reveal — mockup ─── */
+
+.scroll-reveal-mockup {
+  opacity: 0;
+  transform: translateY(40px);
+  transition:
+    opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scroll-reveal-mockup.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ─── Scroll reveal — text stagger ─── */
+
+.scroll-reveal-text {
+  opacity: 0;
+  transform: translateY(20px);
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scroll-reveal-text.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-reveal-text.delay-1 {
+  transition-delay: 100ms;
+}
+.scroll-reveal-text.delay-2 {
+  transition-delay: 200ms;
+}
+
+/* ─── Marquee transition band ─── */
+
+.marquee-band {
+  overflow: hidden;
+  background: #07080b;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 14px 0;
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 45s linear infinite;
+}
+
+.marquee-content {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: oklch(42% 0.018 220);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ─── Responsive ─── */
+
+@media (max-width: 768px) {
+  .feature-grid {
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+}
+
+/* ─── Chat message entrance ─── */
+
+.chat-msg-enter {
+  animation: chat-fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes chat-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.typing-dot {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #5c6170;
+  animation: typing-bounce 1.4s ease-in-out infinite;
+}
+
+.typing-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.typing-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes typing-bounce {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+/* ─── Live dot pulse ─── */
+
+.live-dot {
+  animation: live-pulse 2s ease-in-out infinite;
+}
+
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* ─── CTA button micro-interaction ─── */
+
+.cta-primary {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cta-primary:hover {
+  transform: translateY(-2px);
+}
+
+.cta-primary:active {
+  transform: translateY(1px);
+}
+
+.cta-primary svg {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cta-primary:hover svg {
+  transform: translateX(3px);
+}
+
+/* ─── CTA glow breathe ─── */
+
+.cta-glow {
+  animation: cta-breathe 6s ease-in-out infinite;
+}
+
+@keyframes cta-breathe {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ─── CTA secondary underline draw ─── */
+
+.cta-secondary {
+  position: relative;
+}
+
+.cta-secondary::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -2px;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cta-secondary:hover::after {
+  transform: scaleX(1);
+}
+
+/* ─── Marquee diamond accent ─── */
+
+.marquee-diamond {
+  color: oklch(65% 0.08 60);
+}
+
+/* ─── Flare alert glow ─── */
+
+.flare-label {
+  animation: flare-glow 3s ease-in-out infinite;
+}
+
+@keyframes flare-glow {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 8px rgba(245, 165, 36, 0.3);
+  }
+}
 
 /* ══════════════════════════════════════════════════
    /acesso — Dark gate background Silmaril
@@ -151,8 +504,8 @@ body {
   border-radius: 50%;
   background: radial-gradient(
     ellipse at 50% 50%,
-    oklch(78% 0.058 213 / 0.10)  0%,
-    oklch(68% 0.080 216 / 0.05) 44%,
+    oklch(78% 0.058 213 / 0.1) 0%,
+    oklch(68% 0.08 216 / 0.05) 44%,
     transparent 72%
   );
   filter: blur(64px);
@@ -162,16 +515,28 @@ body {
 }
 
 @keyframes acesso-breath {
-  0%, 100% { transform: translate(-50%, -50%) scale(1);     opacity: 0.65; }
-  50%       { transform: translate(-50%, -50%) scale(1.12); opacity: 1;    }
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.65;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.12);
+    opacity: 1;
+  }
 }
-
 
 /* ─── Interview form — step entrance animation ─── */
 
 @keyframes interview-step-in {
-  from { opacity: 0; transform: translateY(26px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(26px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .interview-step-enter {
@@ -183,12 +548,17 @@ body {
   color: oklch(26% 0.014 220);
 }
 
-
 /* ─── Code input — scan sweep line ─── */
 
 @keyframes code-scan-sweep {
-  from { transform: scaleX(0); transform-origin: left center; }
-  to   { transform: scaleX(1); transform-origin: left center; }
+  from {
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+  to {
+    transform: scaleX(1);
+    transform-origin: left center;
+  }
 }
 
 .code-scan-line {
@@ -202,6 +572,89 @@ body {
   border-radius: 0 0 8px 8px;
 }
 
+/* ─── Acesso page entrance ─── */
+
+.acesso-fade-1 {
+  opacity: 0;
+  animation: fade-up 0.6s 0.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.acesso-fade-2 {
+  opacity: 0;
+  animation: fade-up 0.6s 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.acesso-fade-3 {
+  opacity: 0;
+  animation: fade-up 0.6s 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.acesso-fade-4 {
+  opacity: 0;
+  animation: fade-up 0.6s 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.confirm-fade-1 {
+  opacity: 0;
+  animation: fade-up 0.8s 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.confirm-fade-2 {
+  opacity: 0;
+  animation: fade-up 0.8s 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* ─── Code input scan glow ─── */
+
+.acesso-code-input.scanning {
+  box-shadow:
+    0 0 0 1px oklch(68% 0.052 215 / 0.25),
+    0 0 20px oklch(68% 0.052 215 / 0.08);
+}
+
+.acesso-code-input:focus:not(.scanning) {
+  box-shadow:
+    0 0 0 1px oklch(56% 0.03 220 / 0.12),
+    0 0 16px oklch(68% 0.052 215 / 0.05);
+}
+
+/* ─── Acesso primary button ─── */
+
+.acesso-btn-primary {
+  transition:
+    transform 0.15s cubic-bezier(0.16, 1, 0.3, 1),
+    background 200ms ease,
+    color 200ms ease;
+}
+
+.acesso-btn-primary:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.acesso-btn-primary:not(:disabled):active {
+  transform: translateY(1px);
+}
+
+/* ─── Progress bar glow tip ─── */
+
+.progress-fill {
+  position: relative;
+}
+
+.progress-fill::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: oklch(70% 0.06 215);
+  box-shadow: 0 0 8px 2px oklch(68% 0.052 215 / 0.4);
+}
+
+/* ─── Interview input focus glow ─── */
+
+.interview-field:focus {
+  box-shadow: 0 2px 12px -4px oklch(68% 0.052 215 / 0.18);
+}
 
 /* ─── Reduced motion ─── */
 
@@ -220,6 +673,20 @@ body {
     transform: none !important;
   }
 
+  .hero-quase {
+    animation: none !important;
+  }
+
+  .invite-badge::before {
+    animation: none !important;
+    transform: translateX(-100%) !important;
+  }
+
+  .hero-quase::after {
+    animation: none !important;
+    clip-path: inset(0 0 0 0) !important;
+  }
+
   .acesso-silmaril {
     animation: none !important;
     opacity: 0.75 !important;
@@ -235,5 +702,81 @@ body {
   .code-scan-line {
     animation: none !important;
     transform: scaleX(1) !important;
+  }
+
+  .scroll-reveal-mockup,
+  .scroll-reveal-text {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .marquee-track {
+    animation: none !important;
+  }
+
+  .mockup-inner {
+    transition: none !important;
+  }
+
+  .live-dot,
+  .flare-label {
+    animation: none !important;
+  }
+
+  .cta-glow {
+    animation: none !important;
+    opacity: 0.8 !important;
+  }
+
+  .typing-dot {
+    animation: none !important;
+    opacity: 0.6 !important;
+  }
+
+  .chat-msg-enter {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .cta-primary {
+    transition: none !important;
+  }
+
+  .cta-primary svg {
+    transition: none !important;
+  }
+
+  .cta-secondary::after {
+    transition: none !important;
+  }
+
+  .acesso-fade-1,
+  .acesso-fade-2,
+  .acesso-fade-3,
+  .acesso-fade-4,
+  .confirm-fade-1,
+  .confirm-fade-2 {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  .acesso-code-input.scanning {
+    box-shadow: none !important;
+    transition: none !important;
+  }
+
+  .acesso-btn-primary {
+    transition: none !important;
+  }
+
+  .progress-fill::after {
+    animation: none !important;
+  }
+
+  .interview-field {
+    transition: none !important;
   }
 }

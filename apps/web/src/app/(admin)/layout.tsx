@@ -1,6 +1,5 @@
 import { getTenantSession } from "@/lib/tenant";
 import { Sidebar } from "@/components/sidebar";
-import { Topbar } from "@/components/topbar";
 import { db } from "@ambaril/db";
 import { eq } from "drizzle-orm";
 import { moduleSetupState } from "@ambaril/db/schema";
@@ -13,7 +12,6 @@ export default async function AdminLayout({
   const session = await getTenantSession();
 
   // Query setup state for all modules
-  // Guard: module_setup_state may not exist yet if migrations are pending
   const setupState: Record<string, boolean> = {};
   try {
     const setupRows = await db
@@ -34,9 +32,11 @@ export default async function AdminLayout({
   return (
     <div className="flex h-dvh overflow-hidden bg-bg-void">
       <Sidebar session={session} setupState={setupState} />
-      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <Topbar session={session} />
-        <main className="min-w-0 flex-1 overflow-y-auto px-6 py-8 lg:px-8">
+      {/* Main content area — sidebar is 240px expanded, 64px collapsed.
+          We use lg:ml-60 as default (expanded). The sidebar manages its own width via state.
+          Since sidebar width is client-state, we default to expanded margin and let CSS handle it. */}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden lg:ml-60">
+        <main className="animate-fade-in min-w-0 flex-1 overflow-y-auto px-6 py-6 lg:px-8">
           {children}
         </main>
       </div>

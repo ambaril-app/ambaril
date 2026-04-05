@@ -11,7 +11,8 @@
     "./utils": "./src/utils/index.ts",
     "./schemas": "./src/schemas/index.ts",
     "./schemas/*": "./src/schemas/*.ts",
-    "./integrations": "./src/integrations/index.ts"
+    "./integrations": "./src/integrations/index.ts",
+    "./hooks/use-count-up": "./src/hooks/use-count-up.ts"
   },
   "scripts": {
     "type-check": "tsc --noEmit",

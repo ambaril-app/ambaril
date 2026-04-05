@@ -1,4 +1,7 @@
-import type { ApiResponse, ApiError, ApiMeta, Permission, RoleCode } from "../types/index";
+import type { ApiResponse, ApiError, ApiMeta, RoleCode } from "../types/index";
+
+export { escapeHtml } from "./escape-html";
+export { hasPermission } from "./permissions";
 
 // Build a successful API response
 export function ok<T>(data: T, meta?: ApiMeta): ApiResponse<T> {
@@ -17,15 +20,6 @@ export function apiError(
   field?: string,
 ): ApiError {
   return { code, message, ...(field && { field }) };
-}
-
-// Check if a role has a specific permission
-// Format: "creators:profiles:write"
-export function hasPermission(
-  userPermissions: Permission[],
-  required: Permission,
-): boolean {
-  return userPermissions.includes(required) || userPermissions.includes("*");
 }
 
 // Check if a user has one of the required roles

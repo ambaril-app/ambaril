@@ -79,10 +79,7 @@ const FormDatePicker = React.forwardRef<HTMLDivElement, FormDatePickerProps>(
     return (
       <div ref={ref} className={cn("flex flex-col gap-1.5", className)}>
         {label && (
-          <label
-            htmlFor={triggerId}
-            className="text-sm text-text-secondary"
-          >
+          <label htmlFor={triggerId} className="text-sm text-text-secondary">
             {label}
             {required && <span className="text-danger ml-0.5">*</span>}
           </label>
@@ -99,7 +96,7 @@ const FormDatePicker = React.forwardRef<HTMLDivElement, FormDatePickerProps>(
                 "flex h-9 w-full items-center gap-2 rounded-md border px-3 text-sm text-left",
                 "bg-input-bg border-input-border",
                 "hover:border-border-strong",
-                "focus:outline-none focus:ring-2 focus:ring-input-focus",
+                "focus:outline-none focus:border-input-focus",
                 "disabled:cursor-not-allowed disabled:opacity-50",
                 errorMessage && "border-danger",
               )}
@@ -108,9 +105,7 @@ const FormDatePicker = React.forwardRef<HTMLDivElement, FormDatePickerProps>(
               <span
                 className={cn(
                   "flex-1 min-w-0 truncate",
-                  displayValue
-                    ? "text-text-primary"
-                    : "text-text-ghost",
+                  displayValue ? "text-text-primary" : "text-text-ghost",
                 )}
               >
                 {displayValue || placeholder}
@@ -135,7 +130,8 @@ const FormDatePicker = React.forwardRef<HTMLDivElement, FormDatePickerProps>(
                 classNames={{
                   months: "flex flex-col",
                   month: "space-y-4",
-                  month_caption: "flex justify-center pt-1 relative items-center",
+                  month_caption:
+                    "flex justify-center pt-1 relative items-center",
                   caption_label: "text-sm font-medium text-text-primary",
                   nav: "space-x-1 flex items-center",
                   button_previous:
@@ -160,9 +156,7 @@ const FormDatePicker = React.forwardRef<HTMLDivElement, FormDatePickerProps>(
           </Popover.Portal>
         </Popover.Root>
 
-        {errorMessage && (
-          <p className="text-xs text-danger">{errorMessage}</p>
-        )}
+        {errorMessage && <p className="text-xs text-danger">{errorMessage}</p>}
 
         {name && (
           <input

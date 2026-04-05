@@ -12,11 +12,12 @@ Ver `docs/dev/DEV-GUIDE.md`
 
 ## Docs
 
-| Doc | Caminho |
-|-----|---------|
-| Instruções Claude | `CLAUDE.md` |
-| Design System | `DS.md` |
-| Módulos (specs) | `docs/modules/` |
-| Arquitetura | `docs/architecture/` |
-| Segurança | `SECURITY-CHECKLIST.md` |
-| Agent Teams | `AGENT_TEAMS_GUIDE.md` |
+| Doc                          | Caminho                 |
+| ---------------------------- | ----------------------- |
+| Instruções Claude            | `CLAUDE.md`             |
+| Design System                | `DS.md`                 |
+| Design Companion (LLM-first) | `../DESIGN.md`          |
+| Módulos (specs)              | `docs/modules/`         |
+| Arquitetura                  | `docs/architecture/`    |
+| Segurança                    | `SECURITY-CHECKLIST.md` |
+| Agent Teams                  | `AGENT_TEAMS_GUIDE.md`  |

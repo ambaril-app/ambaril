@@ -39,7 +39,14 @@ const WIDTH_MAP: Record<string, string> = {
 // Component
 // ---------------------------------------------------------------------------
 
-function Sheet({ isOpen, onClose, title, children, width = "md", className }: SheetProps) {
+function Sheet({
+  isOpen,
+  onClose,
+  title,
+  children,
+  width = "md",
+  className,
+}: SheetProps) {
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
@@ -62,7 +69,7 @@ function Sheet({ isOpen, onClose, title, children, width = "md", className }: Sh
             className,
           )}
         >
-          <div className="flex items-center justify-between border-b border-border-default px-6 py-4">
+          <div className="flex items-center justify-between border-b border-border-default px-4 py-3">
             {title && (
               <Dialog.Title className="text-lg font-medium text-text-bright">
                 {title}
@@ -84,9 +91,7 @@ function Sheet({ isOpen, onClose, title, children, width = "md", className }: Sh
             </Dialog.Close>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-6 py-4">
-            {children}
-          </div>
+          <div className="flex-1 overflow-y-auto px-4 py-3">{children}</div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

@@ -158,6 +158,129 @@ export interface SocialProvider {
 }
 
 // ---------------------------------------------------------------------------
+// Shipping capability — labels, tracking, quotes
+// ---------------------------------------------------------------------------
+
+export interface ShippingLabelInput {
+  recipientName: string;
+  recipientAddress: Record<string, unknown>;
+  weight: number;
+  dimensions: { length: number; width: number; height: number };
+}
+
+export interface ShippingLabel {
+  labelUrl: string;
+  trackingCode: string;
+  carrier: string;
+  estimatedDeliveryDate?: Date;
+}
+
+export interface TrackingInfo {
+  trackingCode: string;
+  status: string;
+  events: Array<{ date: Date; description: string; location?: string }>;
+  estimatedDelivery?: Date;
+}
+
+export interface ShippingQuoteInput {
+  originZip: string;
+  destinationZip: string;
+  weight: number;
+  dimensions: { length: number; width: number; height: number };
+}
+
+export interface ShippingQuote {
+  carrier: string;
+  service: string;
+  price: number;
+  estimatedDays: number;
+}
+
+/**
+ * Shipping capability — label generation, tracking, and freight quotes.
+ * Providers: Melhor Envio, Loggi, Correios.
+ */
+export interface ShippingProvider {
+  generateLabel(
+    orderId: string,
+    params: ShippingLabelInput,
+  ): Promise<ShippingLabel>;
+  getTracking(trackingCode: string): Promise<TrackingInfo>;
+  calculateShipping(params: ShippingQuoteInput): Promise<ShippingQuote[]>;
+}
+
+// ---------------------------------------------------------------------------
+// Payments capability — transaction reconciliation
+// ---------------------------------------------------------------------------
+
+export interface PaymentTransaction {
+  id: string;
+  externalId: string;
+  amount: number;
+  fee: number;
+  netAmount: number;
+  status: string;
+  paymentMethod: string;
+  paidAt?: Date;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Payments capability — transaction listing and reconciliation.
+ * Providers: Mercado Pago, PagSeguro, Stripe.
+ */
+export interface PaymentsProvider {
+  listTransactions(params: {
+    startDate: Date;
+    endDate: Date;
+  }): Promise<PaymentTransaction[]>;
+  getTransaction(transactionId: string): Promise<PaymentTransaction>;
+}
+
+// ---------------------------------------------------------------------------
+// Fiscal capability — NF-e issuance
+// ---------------------------------------------------------------------------
+
+export interface InvoiceInput {
+  orderId: string;
+  items: Array<{
+    description: string;
+    quantity: number;
+    unitPrice: number;
+    ncm?: string;
+  }>;
+  recipient: {
+    name: string;
+    cpfCnpj: string;
+    address: Record<string, unknown>;
+  };
+}
+
+export interface InvoiceResult {
+  invoiceId: string;
+  invoiceNumber: string;
+  status: string;
+  pdfUrl?: string;
+  xmlUrl?: string;
+}
+
+export interface InvoiceStatus {
+  invoiceId: string;
+  status: string;
+  authorizedAt?: Date;
+}
+
+/**
+ * Fiscal capability — NF-e issuance, cancellation, and status.
+ * Providers: Focus NFe, Plugnotas.
+ */
+export interface FiscalProvider {
+  issueInvoice(params: InvoiceInput): Promise<InvoiceResult>;
+  cancelInvoice(invoiceId: string): Promise<void>;
+  getInvoiceStatus(invoiceId: string): Promise<InvoiceStatus>;
+}
+
+// ---------------------------------------------------------------------------
 // Capability map and factory
 // ---------------------------------------------------------------------------
 
@@ -167,7 +290,10 @@ export type Capability =
   | "checkout"
   | "messaging"
   | "storage"
-  | "social";
+  | "social"
+  | "shipping"
+  | "payments"
+  | "fiscal";
 
 /** Maps each capability key to its provider interface */
 export interface CapabilityMap {
@@ -176,6 +302,9 @@ export interface CapabilityMap {
   messaging: MessagingProvider;
   storage: StorageProvider;
   social: SocialProvider;
+  shipping: ShippingProvider;
+  payments: PaymentsProvider;
+  fiscal: FiscalProvider;
 }
 
 /**

@@ -4,10 +4,21 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 const FREE_PROVIDERS = [
-  "gmail.com", "googlemail.com", "hotmail.com", "outlook.com",
-  "live.com", "yahoo.com", "yahoo.com.br", "icloud.com",
-  "me.com", "uol.com.br", "bol.com.br", "terra.com.br",
-  "ig.com.br", "r7.com", "msn.com",
+  "gmail.com",
+  "googlemail.com",
+  "hotmail.com",
+  "outlook.com",
+  "live.com",
+  "yahoo.com",
+  "yahoo.com.br",
+  "icloud.com",
+  "me.com",
+  "uol.com.br",
+  "bol.com.br",
+  "terra.com.br",
+  "ig.com.br",
+  "r7.com",
+  "msn.com",
 ];
 
 function isCommercialEmail(email: string): boolean {
@@ -111,7 +122,6 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
       textareaRef.current?.focus();
     }, 150); // after entrance animation starts
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stepKey]);
 
   const advance = useCallback(
@@ -138,7 +148,7 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
         }
       }
     },
-    [answers, currentStep, step.id, router]
+    [answers, currentStep, step.id, router],
   );
 
   const handleNext = useCallback(() => {
@@ -160,7 +170,7 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
       // Short delay so user sees the selection before advancing
       setTimeout(() => advance(value), 200);
     },
-    [advance]
+    [advance],
   );
 
   const goBack = useCallback(() => {
@@ -175,7 +185,11 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
   // Enter key to advance (not for select/textarea)
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Enter" && step.type !== "textarea" && step.type !== "select") {
+      if (
+        e.key === "Enter" &&
+        step.type !== "textarea" &&
+        step.type !== "select"
+      ) {
         e.preventDefault();
         handleNext();
       }
@@ -248,13 +262,22 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
             padding: 0,
             transition: "color 150ms ease",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = "oklch(66% 0.024 220)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = "oklch(50% 0.020 220)"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "oklch(66% 0.024 220)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "oklch(50% 0.020 220)";
+          }}
         >
           <svg
-            width="14" height="14" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth="2"
-            strokeLinecap="round" strokeLinejoin="round"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             aria-hidden="true"
           >
             <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -290,7 +313,7 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
           style={{
             fontFamily: "var(--font-display)",
             fontSize: "clamp(26px, 3.5vw, 34px)",
-            fontWeight: 500,
+            fontWeight: 600,
             letterSpacing: "-0.022em",
             lineHeight: 1.15,
             color: "#E8EAF0",
@@ -317,7 +340,9 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
         {step.type === "select" && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
             {step.options?.map((opt) => {
-              const isSelected = pendingSelect === opt.value || (pendingSelect === "" && currentValue === opt.value);
+              const isSelected =
+                pendingSelect === opt.value ||
+                (pendingSelect === "" && currentValue === opt.value);
               return (
                 <button
                   key={opt.value}
@@ -327,23 +352,28 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
                     padding: "10px 20px",
                     borderRadius: "6px",
                     border: `1px solid ${isSelected ? "oklch(60% 0.050 215)" : "oklch(30% 0.016 220)"}`,
-                    background: isSelected ? "oklch(14% 0.012 220)" : "transparent",
+                    background: isSelected
+                      ? "oklch(14% 0.012 220)"
+                      : "transparent",
                     color: isSelected ? "#E8EAF0" : "oklch(60% 0.022 220)",
                     fontFamily: "var(--font)",
                     fontSize: "14px",
                     cursor: "pointer",
-                    transition: "border-color 150ms, color 150ms, background 150ms",
+                    transition:
+                      "border-color 150ms, color 150ms, background 150ms",
                     letterSpacing: "-0.01em",
                   }}
                   onMouseEnter={(e) => {
                     if (!isSelected) {
-                      e.currentTarget.style.borderColor = "oklch(46% 0.022 220)";
+                      e.currentTarget.style.borderColor =
+                        "oklch(46% 0.022 220)";
                       e.currentTarget.style.color = "oklch(74% 0.024 220)";
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!isSelected) {
-                      e.currentTarget.style.borderColor = "oklch(30% 0.016 220)";
+                      e.currentTarget.style.borderColor =
+                        "oklch(30% 0.016 220)";
                       e.currentTarget.style.color = "oklch(60% 0.022 220)";
                     }
                   }}
@@ -386,17 +416,29 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
                 transition: "border-bottom-color 200ms ease",
               }}
               onFocus={(e) => {
-                if (!error) e.currentTarget.style.borderBottomColor = "oklch(58% 0.032 220)";
+                if (!error)
+                  e.currentTarget.style.borderBottomColor =
+                    "oklch(58% 0.032 220)";
               }}
               onBlur={(e) => {
-                if (!error) e.currentTarget.style.borderBottomColor = "oklch(32% 0.016 220)";
+                if (!error)
+                  e.currentTarget.style.borderBottomColor =
+                    "oklch(32% 0.016 220)";
               }}
             />
-            <div style={{ marginTop: "20px", display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              style={{
+                marginTop: "20px",
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+              }}
+            >
               <button
                 type="button"
                 onClick={handleNext}
                 disabled={submitting}
+                className="acesso-btn-primary"
                 style={{
                   padding: "12px 28px",
                   borderRadius: "7px",
@@ -407,11 +449,14 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
                   fontSize: "14px",
                   fontWeight: 500,
                   cursor: submitting ? "not-allowed" : "pointer",
-                  transition: "background 200ms ease",
                   letterSpacing: "-0.01em",
                 }}
-                onMouseEnter={(e) => { if (!submitting) e.currentTarget.style.background = "#E8EAF0"; }}
-                onMouseLeave={(e) => { if (!submitting) e.currentTarget.style.background = "#F7F8FA"; }}
+                onMouseEnter={(e) => {
+                  if (!submitting) e.currentTarget.style.background = "#E8EAF0";
+                }}
+                onMouseLeave={(e) => {
+                  if (!submitting) e.currentTarget.style.background = "#F7F8FA";
+                }}
               >
                 {submitting ? "Enviando..." : "Enviar"}
               </button>
@@ -431,8 +476,12 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
                     letterSpacing: "0.01em",
                     transition: "color 150ms ease",
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "oklch(64% 0.022 220)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "oklch(48% 0.020 220)"; }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = "oklch(64% 0.022 220)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = "oklch(48% 0.020 220)";
+                  }}
                 >
                   Pular
                 </button>
@@ -455,16 +504,23 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
               }}
               placeholder={step.placeholder}
               autoComplete={
-                step.type === "email" ? "email" :
-                  step.id === "name" ? "name" : "off"
+                step.type === "email"
+                  ? "email"
+                  : step.id === "name"
+                    ? "name"
+                    : "off"
               }
               className="interview-field"
               style={textInputStyle}
               onFocus={(e) => {
-                if (!error) e.currentTarget.style.borderBottomColor = "oklch(58% 0.032 220)";
+                if (!error)
+                  e.currentTarget.style.borderBottomColor =
+                    "oklch(58% 0.032 220)";
               }}
               onBlur={(e) => {
-                if (!error) e.currentTarget.style.borderBottomColor = "oklch(32% 0.016 220)";
+                if (!error)
+                  e.currentTarget.style.borderBottomColor =
+                    "oklch(32% 0.016 220)";
               }}
             />
 
@@ -494,20 +550,35 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
                   letterSpacing: "0.01em",
                   transition: "color 150ms ease",
                 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "oklch(70% 0.026 220)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "oklch(54% 0.022 220)"; }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "oklch(70% 0.026 220)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "oklch(54% 0.022 220)";
+                }}
               >
                 Continuar
                 <svg
-                  width="12" height="12" viewBox="0 0 24 24"
-                  fill="none" stroke="currentColor" strokeWidth="2.2"
-                  strokeLinecap="round" strokeLinejoin="round"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                   aria-hidden="true"
                 >
                   <path d="M5 12h14M12 5l7 7-7 7" />
                 </svg>
               </button>
-              <span style={{ fontSize: "11px", color: "oklch(40% 0.018 220)", letterSpacing: "0.02em" }}>
+              <span
+                style={{
+                  fontSize: "11px",
+                  color: "oklch(40% 0.018 220)",
+                  letterSpacing: "0.02em",
+                }}
+              >
                 ou pressione Enter ↵
               </span>
             </div>
@@ -543,6 +614,7 @@ export function WaitlistForm({ onBack }: WaitlistFormProps) {
         }}
       >
         <div
+          className="progress-fill"
           style={{
             height: "100%",
             background: "oklch(50% 0.044 215)",

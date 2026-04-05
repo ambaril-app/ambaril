@@ -20,7 +20,10 @@ export async function startImpersonation(
   if (!session) return { error: "Sessao expirada" };
 
   // Only admin can impersonate (or anyone with system:impersonate)
-  if (session.role !== "admin" && !session.permissions.includes("system:impersonate")) {
+  if (
+    session.role !== "admin" &&
+    !session.permissions.includes("system:impersonate")
+  ) {
     return { error: "Sem permissao para impersonar" };
   }
 
@@ -32,7 +35,7 @@ export async function startImpersonation(
     .limit(1);
 
   if (!roleResult[0]) {
-    return { error: "Role nao encontrada" };
+    return { error: "Role não encontrada" };
   }
 
   // Set session-scoped cookie (no maxAge = dies on browser close)

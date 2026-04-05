@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @config "../../tailwind.config.ts";
-@source "../../packages/ui/src/**/*.{ts,tsx}";
-@source "../../packages/shared/src/**/*.{ts,tsx}";
+@source "../../../../packages/ui/src/**/*.{ts,tsx}";
+@source "../../../../packages/shared/src/**/*.{ts,tsx}";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -11,87 +11,115 @@
   /* ===== MOONSTONE LIGHT (DEFAULT) ===== */
 
   /* Backgrounds */
-  --bg-void: #F7F8FA;
-  --bg-base: #FFFFFF;
-  --bg-raised: #F3F4F6;
-  --bg-surface: #E8EAF0;
-  --bg-elevated: #FFFFFF;
+  --bg-void: #f7f8fa;
+  --bg-base: #ffffff;
+  --bg-raised: #f3f4f6;
+  --bg-surface: #e8eaf0;
+  --bg-elevated: #ffffff;
 
   /* Borders */
-  --border-subtle: rgba(15,23,42,0.06);
-  --border-default: rgba(15,23,42,0.10);
-  --border-strong: rgba(15,23,42,0.18);
+  --border-subtle: rgba(15, 23, 42, 0.06);
+  --border-default: rgba(15, 23, 42, 0.1);
+  --border-strong: rgba(15, 23, 42, 0.18);
 
   /* Text */
-  --text-ghost: #94A3B8;
-  --text-muted: #64748B;
+  --text-ghost: #94a3b8;
+  --text-muted: #64748b;
   --text-secondary: #475569;
   --text-tertiary: #475569;
   --text-primary: #334155;
-  --text-bright: #1E293B;
-  --text-white: #0F172A;
+  --text-bright: #1e293b;
+  --text-white: #0f172a;
 
   /* Semantic */
-  --success: #16A34A;
-  --success-muted: rgba(22,163,74,0.08);
-  --warning: #D97706;
-  --warning-muted: rgba(217,119,6,0.08);
-  --danger: #DC2626;
-  --danger-muted: rgba(220,38,38,0.08);
-  --info: #2563EB;
-  --info-muted: rgba(37,99,235,0.08);
+  --success: #16a34a;
+  --success-muted: rgba(22, 163, 74, 0.08);
+  --warning: #d97706;
+  --warning-muted: rgba(217, 119, 6, 0.08);
+  --danger: #dc2626;
+  --danger-muted: rgba(220, 38, 38, 0.08);
+  --info: #2563eb;
+  --info-muted: rgba(37, 99, 235, 0.08);
 
   /* Typography */
-  --font-display: 'Bricolage Grotesque', 'DM Sans', -apple-system, sans-serif;
-  --font: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'DM Mono', 'SF Mono', 'Fira Code', monospace;
+  --font-display: "Bricolage Grotesque", "DM Sans", -apple-system, sans-serif;
+  --font: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "DM Mono", "SF Mono", "Fira Code", monospace;
 
   /* Radius — defined in @theme block (static, same in both themes) */
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(15,23,42,0.04);
-  --shadow-md: 0 2px 8px rgba(15,23,42,0.06);
-  --shadow-lg: 0 4px 16px rgba(15,23,42,0.08);
-  --shadow-xl: 0 8px 32px rgba(15,23,42,0.12);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 2px 8px rgba(15, 23, 42, 0.06);
+  --shadow-lg: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --shadow-xl: 0 8px 32px rgba(15, 23, 42, 0.12);
 
   /* Sidebar */
-  --sidebar-bg: #F7F8FA;
-  --sidebar-item-hover: #F3F4F6;
-  --sidebar-item-active-bg: #FFFFFF;
-  --sidebar-item-active-text: #0F172A;
-  --sidebar-border: rgba(15,23,42,0.08);
+  --sidebar-bg: #f7f8fa;
+  --sidebar-item-hover: #f3f4f6;
+  --sidebar-item-active-bg: #ffffff;
+  --sidebar-item-active-text: #0f172a;
+  --sidebar-border: rgba(15, 23, 42, 0.08);
 
   /* Buttons */
-  --btn-primary-bg: #0F172A;
-  --btn-primary-text: #FFFFFF;
-  --btn-primary-hover: #1E293B;
-  --btn-secondary-bg: #FFFFFF;
+  --btn-primary-bg: #0f172a;
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover: #1e293b;
+  --btn-secondary-bg: #ffffff;
   --btn-secondary-text: #334155;
-  --btn-secondary-border: rgba(15,23,42,0.15);
+  --btn-secondary-border: rgba(15, 23, 42, 0.15);
   --btn-ghost-text: #475569;
-  --btn-ghost-hover: #F3F4F6;
+  --btn-ghost-hover: #f3f4f6;
 
-  /* Charts */
+  /* Charts (base) */
   --chart-line: #334155;
-  --chart-area: rgba(15,23,42,0.04);
-  --chart-grid: rgba(15,23,42,0.06);
-  --chart-bar-top: #64748B;
-  --chart-bar-bottom: #CBD5E1;
-  --chart-tooltip-bg: #0F172A;
-  --chart-tooltip-text: #F7F8FA;
+  --chart-area: rgba(15, 23, 42, 0.04);
+  --chart-grid: rgba(15, 23, 42, 0.06);
+  --chart-bar-top: #64748b;
+  --chart-bar-bottom: #cbd5e1;
+  --chart-tooltip-bg: #0f172a;
+  --chart-tooltip-text: #f7f8fa;
+
+  /* Chart colors (multi-dataset) */
+  --chart-1: #2563eb;
+  --chart-2: #7c3aed;
+  --chart-3: #059669;
+  --chart-4: #ea580c;
+  --chart-5: #e11d48;
+  --chart-6: #0891b2;
+  --chart-7: #ca8a04;
+  --chart-8: #4f46e5;
+
+  /* Organizational palette (muted, segmentation) */
+  --org-slate-bg: #f1f5f9;
+  --org-slate-text: #475569;
+  --org-blue-bg: #eff6ff;
+  --org-blue-text: #1d4ed8;
+  --org-violet-bg: #f5f3ff;
+  --org-violet-text: #6d28d9;
+  --org-rose-bg: #fff1f2;
+  --org-rose-text: #be123c;
+  --org-amber-bg: #fffbeb;
+  --org-amber-text: #b45309;
+  --org-emerald-bg: #ecfdf5;
+  --org-emerald-text: #047857;
+  --org-cyan-bg: #ecfeff;
+  --org-cyan-text: #0e7490;
+  --org-orange-bg: #fff7ed;
+  --org-orange-text: #c2410c;
 
   /* Tables */
-  --table-header-bg: #F9FAFB;
-  --table-row-hover: #F9FAFB;
-  --table-border: rgba(15,23,42,0.06);
+  --table-header-bg: #f9fafb;
+  --table-row-hover: #f9fafb;
+  --table-border: rgba(15, 23, 42, 0.06);
 
   /* Inputs */
-  --input-bg: #F3F4F6;
-  --input-border: rgba(15,23,42,0.12);
-  --input-focus-border: #2563EB;
+  --input-bg: #f3f4f6;
+  --input-border: rgba(15, 23, 42, 0.12);
+  --input-focus-border: #2563eb;
 
   /* Badge */
-  --badge-bg: #F3F4F6;
+  --badge-bg: #f3f4f6;
   --badge-text: #334155;
 
   /* Spacing (base 4px) */
@@ -105,8 +133,9 @@
   --space-12: 48px;
   --space-16: 64px;
 
-  /* Accent — amber, used only in nav active indicator */
-  --accent: oklch(65% 0.12 60);
+  /* Sidebar rail */
+  --sidebar-rail-width: 64px;
+  --sidebar-expanded-width: 240px;
 
   /* Transitions */
   --transition-fast: 150ms ease;
@@ -121,84 +150,109 @@
   /* ===== MOONSTONE DARK ===== */
 
   /* Backgrounds */
-  --bg-void: #07080B;
-  --bg-base: #0C0E13;
+  --bg-void: #07080b;
+  --bg-base: #0c0e13;
   --bg-raised: #101216;
-  --bg-surface: #16181F;
-  --bg-elevated: #1C1F28;
+  --bg-surface: #16181f;
+  --bg-elevated: #1c1f28;
 
   /* Borders */
-  --border-subtle: #1E2129;
-  --border-default: #262A34;
+  --border-subtle: #1e2129;
+  --border-default: #262a34;
   --border-strong: #333844;
 
   /* Text */
-  --text-ghost: #3A3F4C;
-  --text-muted: #5C6170;
-  --text-secondary: #7C8293;
-  --text-tertiary: #A8AEBB;
-  --text-primary: #D0D4DE;
-  --text-bright: #E8EAF0;
-  --text-white: #F7F8FA;
+  --text-ghost: #3a3f4c;
+  --text-muted: #5c6170;
+  --text-secondary: #7c8293;
+  --text-tertiary: #a8aebb;
+  --text-primary: #d0d4de;
+  --text-bright: #e8eaf0;
+  --text-white: #f7f8fa;
 
   /* Semantic */
-  --success: #3ECF8E;
-  --success-muted: rgba(62,207,142,0.08);
-  --warning: #F5A524;
-  --warning-muted: rgba(245,165,36,0.08);
-  --danger: #EF4444;
-  --danger-muted: rgba(239,68,68,0.08);
-  --info: #60A5FA;
-  --info-muted: rgba(96,165,250,0.08);
+  --success: #3ecf8e;
+  --success-muted: rgba(62, 207, 142, 0.08);
+  --warning: #f5a524;
+  --warning-muted: rgba(245, 165, 36, 0.08);
+  --danger: #ef4444;
+  --danger-muted: rgba(239, 68, 68, 0.08);
+  --info: #60a5fa;
+  --info-muted: rgba(96, 165, 250, 0.08);
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
-  --shadow-md: 0 2px 10px rgba(0,0,0,0.2);
-  --shadow-lg: 0 4px 20px rgba(0,0,0,0.3);
-  --shadow-xl: 0 8px 32px rgba(0,0,0,0.4);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 2px 10px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 8px 32px rgba(0, 0, 0, 0.4);
 
   /* Sidebar */
-  --sidebar-bg: #0C0E13;
-  --sidebar-item-hover: rgba(247,248,250,0.02);
-  --sidebar-item-active-bg: rgba(247,248,250,0.03);
-  --sidebar-item-active-text: #E8EAF0;
-  --sidebar-border: #1E2129;
+  --sidebar-bg: #0c0e13;
+  --sidebar-item-hover: rgba(247, 248, 250, 0.02);
+  --sidebar-item-active-bg: rgba(247, 248, 250, 0.03);
+  --sidebar-item-active-text: #e8eaf0;
+  --sidebar-border: #1e2129;
 
   /* Buttons */
-  --btn-primary-bg: #F7F8FA;
-  --btn-primary-text: #0C0E13;
-  --btn-primary-hover: #FFFFFF;
+  --btn-primary-bg: #f7f8fa;
+  --btn-primary-text: #0c0e13;
+  --btn-primary-hover: #ffffff;
   --btn-secondary-bg: transparent;
-  --btn-secondary-text: #D0D4DE;
-  --btn-secondary-border: #262A34;
-  --btn-ghost-text: #7C8293;
-  --btn-ghost-hover: rgba(247,248,250,0.03);
+  --btn-secondary-text: #d0d4de;
+  --btn-secondary-border: #262a34;
+  --btn-ghost-text: #7c8293;
+  --btn-ghost-hover: rgba(247, 248, 250, 0.03);
 
-  /* Charts */
-  --chart-line: #D0D4DE;
-  --chart-area: rgba(247,248,250,0.04);
-  --chart-grid: #1E2129;
-  --chart-bar-top: #A8AEBB;
-  --chart-bar-bottom: #262A34;
-  --chart-tooltip-bg: #1C1F28;
-  --chart-tooltip-text: #D0D4DE;
+  /* Charts (base) */
+  --chart-line: #d0d4de;
+  --chart-area: rgba(247, 248, 250, 0.04);
+  --chart-grid: #1e2129;
+  --chart-bar-top: #a8aebb;
+  --chart-bar-bottom: #262a34;
+  --chart-tooltip-bg: #1c1f28;
+  --chart-tooltip-text: #d0d4de;
+
+  /* Chart colors (multi-dataset) */
+  --chart-1: #60a5fa;
+  --chart-2: #a78bfa;
+  --chart-3: #34d399;
+  --chart-4: #fb923c;
+  --chart-5: #fb7185;
+  --chart-6: #22d3ee;
+  --chart-7: #facc15;
+  --chart-8: #818cf8;
+
+  /* Organizational palette (muted, segmentation) */
+  --org-slate-bg: #1e293b;
+  --org-slate-text: #94a3b8;
+  --org-blue-bg: #1e3a5f;
+  --org-blue-text: #93c5fd;
+  --org-violet-bg: #2e1065;
+  --org-violet-text: #c4b5fd;
+  --org-rose-bg: #4c0519;
+  --org-rose-text: #fda4af;
+  --org-amber-bg: #451a03;
+  --org-amber-text: #fcd34d;
+  --org-emerald-bg: #064e3b;
+  --org-emerald-text: #6ee7b7;
+  --org-cyan-bg: #164e63;
+  --org-cyan-text: #67e8f9;
+  --org-orange-bg: #431407;
+  --org-orange-text: #fdba74;
 
   /* Tables */
   --table-header-bg: #101216;
-  --table-row-hover: rgba(247,248,250,0.015);
-  --table-border: #1E2129;
+  --table-row-hover: rgba(247, 248, 250, 0.015);
+  --table-border: #1e2129;
 
   /* Inputs */
   --input-bg: #101216;
-  --input-border: #262A34;
-  --input-focus-border: #60A5FA;
+  --input-border: #262a34;
+  --input-focus-border: #60a5fa;
 
   /* Badge */
-  --badge-bg: #16181F;
-  --badge-text: #A8AEBB;
-
-  /* Accent (same value works well on dark) */
-  --accent: oklch(68% 0.14 60);
+  --badge-bg: #16181f;
+  --badge-text: #a8aebb;
 
   /* Font smoothing */
   -webkit-font-smoothing: antialiased;
@@ -275,8 +329,31 @@
   --color-sidebar-item-active-bg: var(--sidebar-item-active-bg);
   --color-sidebar-item-active-text: var(--sidebar-item-active-text);
 
-  /* Accent */
-  --color-accent: var(--accent);
+  /* Chart colors (multi-dataset) */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+
+  /* Organizational palette */
+  --color-org-slate-bg: var(--org-slate-bg);
+  --color-org-slate-text: var(--org-slate-text);
+  --color-org-blue-bg: var(--org-blue-bg);
+  --color-org-blue-text: var(--org-blue-text);
+  --color-org-violet-bg: var(--org-violet-bg);
+  --color-org-violet-text: var(--org-violet-text);
+  --color-org-rose-bg: var(--org-rose-bg);
+  --color-org-rose-text: var(--org-rose-text);
+  --color-org-emerald-bg: var(--org-emerald-bg);
+  --color-org-emerald-text: var(--org-emerald-text);
+  --color-org-cyan-bg: var(--org-cyan-bg);
+  --color-org-cyan-text: var(--org-cyan-text);
+  --color-org-orange-bg: var(--org-orange-bg);
+  --color-org-orange-text: var(--org-orange-text);
 
   /* Radius (static — same in both themes, no circular ref) */
   --radius-sm: 6px;
@@ -300,7 +377,10 @@ html.theme-transition,
 html.theme-transition *,
 html.theme-transition *::before,
 html.theme-transition *::after {
-  transition: background-color 200ms ease, border-color 200ms ease, color 150ms ease !important;
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 150ms ease !important;
 }
 
 /* Scrollbar styling */
@@ -328,14 +408,14 @@ html.theme-transition *::after {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 640px;
-  height: 640px;
+  width: 720px;
+  height: 720px;
   border-radius: 50%;
   background: radial-gradient(
     ellipse at 44% 42%,
-    oklch(99%  0.003 215 / 0.11)  0%,
-    oklch(92%  0.018 213 / 0.07) 22%,
-    oklch(80%  0.048 214 / 0.04) 48%,
+    oklch(99% 0.003 215 / 0.14) 0%,
+    oklch(92% 0.018 213 / 0.09) 22%,
+    oklch(80% 0.048 214 / 0.05) 48%,
     transparent 72%
   );
   filter: blur(52px);
@@ -344,10 +424,1069 @@ html.theme-transition *::after {
 }
 
 @keyframes silmaril-breathe {
-  0%, 100% { opacity: 1;   transform: translate(-50%, -50%) scale(1);    }
-  50%       { opacity: 0.6; transform: translate(-50%, -50%) scale(1.04); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(1.04);
+  }
 }
 
+/* ─── Login page — Staggered entrance ─── */
+
+@keyframes login-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-fade-1 {
+  animation: login-fade-up 500ms cubic-bezier(0.16, 1, 0.3, 1) 100ms both;
+}
+.login-fade-2 {
+  animation: login-fade-up 500ms cubic-bezier(0.16, 1, 0.3, 1) 220ms both;
+}
+.login-fade-3 {
+  animation: login-fade-up 500ms cubic-bezier(0.16, 1, 0.3, 1) 340ms both;
+}
+.login-fade-4 {
+  animation: login-fade-up 500ms cubic-bezier(0.16, 1, 0.3, 1) 460ms both;
+}
+
+/* ─── Login page — Button micro-interaction ─── */
+
+.login-btn {
+  min-height: 2.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.2);
+  transition:
+    transform 150ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .login-btn {
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow:
+    0 1px 4px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(255, 255, 255, 0.06);
+}
+
+.login-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.25);
+}
+
+.dark .login-btn:hover:not(:disabled) {
+  box-shadow:
+    0 2px 8px rgba(0, 0, 0, 0.5),
+    0 0 28px rgba(255, 255, 255, 0.1);
+}
+
+.login-btn:active:not(:disabled) {
+  transform: translateY(0.5px);
+  box-shadow: none;
+}
+
+/* Outline variant — visible container against bg-void */
+.login-btn.login-btn-outline {
+  border-color: var(--border-strong);
+  background-color: var(--bg-raised);
+  box-shadow: var(--shadow-sm);
+}
+
+.login-btn.login-btn-outline:hover:not(:disabled) {
+  background-color: var(--bg-surface);
+  box-shadow: var(--shadow-md);
+}
+
+/* ─── Login page — Magic link sent state ─── */
+
+@keyframes login-sent-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.login-sent-enter {
+  animation: login-sent-in 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes login-icon-pop {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.login-sent-icon {
+  animation: login-icon-pop 500ms cubic-bezier(0.16, 1, 0.3, 1) 150ms both;
+}
+
+/* ─── Login page — Password field reveal ─── */
+
+.login-password-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 350ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.login-password-reveal > * {
+  overflow: hidden;
+}
+
+.login-password-reveal.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* ─── Login page — Signup link hover ─── */
+
+.login-signup-link {
+  transition: color 200ms ease;
+}
+
+/* ─── Login page — Error message entrance ─── */
+
+@keyframes login-error-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-error-enter {
+  animation: login-error-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Login page — Forgot link fade-in ─── */
+
+.login-forgot-enter {
+  animation: login-fade-up 300ms cubic-bezier(0.16, 1, 0.3, 1) 200ms both;
+}
+
+/* ─── Login page — Silmaril parallax (GPU) ─── */
+
+.login-silmaril {
+  will-change: transform;
+  transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ─── Login page — Reduced motion ─── */
+
 @media (prefers-reduced-motion: reduce) {
-  .login-silmaril { animation: none; }
+  .login-silmaril {
+    animation: none;
+    will-change: auto;
+    transition: none;
+  }
+
+  .login-fade-1,
+  .login-fade-2,
+  .login-fade-3,
+  .login-fade-4 {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .login-btn {
+    transition: none;
+  }
+
+  .login-sent-enter,
+  .login-sent-icon {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .login-error-enter,
+  .login-forgot-enter {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .login-password-reveal {
+    transition: none;
+    opacity: 1;
+  }
+
+  .login-password-reveal.open {
+    grid-template-rows: 1fr;
+  }
+}
+
+/* ─── KPI hero brilho (DS §5 — "a centelha do -ril") ─── */
+
+/* Light mode: depth via shadow + border precision */
+.kpi-hero {
+  position: relative;
+  background: var(--bg-base);
+  border-color: var(--border-subtle);
+  box-shadow: var(--shadow-md);
+  transition:
+    box-shadow var(--transition-normal),
+    border-color var(--transition-normal);
+}
+
+.kpi-hero:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Dark mode: gradient + radial glow */
+.dark .kpi-hero {
+  background: linear-gradient(150deg, var(--bg-raised) 40%, var(--bg-surface));
+  box-shadow: var(--shadow-sm);
+}
+
+.dark .kpi-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    ellipse at 85% 15%,
+    rgba(247, 248, 250, 0.025) 0%,
+    transparent 65%
+  );
+  pointer-events: none;
+}
+
+.dark .kpi-hero:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* ─── Card hover (DS §5 — interactive cards) ─── */
+
+.card-interactive {
+  transition:
+    box-shadow var(--transition-normal),
+    border-color var(--transition-normal);
+}
+
+.card-interactive:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-default);
+}
+
+.dark .card-interactive:hover {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  border-color: var(--border-default);
+}
+
+/* ─── Page entrance animations (DS — subtle, operational) ─── */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Immediate entrance */
+.animate-fade-in {
+  animation: fade-in 250ms ease both;
+}
+
+/* Staggered children — 50ms increments */
+.animate-fade-in-delayed-1 {
+  animation: fade-in 250ms ease 50ms both;
+}
+.animate-fade-in-delayed-2 {
+  animation: fade-in 250ms ease 100ms both;
+}
+.animate-fade-in-delayed-3 {
+  animation: fade-in 250ms ease 150ms both;
+}
+
+/* Additional staggered delays for Design Lab grids */
+.animate-fade-in-delayed-4 {
+  animation: fade-in 250ms ease 200ms both;
+}
+.animate-fade-in-delayed-5 {
+  animation: fade-in 250ms ease 250ms both;
+}
+.animate-fade-in-delayed-6 {
+  animation: fade-in 250ms ease 300ms both;
+}
+.animate-fade-in-delayed-7 {
+  animation: fade-in 250ms ease 350ms both;
+}
+.animate-fade-in-delayed-8 {
+  animation: fade-in 250ms ease 400ms both;
+}
+
+/* ─── Level 2 Moment — fade-in for empty states / onboarding ─── */
+
+@keyframes moment-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-moment {
+  animation: moment-fade-in 400ms ease-out both;
+}
+
+/* ─── Skeleton pulse (for loading states) ─── */
+
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-skeleton {
+  animation: skeleton-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ─── Flare alert pulse (for active alerts) ─── */
+
+@keyframes flare-pulse {
+  0%,
+  100% {
+    opacity: 0.85;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.animate-flare {
+  animation: flare-pulse 3s ease-in-out infinite;
+}
+
+/* ─── Focus ring utility ─── */
+
+.focus-ring {
+  outline: 2px solid var(--input-focus-border);
+  outline-offset: 2px;
+}
+
+/* ─── Scrollbar styling (subtle) ─── */
+
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-default) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+/* ─── Modal entrance ─── */
+
+@keyframes modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal-enter {
+  animation: modal-enter 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-backdrop-enter {
+  animation: backdrop-enter 150ms ease-out both;
+}
+
+/* ─── Progress shimmer (import progress bar) ─── */
+
+@keyframes progress-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-progress-shimmer {
+  background-size: 200% 100%;
+  background-image: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.15),
+    transparent
+  );
+  animation: progress-shimmer 2s ease-in-out infinite;
+}
+
+/* ─── Slide-in from right (sheets, panels) ─── */
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Slide-out to right (toast dismiss) ─── */
+
+@keyframes slide-out-right {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+
+.animate-slide-out-right {
+  animation: slide-out-right 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Slide-in from bottom (modals, toasts) ─── */
+
+@keyframes slide-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-in-up {
+  animation: slide-in-up 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Pop-in (checkmarks, icons, badges) ─── */
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-pop-in {
+  animation: pop-in 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Shake (validation error) ─── */
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  15%,
+  45%,
+  75% {
+    transform: translateX(-4px);
+  }
+  30%,
+  60% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-shake {
+  animation: shake 400ms ease-in-out;
+}
+
+/* ─── Width grow (progress bars, gantt bars) ─── */
+
+@keyframes grow-width {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.animate-grow-width {
+  transform-origin: left;
+  animation: grow-width 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Subtle pulse (live indicators, astro pulse) ─── */
+
+@keyframes subtle-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(0.95);
+  }
+}
+
+.animate-subtle-pulse {
+  animation: subtle-pulse 2s ease-in-out infinite;
+}
+
+/* ─── Stagger children (generic via CSS custom property) ─── */
+
+.stagger-children > * {
+  opacity: 0;
+  animation: fade-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.stagger-children > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger-children > *:nth-child(2) {
+  animation-delay: 50ms;
+}
+.stagger-children > *:nth-child(3) {
+  animation-delay: 100ms;
+}
+.stagger-children > *:nth-child(4) {
+  animation-delay: 150ms;
+}
+.stagger-children > *:nth-child(5) {
+  animation-delay: 200ms;
+}
+.stagger-children > *:nth-child(6) {
+  animation-delay: 250ms;
+}
+.stagger-children > *:nth-child(7) {
+  animation-delay: 300ms;
+}
+.stagger-children > *:nth-child(8) {
+  animation-delay: 350ms;
+}
+.stagger-children > *:nth-child(9) {
+  animation-delay: 400ms;
+}
+.stagger-children > *:nth-child(10) {
+  animation-delay: 450ms;
+}
+
+/* ─── OVERDRIVE: Sidebar expand/collapse (grid-row transition) ─── */
+
+.sidebar-expand {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows 250ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sidebar-expand > div {
+  overflow: hidden;
+}
+
+.sidebar-expand.open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* ─── Sidebar subroute cascade ─── */
+
+.sidebar-subroutes > * {
+  opacity: 0;
+  animation: fade-in 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.sidebar-subroutes > *:nth-child(1) {
+  animation-delay: 30ms;
+}
+.sidebar-subroutes > *:nth-child(2) {
+  animation-delay: 60ms;
+}
+.sidebar-subroutes > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+.sidebar-subroutes > *:nth-child(4) {
+  animation-delay: 120ms;
+}
+.sidebar-subroutes > *:nth-child(5) {
+  animation-delay: 150ms;
+}
+
+/* ─── Active sidebar indicator ─── */
+
+@keyframes sidebar-active-in {
+  from {
+    opacity: 0;
+    transform: scaleY(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+/* ─── Ghost skeleton shimmer ─── */
+
+@keyframes ghost-shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: 200px 0;
+  }
+}
+
+.animate-ghost {
+  background: linear-gradient(
+    90deg,
+    var(--bg-raised) 25%,
+    var(--bg-surface) 50%,
+    var(--bg-raised) 75%
+  );
+  background-size: 400px 100%;
+  animation: ghost-shimmer 1.5s ease-in-out infinite;
+}
+
+/* ─── Chart draw-in (for Recharts stroke animation) ─── */
+
+@keyframes chart-draw {
+  from {
+    stroke-dashoffset: 1000;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ─── Global interactive transitions ─── */
+
+/* All interactive elements get smooth transitions */
+button,
+a,
+[role="button"] {
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 100ms ease;
+}
+
+button:active,
+[role="button"]:active {
+  transform: translateY(1px);
+}
+
+/* Smooth transitions on form inputs */
+input,
+textarea,
+select {
+  transition:
+    border-color 200ms ease,
+    box-shadow 200ms ease;
+}
+
+/* Card hover transitions (global) */
+[class*="rounded-xl"][class*="border"][class*="bg-bg-base"],
+[class*="rounded-lg"][class*="border"][class*="bg-bg-base"] {
+  transition:
+    box-shadow 200ms ease,
+    border-color 200ms ease,
+    transform 200ms ease;
+}
+
+/* ─── OVERDRIVE: Spring-feel card drop (kanban, drag-drop) ─── */
+
+@keyframes spring-settle {
+  0% {
+    transform: scale(1.03) translateY(-2px);
+  }
+  40% {
+    transform: scale(0.99) translateY(1px);
+  }
+  70% {
+    transform: scale(1.005) translateY(-0.5px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-spring-settle {
+  animation: spring-settle 400ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ─── OVERDRIVE: Kanban card lift on drag ─── */
+
+.kanban-card-dragging {
+  transform: scale(1.02) rotate(1deg);
+  box-shadow:
+    0 8px 32px rgba(15, 23, 42, 0.15),
+    0 2px 8px rgba(15, 23, 42, 0.1);
+  z-index: 50;
+  transition:
+    transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 200ms ease;
+}
+
+.dark .kanban-card-dragging {
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── OVERDRIVE: Gantt bar hover micro-expand ─── */
+
+.gantt-bar {
+  transition:
+    transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 200ms ease;
+}
+
+.gantt-bar:hover {
+  transform: scaleY(1.15);
+  box-shadow: var(--shadow-md);
+}
+
+/* ─── OVERDRIVE: KPI value entrance (count-up feel via CSS) ─── */
+
+@keyframes kpi-value-in {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(4px);
+  }
+  60% {
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.animate-kpi-value {
+  animation: kpi-value-in 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Staggered KPI values for dashboard strip */
+.kpi-strip > *:nth-child(1) .animate-kpi-value {
+  animation-delay: 0ms;
+}
+.kpi-strip > *:nth-child(2) .animate-kpi-value {
+  animation-delay: 60ms;
+}
+.kpi-strip > *:nth-child(3) .animate-kpi-value {
+  animation-delay: 120ms;
+}
+.kpi-strip > *:nth-child(4) .animate-kpi-value {
+  animation-delay: 180ms;
+}
+.kpi-strip > *:nth-child(5) .animate-kpi-value {
+  animation-delay: 240ms;
+}
+.kpi-strip > *:nth-child(6) .animate-kpi-value {
+  animation-delay: 300ms;
+}
+
+/* ─── OVERDRIVE: Drop zone pulse (kanban column highlight) ─── */
+
+@keyframes drop-zone-pulse {
+  0%,
+  100% {
+    border-color: rgba(37, 99, 235, 0.2);
+    background-color: rgba(37, 99, 235, 0.03);
+  }
+  50% {
+    border-color: rgba(37, 99, 235, 0.4);
+    background-color: rgba(37, 99, 235, 0.06);
+  }
+}
+
+.animate-drop-zone {
+  animation: drop-zone-pulse 1.2s ease-in-out infinite;
+}
+
+/* ─── OVERDRIVE: Table row slide-in (staggered entrance on filter change) ─── */
+
+@keyframes row-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-row-enter {
+  animation: row-slide-in 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── OVERDRIVE: Chat typing indicator ─── */
+
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+.typing-indicator span {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--text-ghost);
+  animation: typing-dot 1.4s ease-in-out infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 160ms;
+}
+.typing-indicator span:nth-child(3) {
+  animation-delay: 320ms;
+}
+
+/* ─── DELIGHT: Checkbox satisfaction flash ─── */
+
+@keyframes check-flash {
+  0% {
+    box-shadow: 0 0 0 0 var(--success);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.15);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.check-delight:has(input:checked),
+.check-delight[data-state="checked"] {
+  animation: check-flash 400ms ease-out;
+}
+
+/* ─── DELIGHT: Success Flare shimmer (meta atingida) ─── */
+
+@keyframes success-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.flare-success {
+  position: relative;
+  overflow: hidden;
+}
+
+.flare-success::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 30%,
+    rgba(22, 163, 74, 0.06) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: success-shimmer 3s ease-in-out 500ms 1 both;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ─── DELIGHT: Onboarding step complete — gentle glow ─── */
+
+@keyframes step-complete-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.step-complete-glow {
+  animation: step-complete-glow 800ms ease-out;
+}
+
+/* ─── DELIGHT: AI suggestion entrance (chat bot hint) ─── */
+
+@keyframes ai-hint-in {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+    border-color: transparent;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-ai-hint {
+  animation: ai-hint-in 400ms cubic-bezier(0.16, 1, 0.3, 1) 200ms both;
+}
+
+/* ─── DELIGHT: Empty state icon breathe ─── */
+
+@keyframes icon-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+
+.icon-breathe {
+  animation: icon-breathe 3s ease-in-out infinite;
+}
+
+/* Respect user preference — disable all motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-fade-in-delayed-1,
+  .animate-fade-in-delayed-2,
+  .animate-fade-in-delayed-3,
+  .animate-fade-in-delayed-4,
+  .animate-fade-in-delayed-5,
+  .animate-fade-in-delayed-6,
+  .animate-fade-in-delayed-7,
+  .animate-fade-in-delayed-8,
+  .animate-moment,
+  .animate-modal-enter,
+  .animate-backdrop-enter,
+  .animate-slide-in-right,
+  .animate-slide-out-right,
+  .animate-slide-in-up,
+  .animate-pop-in,
+  .animate-grow-width,
+  .animate-spring-settle,
+  .animate-kpi-value,
+  .animate-drop-zone,
+  .animate-row-enter,
+  .animate-ai-hint,
+  .icon-breathe,
+  .step-complete-glow,
+  .flare-success::after,
+  .check-delight:has(input:checked),
+  .check-delight[data-state="checked"],
+  .stagger-children > *,
+  .sidebar-subroutes > * {
+    animation: none;
+  }
+
+  .kanban-card-dragging {
+    transform: none;
+  }
+
+  .gantt-bar:hover {
+    transform: none;
+  }
+
+  .sidebar-expand {
+    transition: none;
+    opacity: 1;
+    grid-template-rows: 0fr;
+  }
+
+  .sidebar-expand.open {
+    grid-template-rows: 1fr;
+  }
+
+  .typing-indicator span {
+    animation: none;
+    opacity: 0.5;
+  }
 }

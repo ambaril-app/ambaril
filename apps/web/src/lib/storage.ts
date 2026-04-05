@@ -14,7 +14,7 @@ function isConfigured(): boolean {
 export async function getPresignedUploadUrl(
   key: string,
   _contentType: string,
-  _expiresIn = 3600,
+  _expiresIn: number = 3600,
 ): Promise<{ url: string; key: string }> {
   // In production, use @aws-sdk/client-s3 and @aws-sdk/s3-request-presigner
   // For now, return the R2 endpoint pattern.
@@ -41,9 +41,36 @@ export function getPublicUrl(key: string): string {
   return `https://placeholder.r2.dev/${R2_BUCKET_NAME}/${key}`;
 }
 
+// Allowed file extensions (whitelist)
+const ALLOWED_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "avif",
+  "svg",
+  "pdf",
+  "doc",
+  "docx",
+  "xls",
+  "xlsx",
+  "csv",
+  "mp4",
+  "mov",
+  "webm",
+  "zip",
+  "gz",
+]);
+
 // Generate a unique storage key for file uploads
 export function generateStorageKey(folder: string, filename: string): string {
-  const ext = filename.split(".").pop() ?? "bin";
+  // Extract and sanitize extension
+  const rawExt = filename.split(".").pop()?.toLowerCase() ?? "";
+  // Strip any non-alphanumeric characters (prevents path traversal via ../)
+  const sanitized = rawExt.replace(/[^a-z0-9]/g, "");
+  // Validate against whitelist, fallback to "bin"
+  const ext = ALLOWED_EXTENSIONS.has(sanitized) ? sanitized : "bin";
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 8);
   return `${folder}/${timestamp}-${random}.${ext}`;

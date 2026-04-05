@@ -46,7 +46,7 @@ Total time from clone to running: ~5 minutes with Neon + Upstash.
 
 **Ambaril** (UI brand name: **Ambaril**) is an all-in-one SaaS platform built for the Brazilian streetwear brand CIENA. It replaces 8+ paid tools (Yever, Bling, Kevi, Nuvemshop, etc.) with a single, purpose-built system covering e-commerce checkout, mini-ERP with fiscal integration, CRM, production planning, WhatsApp communication, creator management, internal task management, and an AI-powered Discord bot.
 
-The platform has **15 core modules** organized into four pillars: Commerce, Operations, Growth, and Team. For the complete module map and scope, see [plan.md](../../plan.md). For the design system governing all UI decisions, see [DS.md](../../DS.md).
+The platform has **15 core modules** organized into four pillars: Commerce, Operations, Growth, and Team. For the complete module map and scope, see [PLAN.md](../../PLAN.md). For the design system governing all UI decisions, see [DS.md](../../DS.md).
 
 **Architecture in a nutshell:** Ambaril is a Next.js 15 monorepo (Turborepo) using the App Router with React Server Components for the internal dashboard, SSR for public-facing pages (checkout, order tracking), and API routes as a BFF layer for external integrations (Mercado Pago, Discord bot, WhatsApp webhooks). Data lives in PostgreSQL (Neon) with Drizzle ORM, cached in Redis (Upstash), with background jobs processed by BullMQ. For full architectural details, see the [architecture docs](../architecture/).
 
@@ -56,22 +56,22 @@ The platform has **15 core modules** organized into four pillars: Commerce, Oper
 
 ### Required Software
 
-| Tool | Version | Notes |
-|------|---------|-------|
-| **Node.js** | 20+ (LTS) | Use [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm) to manage versions |
-| **pnpm** | 9+ | Monorepo package manager. Install: `corepack enable && corepack prepare pnpm@latest --activate` |
-| **Git** | 2.40+ | Required for monorepo features |
-| **PostgreSQL** | 16+ | Local install OR use [Neon](https://neon.tech) serverless (recommended for dev) |
-| **Redis** | 7+ | Local install OR use [Upstash](https://upstash.com) serverless (recommended for dev) |
+| Tool           | Version   | Notes                                                                                               |
+| -------------- | --------- | --------------------------------------------------------------------------------------------------- |
+| **Node.js**    | 20+ (LTS) | Use [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm) to manage versions |
+| **pnpm**       | 9+        | Monorepo package manager. Install: `corepack enable && corepack prepare pnpm@latest --activate`     |
+| **Git**        | 2.40+     | Required for monorepo features                                                                      |
+| **PostgreSQL** | 16+       | Local install OR use [Neon](https://neon.tech) serverless (recommended for dev)                     |
+| **Redis**      | 7+        | Local install OR use [Upstash](https://upstash.com) serverless (recommended for dev)                |
 
 ### Required Accounts
 
-| Service | Why | Setup |
-|---------|-----|-------|
-| **Neon** | Serverless PostgreSQL (free tier covers dev) | [neon.tech](https://neon.tech) -- create a project, get connection string |
-| **Upstash** | Serverless Redis (free tier covers dev) | [upstash.com](https://upstash.com) -- create a Redis database |
-| **Discord** | ClawdBot testing | Need a Discord account + access to the CIENA dev server |
-| **Meta Developer** | WhatsApp Business API + Instagram API testing | [developers.facebook.com](https://developers.facebook.com) |
+| Service            | Why                                           | Setup                                                                     |
+| ------------------ | --------------------------------------------- | ------------------------------------------------------------------------- |
+| **Neon**           | Serverless PostgreSQL (free tier covers dev)  | [neon.tech](https://neon.tech) -- create a project, get connection string |
+| **Upstash**        | Serverless Redis (free tier covers dev)       | [upstash.com](https://upstash.com) -- create a Redis database             |
+| **Discord**        | ClawdBot testing                              | Need a Discord account + access to the CIENA dev server                   |
+| **Meta Developer** | WhatsApp Business API + Instagram API testing | [developers.facebook.com](https://developers.facebook.com)                |
 
 ### Recommended: VS Code Setup
 
@@ -93,12 +93,12 @@ Add to your VS Code `settings.json`:
   "editor.defaultFormatter": "esbenp.prettier-vscode",
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": "explicit"
+    "source.fixAll.eslint": "explicit",
   },
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "tailwindCSS.experimental.classRegex": [
-    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"]
-  ]
+    ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+  ],
 }
 ```
 
@@ -321,20 +321,21 @@ const config = {
 
 ### 5.2 Naming Conventions
 
-| Element | Convention | Example |
-|---------|-----------|---------|
-| **Files** | kebab-case | `order-list.tsx`, `use-order-filters.ts` |
-| **Components** | PascalCase | `OrderList`, `StatusBadge` |
-| **Functions / variables** | camelCase | `getOrderById`, `isValidCpf` |
-| **DB columns** | snake_case | `created_at`, `order_id`, `total_amount` |
-| **API routes** | kebab-case | `/api/v1/erp/order-items` |
-| **Enum values** | UPPER_SNAKE_CASE | `OrderStatus.PENDING`, `Role.ADMIN` |
-| **Enum types** | PascalCase | `OrderStatus`, `ShippingCarrier` |
-| **Constants** | UPPER_SNAKE_CASE | `MAX_UPLOAD_SIZE`, `DEFAULT_PAGE_SIZE` |
-| **Hooks** | camelCase with `use` prefix | `useOrderFilters`, `useDebounce` |
-| **Zustand stores** | camelCase with `use` prefix + `Store` suffix | `useCartStore` |
+| Element                   | Convention                                   | Example                                  |
+| ------------------------- | -------------------------------------------- | ---------------------------------------- |
+| **Files**                 | kebab-case                                   | `order-list.tsx`, `use-order-filters.ts` |
+| **Components**            | PascalCase                                   | `OrderList`, `StatusBadge`               |
+| **Functions / variables** | camelCase                                    | `getOrderById`, `isValidCpf`             |
+| **DB columns**            | snake_case                                   | `created_at`, `order_id`, `total_amount` |
+| **API routes**            | kebab-case                                   | `/api/v1/erp/order-items`                |
+| **Enum values**           | UPPER_SNAKE_CASE                             | `OrderStatus.PENDING`, `Role.ADMIN`      |
+| **Enum types**            | PascalCase                                   | `OrderStatus`, `ShippingCarrier`         |
+| **Constants**             | UPPER_SNAKE_CASE                             | `MAX_UPLOAD_SIZE`, `DEFAULT_PAGE_SIZE`   |
+| **Hooks**                 | camelCase with `use` prefix                  | `useOrderFilters`, `useDebounce`         |
+| **Zustand stores**        | camelCase with `use` prefix + `Store` suffix | `useCartStore`                           |
 
 **Language rules:**
+
 - **Code is always in English.** Variable names, function names, comments, commit messages -- all English.
 - **UI strings are always in PT-BR.** Button labels, error messages, tooltips -- all Portuguese.
 - **Use [GLOSSARY.md](./GLOSSARY.md)** for the canonical PT-BR to EN mapping. Never translate domain terms on your own. If "Troca" = `exchange` in the glossary, use `exchange` everywhere in code.
@@ -402,7 +403,7 @@ const querySchema = z.object({
 
 export const GET = withAuth(async (req: NextRequest) => {
   const params = querySchema.parse(
-    Object.fromEntries(req.nextUrl.searchParams)
+    Object.fromEntries(req.nextUrl.searchParams),
   );
 
   const { orders, total } = await getOrders(params);
@@ -425,7 +426,14 @@ export const GET = withAuth(async (req: NextRequest) => {
 
 ```typescript
 // packages/db/schema/commerce.ts
-import { pgTable, uuid, text, numeric, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  numeric,
+  timestamp,
+  pgEnum,
+} from "drizzle-orm/pg-core";
 
 export const orderStatusEnum = pgEnum("order_status", [
   "pending",
@@ -438,12 +446,18 @@ export const orderStatusEnum = pgEnum("order_status", [
 
 export const orders = pgTable("orders", {
   id: uuid("id").primaryKey().defaultRandom(),
-  code: text("code").notNull().unique(),        // Human-readable: CIENA-00001
-  contactId: uuid("contact_id").notNull().references(() => contacts.id),
+  code: text("code").notNull().unique(), // Human-readable: CIENA-00001
+  contactId: uuid("contact_id")
+    .notNull()
+    .references(() => contacts.id),
   status: orderStatusEnum("status").notNull().default("pending"),
   totalAmount: numeric("total_amount", { precision: 12, scale: 2 }).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
   deletedAt: timestamp("deleted_at", { withTimezone: true }),
 });
 ```
@@ -485,22 +499,22 @@ try {
 
 All commands are run from the repo root. Turborepo handles running them across the correct packages.
 
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start all apps in development mode (web + discord-bot) |
-| `pnpm dev --filter=web` | Start only the web app |
-| `pnpm dev --filter=discord-bot` | Start only the Discord bot |
-| `pnpm build` | Build all packages and apps for production |
-| `pnpm lint` | Run ESLint across all packages |
-| `pnpm format` | Run Prettier across all packages |
-| `pnpm test` | Run Vitest unit and integration tests |
-| `pnpm test:e2e` | Run Playwright end-to-end tests |
-| `pnpm db:generate` | Generate a new Drizzle migration from schema changes |
-| `pnpm db:push` | Push schema changes directly to the database (dev only) |
-| `pnpm db:migrate` | Run pending SQL migrations |
-| `pnpm db:seed` | Seed the database with development data |
-| `pnpm db:studio` | Open Drizzle Studio (visual DB browser at `https://local.drizzle.studio`) |
-| `pnpm typecheck` | Run TypeScript type checking across all packages |
+| Command                         | Description                                                               |
+| ------------------------------- | ------------------------------------------------------------------------- |
+| `pnpm dev`                      | Start all apps in development mode (web + discord-bot)                    |
+| `pnpm dev --filter=web`         | Start only the web app                                                    |
+| `pnpm dev --filter=discord-bot` | Start only the Discord bot                                                |
+| `pnpm build`                    | Build all packages and apps for production                                |
+| `pnpm lint`                     | Run ESLint across all packages                                            |
+| `pnpm format`                   | Run Prettier across all packages                                          |
+| `pnpm test`                     | Run Vitest unit and integration tests                                     |
+| `pnpm test:e2e`                 | Run Playwright end-to-end tests                                           |
+| `pnpm db:generate`              | Generate a new Drizzle migration from schema changes                      |
+| `pnpm db:push`                  | Push schema changes directly to the database (dev only)                   |
+| `pnpm db:migrate`               | Run pending SQL migrations                                                |
+| `pnpm db:seed`                  | Seed the database with development data                                   |
+| `pnpm db:studio`                | Open Drizzle Studio (visual DB browser at `https://local.drizzle.studio`) |
+| `pnpm typecheck`                | Run TypeScript type checking across all packages                          |
 
 ### Filtering by Package
 
@@ -679,18 +693,36 @@ Create or extend a schema file in `packages/db/schema/{module}.ts`. Follow the c
 
 ```typescript
 // packages/db/schema/loyalty.ts (example: new loyalty module)
-import { pgTable, uuid, text, integer, timestamp, pgEnum } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  integer,
+  timestamp,
+  pgEnum,
+} from "drizzle-orm/pg-core";
 import { contacts } from "./crm";
 
-export const tierEnum = pgEnum("loyalty_tier", ["bronze", "silver", "gold", "vip"]);
+export const tierEnum = pgEnum("loyalty_tier", [
+  "bronze",
+  "silver",
+  "gold",
+  "vip",
+]);
 
 export const loyaltyAccounts = pgTable("loyalty_accounts", {
   id: uuid("id").primaryKey().defaultRandom(),
-  contactId: uuid("contact_id").notNull().references(() => contacts.id),
+  contactId: uuid("contact_id")
+    .notNull()
+    .references(() => contacts.id),
   tier: tierEnum("tier").notNull().default("bronze"),
   totalPoints: integer("total_points").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });
 ```
 
@@ -832,7 +864,7 @@ describe("calculateMargin", () => {
 
   it("throws on zero selling price", () => {
     expect(() =>
-      calculateMargin({ sellingPrice: 0, costPrice: 89.5, taxRate: 0.12 })
+      calculateMargin({ sellingPrice: 0, costPrice: 89.5, taxRate: 0.12 }),
     ).toThrow("Selling price must be positive");
   });
 
@@ -1045,12 +1077,12 @@ LLEN "bull:email:waiting"  # Check BullMQ queue length
 
 All logs must be structured JSON for searchability. Follow these severity levels:
 
-| Level | When to use |
-|-------|-------------|
-| `error` | Something broke and needs attention. Include stack traces. |
-| `warn` | Something unexpected happened but the system recovered. |
-| `info` | Significant lifecycle events: order paid, email sent, migration run. |
-| `debug` | Detailed diagnostic info. Only visible in dev. |
+| Level   | When to use                                                          |
+| ------- | -------------------------------------------------------------------- |
+| `error` | Something broke and needs attention. Include stack traces.           |
+| `warn`  | Something unexpected happened but the system recovered.              |
+| `info`  | Significant lifecycle events: order paid, email sent, migration run. |
+| `debug` | Detailed diagnostic info. Only visible in dev.                       |
 
 ```typescript
 // Always include context
@@ -1070,53 +1102,53 @@ All documentation lives in the `docs/` folder. Here is a complete index:
 
 ### Architecture
 
-| Document | Path | Description |
-|----------|------|-------------|
-| Stack & Technology | [`architecture/STACK.md`](../architecture/STACK.md) | Full technology choices and rationale |
-| API Patterns | [`architecture/API.md`](../architecture/API.md) | REST conventions, response envelope, versioning |
-| Auth & Authorization | [`architecture/AUTH.md`](../architecture/AUTH.md) | Authentication flows, RBAC roles, session management |
-| Database Schema | [`architecture/DATABASE.md`](../architecture/DATABASE.md) | Schema design, naming, indexes, all table definitions |
-| Infrastructure | [`architecture/INFRA.md`](../architecture/INFRA.md) | Hosting, deployment, CI/CD, monitoring |
+| Document             | Path                                                      | Description                                           |
+| -------------------- | --------------------------------------------------------- | ----------------------------------------------------- |
+| Stack & Technology   | [`architecture/STACK.md`](../architecture/STACK.md)       | Full technology choices and rationale                 |
+| API Patterns         | [`architecture/API.md`](../architecture/API.md)           | REST conventions, response envelope, versioning       |
+| Auth & Authorization | [`architecture/AUTH.md`](../architecture/AUTH.md)         | Authentication flows, RBAC roles, session management  |
+| Database Schema      | [`architecture/DATABASE.md`](../architecture/DATABASE.md) | Schema design, naming, indexes, all table definitions |
+| Infrastructure       | [`architecture/INFRA.md`](../architecture/INFRA.md)       | Hosting, deployment, CI/CD, monitoring                |
 
 ### Platform (Cross-Cutting)
 
-| Document | Path | Description |
-|----------|------|-------------|
-| Error Handling | [`platform/ERROR-HANDLING.md`](../platform/ERROR-HANDLING.md) | Error taxonomy, AppError class, retry patterns |
-| Testing Strategy | [`platform/TESTING.md`](../platform/TESTING.md) | Test types, coverage targets, patterns |
-| Global Search | [`platform/SEARCH.md`](../platform/SEARCH.md) | Search index, tsvector setup, command palette |
-| Notifications (Flare) | [`platform/NOTIFICATIONS.md`](../platform/NOTIFICATIONS.md) | Cross-module notification system |
-| Audit Log | [`platform/AUDIT-LOG.md`](../platform/AUDIT-LOG.md) | Change tracking, compliance |
-| LGPD Compliance | [`platform/LGPD.md`](../platform/LGPD.md) | Data protection, consent, anonymization |
+| Document              | Path                                                          | Description                                    |
+| --------------------- | ------------------------------------------------------------- | ---------------------------------------------- |
+| Error Handling        | [`platform/ERROR-HANDLING.md`](../platform/ERROR-HANDLING.md) | Error taxonomy, AppError class, retry patterns |
+| Testing Strategy      | [`platform/TESTING.md`](../platform/TESTING.md)               | Test types, coverage targets, patterns         |
+| Global Search         | [`platform/SEARCH.md`](../platform/SEARCH.md)                 | Search index, tsvector setup, command palette  |
+| Notifications (Flare) | [`platform/NOTIFICATIONS.md`](../platform/NOTIFICATIONS.md)   | Cross-module notification system               |
+| Audit Log             | [`platform/AUDIT-LOG.md`](../platform/AUDIT-LOG.md)           | Change tracking, compliance                    |
+| LGPD Compliance       | [`platform/LGPD.md`](../platform/LGPD.md)                     | Data protection, consent, anonymization        |
 
 ### Module Specs
 
-| Module | Path | Pillar |
-|--------|------|--------|
-| Checkout | [`modules/commerce/checkout.md`](../modules/commerce/checkout.md) | Commerce |
-| B2B Wholesale | [`modules/commerce/b2b.md`](../modules/commerce/b2b.md) | Commerce |
-| Mini-ERP | [`modules/operations/erp.md`](../modules/operations/erp.md) | Operations |
-| PCP (Production) | [`modules/operations/pcp.md`](../modules/operations/pcp.md) | Operations |
-| Trocas (Exchanges) | [`modules/operations/trocas.md`](../modules/operations/trocas.md) | Operations |
-| CRM | [`modules/growth/crm.md`](../modules/growth/crm.md) | Growth |
-| Creators | [`modules/growth/creators.md`](../modules/growth/creators.md) | Growth |
-| Marketing Intel | [`modules/growth/marketing-intel.md`](../modules/growth/marketing-intel.md) | Growth |
-| WhatsApp Engine | [`modules/communication/whatsapp.md`](../modules/communication/whatsapp.md) | Communication |
+| Module             | Path                                                                        | Pillar        |
+| ------------------ | --------------------------------------------------------------------------- | ------------- |
+| Checkout           | [`modules/commerce/checkout.md`](../modules/commerce/checkout.md)           | Commerce      |
+| B2B Wholesale      | [`modules/commerce/b2b.md`](../modules/commerce/b2b.md)                     | Commerce      |
+| Mini-ERP           | [`modules/operations/erp.md`](../modules/operations/erp.md)                 | Operations    |
+| PCP (Production)   | [`modules/operations/pcp.md`](../modules/operations/pcp.md)                 | Operations    |
+| Trocas (Exchanges) | [`modules/operations/trocas.md`](../modules/operations/trocas.md)           | Operations    |
+| CRM                | [`modules/growth/crm.md`](../modules/growth/crm.md)                         | Growth        |
+| Creators           | [`modules/growth/creators.md`](../modules/growth/creators.md)               | Growth        |
+| Marketing Intel    | [`modules/growth/marketing-intel.md`](../modules/growth/marketing-intel.md) | Growth        |
+| WhatsApp Engine    | [`modules/communication/whatsapp.md`](../modules/communication/whatsapp.md) | Communication |
 | ClawdBot (Discord) | [`modules/communication/clawdbot.md`](../modules/communication/clawdbot.md) | Communication |
-| Inbox | [`modules/team/inbox.md`](../modules/team/inbox.md) | Team |
-| Tarefas (Tasks) | [`modules/team/tarefas.md`](../modules/team/tarefas.md) | Team |
-| DAM | [`modules/team/dam.md`](../modules/team/dam.md) | Team |
-| Dashboard (Beacon) | [`modules/intelligence/dashboard.md`](../modules/intelligence/dashboard.md) | Intelligence |
+| Inbox              | [`modules/team/inbox.md`](../modules/team/inbox.md)                         | Team          |
+| Tarefas (Tasks)    | [`modules/team/tarefas.md`](../modules/team/tarefas.md)                     | Team          |
+| DAM                | [`modules/team/dam.md`](../modules/team/dam.md)                             | Team          |
+| Dashboard (Beacon) | [`modules/intelligence/dashboard.md`](../modules/intelligence/dashboard.md) | Intelligence  |
 
 ### Developer Resources
 
-| Document | Path | Description |
-|----------|------|-------------|
-| Domain Glossary | [`dev/GLOSSARY.md`](./GLOSSARY.md) | PT-BR to EN term mapping (canonical) |
-| Developer Guide | [`dev/DEV-GUIDE.md`](./DEV-GUIDE.md) | This file |
-| Design System | [`DS.md`](../../DS.md) | Colors, typography, spacing, component patterns |
-| Module Map | [`plan.md`](../../plan.md) | Complete module scope and feature list |
+| Document        | Path                                 | Description                                     |
+| --------------- | ------------------------------------ | ----------------------------------------------- |
+| Domain Glossary | [`dev/GLOSSARY.md`](./GLOSSARY.md)   | PT-BR to EN term mapping (canonical)            |
+| Developer Guide | [`dev/DEV-GUIDE.md`](./DEV-GUIDE.md) | This file                                       |
+| Design System   | [`DS.md`](../../DS.md)               | Colors, typography, spacing, component patterns |
+| Module Map      | [`PLAN.md`](../../PLAN.md)           | Complete module scope and feature list          |
 
 ---
 
-*Last updated: March 2026*
+_Last updated: March 2026_

@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { WaitlistForm } from "@/components/waitlist-form";
 
-const VALID_CODES = (process.env.NEXT_PUBLIC_INVITE_CODES ?? "").split(",").filter(Boolean);
+const VALID_CODES = (process.env.NEXT_PUBLIC_INVITE_CODES ?? "")
+  .split(",")
+  .filter(Boolean);
 
 export default function AcessoPage() {
   const router = useRouter();
@@ -16,7 +18,6 @@ export default function AcessoPage() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Hash-based direct entry: /acesso#interesse
     if (window.location.hash === "#interesse") {
       setShowInterest(true);
     } else {
@@ -73,7 +74,7 @@ export default function AcessoPage() {
           fontSize: "13px",
           fontWeight: 500,
           letterSpacing: "0.08em",
-          color: "oklch(34% 0.018 220)",
+          color: "oklch(42% 0.020 220)",
           textDecoration: "none",
           zIndex: 10,
         }}
@@ -91,11 +92,23 @@ export default function AcessoPage() {
       >
         {/* Header */}
         <div style={{ marginBottom: "48px" }}>
+          {/* Accent line */}
+          <div
+            className="acesso-fade-1"
+            aria-hidden="true"
+            style={{
+              width: "24px",
+              height: "1px",
+              background: "oklch(50% 0.044 215)",
+              marginBottom: "16px",
+            }}
+          />
           <h1
+            className="acesso-fade-1"
             style={{
               fontFamily: "var(--font-display)",
               fontSize: "28px",
-              fontWeight: 500,
+              fontWeight: 600,
               letterSpacing: "-0.022em",
               color: "#E8EAF0",
               marginBottom: "10px",
@@ -103,24 +116,39 @@ export default function AcessoPage() {
           >
             Código de acesso
           </h1>
-          <p style={{ fontSize: "14px", color: "oklch(56% 0.020 220)", lineHeight: 1.6 }}>
+          <p
+            className="acesso-fade-2"
+            style={{
+              fontSize: "14px",
+              color: "oklch(56% 0.020 220)",
+              lineHeight: 1.6,
+            }}
+          >
             Insira o código se você recebeu um convite.
           </p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleCodeSubmit} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        <form
+          className="acesso-fade-3"
+          onSubmit={handleCodeSubmit}
+          style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+        >
           <div style={{ position: "relative" }}>
             <input
               ref={inputRef}
               type="text"
               value={code}
-              onChange={(e) => { setCode(e.target.value); setCodeError(""); }}
+              onChange={(e) => {
+                setCode(e.target.value);
+                setCodeError("");
+              }}
               placeholder="AMBARIL-XXXX"
               autoComplete="off"
               autoCapitalize="characters"
               spellCheck={false}
               disabled={scanning}
+              className={`acesso-code-input${scanning ? " scanning" : ""}`}
               style={{
                 width: "100%",
                 padding: "13px 16px",
@@ -128,15 +156,15 @@ export default function AcessoPage() {
                 border: codeError
                   ? "1px solid oklch(52% 0.18 25)"
                   : scanning
-                  ? "1px solid oklch(68% 0.052 215)"
-                  : "1px solid oklch(30% 0.016 220)",
+                    ? "1px solid oklch(68% 0.052 215)"
+                    : "1px solid oklch(30% 0.016 220)",
                 background: "oklch(9% 0.010 220 / 0.7)",
                 fontFamily: "var(--font-mono)",
                 fontSize: "16px",
                 letterSpacing: "0.08em",
                 color: "#E8EAF0",
                 outline: "none",
-                transition: "border-color 200ms ease",
+                transition: "border-color 200ms ease, box-shadow 300ms ease",
                 textTransform: "uppercase",
               }}
               onFocus={(e) => {
@@ -151,7 +179,13 @@ export default function AcessoPage() {
             {/* Scan sweep line */}
             {scanning && <div className="code-scan-line" aria-hidden="true" />}
             {codeError && (
-              <p style={{ marginTop: "6px", fontSize: "12px", color: "oklch(62% 0.16 25)" }}>
+              <p
+                style={{
+                  marginTop: "6px",
+                  fontSize: "12px",
+                  color: "oklch(62% 0.16 25)",
+                }}
+              >
                 {codeError}
               </p>
             )}
@@ -160,17 +194,19 @@ export default function AcessoPage() {
           <button
             type="submit"
             disabled={scanning || !code.trim()}
+            className="acesso-btn-primary"
             style={{
               padding: "13px",
               borderRadius: "8px",
               border: "none",
-              background: scanning || !code.trim() ? "oklch(18% 0.013 220)" : "#F7F8FA",
-              color: scanning || !code.trim() ? "oklch(36% 0.018 220)" : "#07080B",
+              background:
+                scanning || !code.trim() ? "oklch(18% 0.013 220)" : "#F7F8FA",
+              color:
+                scanning || !code.trim() ? "oklch(36% 0.018 220)" : "#07080B",
               fontFamily: "var(--font)",
               fontSize: "14px",
               fontWeight: 500,
               cursor: scanning || !code.trim() ? "not-allowed" : "pointer",
-              transition: "background 200ms ease, color 200ms ease",
               letterSpacing: "-0.01em",
             }}
             onMouseEnter={(e) => {
@@ -188,6 +224,7 @@ export default function AcessoPage() {
 
         {/* Divider */}
         <div
+          className="acesso-fade-4"
           style={{
             display: "flex",
             alignItems: "center",
@@ -195,14 +232,35 @@ export default function AcessoPage() {
             margin: "32px 0",
           }}
         >
-          <div style={{ flex: 1, height: "1px", background: "oklch(24% 0.014 220)" }} />
-          <span style={{ fontSize: "11px", color: "oklch(46% 0.020 220)", letterSpacing: "0.01em" }}>
+          <div
+            style={{
+              flex: 1,
+              height: "1px",
+              background:
+                "linear-gradient(to left, oklch(24% 0.014 220), transparent)",
+            }}
+          />
+          <span
+            style={{
+              fontSize: "11px",
+              color: "oklch(46% 0.020 220)",
+              letterSpacing: "0.01em",
+            }}
+          >
             sem convite?
           </span>
-          <div style={{ flex: 1, height: "1px", background: "oklch(24% 0.014 220)" }} />
+          <div
+            style={{
+              flex: 1,
+              height: "1px",
+              background:
+                "linear-gradient(to right, oklch(24% 0.014 220), transparent)",
+            }}
+          />
         </div>
 
         <button
+          className="acesso-fade-4"
           id="interesse"
           onClick={() => setShowInterest(true)}
           style={{
@@ -218,8 +276,12 @@ export default function AcessoPage() {
             transition: "color 200ms ease",
             textAlign: "center",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = "oklch(60% 0.024 220)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = "oklch(44% 0.020 220)"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "oklch(60% 0.024 220)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "oklch(44% 0.020 220)";
+          }}
         >
           Não tenho convite mas quero aumentar minhas chances
         </button>

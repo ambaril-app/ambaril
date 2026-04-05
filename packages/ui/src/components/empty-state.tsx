@@ -25,38 +25,56 @@ export interface EmptyStateProps {
   action?: EmptyStateAction;
   /** Optional secondary action button (ghost variant) */
   secondaryAction?: EmptyStateAction;
+  /** Optional loss-aversion / social-proof line */
+  proofLine?: string;
   /** Additional className */
   className?: string;
 }
 
 // ---------------------------------------------------------------------------
-// Component
+// Component — Level 2 (Moment)
 // ---------------------------------------------------------------------------
 
-function EmptyState({ icon: Icon, title, description, action, secondaryAction, className }: EmptyStateProps) {
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+  action,
+  secondaryAction,
+  proofLine,
+  className,
+}: EmptyStateProps) {
   return (
     <div
       className={cn(
         "flex flex-col items-center justify-center gap-3 px-6 py-12 text-center",
+        "animate-[fade-in_400ms_ease-out]",
         className,
       )}
     >
       {Icon && (
         <div className="mb-1">
-          <Icon className="h-10 w-10 text-text-muted" strokeWidth={1.5} />
+          <Icon
+            className="h-12 w-12 text-text-muted opacity-60"
+            strokeWidth={1.25}
+          />
         </div>
       )}
 
-      <h3 className="text-base font-medium text-text-bright">{title}</h3>
+      <h3 className="font-display text-2xl font-medium tracking-[-0.01em] text-text-white text-balance">
+        {title}
+      </h3>
 
       {description && (
-        <p className="max-w-sm text-sm text-text-secondary">{description}</p>
+        <p className="max-w-[360px] text-sm leading-relaxed text-text-secondary text-pretty">
+          {description}
+        </p>
       )}
 
       {(action || secondaryAction) && (
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-3 flex items-center gap-2">
           {action && (
-            <Button variant="secondary" size="sm" onPress={action.onPress}>
+            <Button variant="default" size="default" onPress={action.onPress}>
               {action.label}
             </Button>
           )}
@@ -66,6 +84,12 @@ function EmptyState({ icon: Icon, title, description, action, secondaryAction, c
             </Button>
           )}
         </div>
+      )}
+
+      {proofLine && (
+        <p className="mt-1 max-w-xs text-xs italic text-text-muted">
+          {proofLine}
+        </p>
       )}
     </div>
   );

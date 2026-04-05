@@ -19,27 +19,65 @@ The Mini-ERP + Fiscal module is the **operational backbone** of Ambaril. It owns
 
 **Core responsibilities:**
 
-| Capability | Description |
-|-----------|-------------|
-| **Order Pipeline** | Kanban-style order management with FSM: Pendente -> Pago -> Separacao -> Enviado -> Entregue. Ana Clara processes orders exclusively on mobile. |
-| **Product & SKU Catalog** | Product hierarchy with multi-variant SKUs (size x color). Prices, costs, barcodes, weights, dimensions. |
-| **Inventory Management** | Real-time stock tracking per SKU: available, reserved, in production, in transit. Depletion velocity and days-to-zero forecasting. |
-| **Fiscal (NF-e)** | Brazilian electronic invoice emission via Focus NFe API. Auto-emit on separation, retry on failure, return NF-e from Trocas module. |
-| **Shipping** | Label generation and tracking via Melhor Envio. Carrier selection, cost tracking, delivery status updates. |
-| **Financial Reconciliation** | Transaction tracking per order. Mercado Pago webhook ingestion. Sale/refund/chargeback/fee recording. |
-| **Margin Calculator** (sub-module) | Per-SKU margin breakdown: production cost + shipping + gateway fees + taxes = total cost vs. price. Price simulation. |
-| **DRE / Income Statement** (sub-module) | Monthly P&L report: gross revenue, discounts, returns, net revenue, COGS, gross margin, operational expenses, net income. |
+| Capability                              | Description                                                                                                                                     |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Order Pipeline**                      | Kanban-style order management with FSM: Pendente -> Pago -> Separacao -> Enviado -> Entregue. Ana Clara processes orders exclusively on mobile. |
+| **Product & SKU Catalog**               | Product hierarchy with multi-variant SKUs (size x color). Prices, costs, barcodes, weights, dimensions.                                         |
+| **Inventory Management**                | Real-time stock tracking per SKU: available, reserved, in production, in transit. Depletion velocity and days-to-zero forecasting.              |
+| **Fiscal (NF-e)**                       | Brazilian electronic invoice emission via Focus NFe API. Auto-emit on separation, retry on failure, return NF-e from Trocas module.             |
+| **Shipping**                            | Label generation and tracking via Melhor Envio. Carrier selection, cost tracking, delivery status updates.                                      |
+| **Financial Reconciliation**            | Transaction tracking per order. Mercado Pago webhook ingestion. Sale/refund/chargeback/fee recording.                                           |
+| **Margin Calculator** (sub-module)      | Per-SKU margin breakdown: production cost + shipping + gateway fees + taxes = total cost vs. price. Price simulation.                           |
+| **DRE / Income Statement** (sub-module) | Monthly P&L report: gross revenue, discounts, returns, net revenue, COGS, gross margin, operational expenses, net income.                       |
 
 **Primary users:**
 
-| User | Role | Usage Pattern |
-|------|------|---------------|
+| User          | Role         | Usage Pattern                                                                                                                |
+| ------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------- |
 | **Ana Clara** | `operations` | Processes orders, enters stock, generates labels. **Uses EXCLUSIVELY on mobile** — all screens must be mobile-first for her. |
-| **Tavares** | `operations` | Monitors inventory, depletion velocity, production entry. Desktop and mobile. |
-| **Pedro** | `finance` | Reviews DRE, uses margin calculator, monitors financial transactions. Read-only on operational views. |
-| **Marcus** | `admin` | Full access. Financial overview and strategic decisions. |
+| **Tavares**   | `operations` | Monitors inventory, depletion velocity, production entry. Desktop and mobile.                                                |
+| **Pedro**     | `finance`    | Reviews DRE, uses margin calculator, monitors financial transactions. Read-only on operational views.                        |
+| **Marcus**    | `admin`      | Full access. Financial overview and strategic decisions.                                                                     |
 
-**Out of scope:** This module does NOT handle the public checkout flow (owned by Checkout module), production planning (owned by PCP module), or exchange/return workflows (owned by Trocas module). ERP receives orders from Checkout, receives production entries from PCP, and receives return/restock events from Trocas.
+**Out of scope:** This module does NOT handle the public checkout flow (owned by Checkout module), production planning (owned by PLM module), or exchange/return workflows (owned by Trocas module). ERP receives orders from Checkout, receives production entries from PLM, and receives return/restock events from Trocas.
+
+### 1.1 Product Lifecycle & Catalog Ownership
+
+The ERP is the **master aggregator** for all products across all channels (DTC, B2B, services, custom orders). Products enter the ERP via two paths:
+
+| Path                | Source                                                                                                                                                                                                                                                           | Use Case                                                                       |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| **Via PLM**         | Product developed internally → approved → enriched by creative team (name, description, tags — AI pre-filled from PLM context) → sent to ERP with operational data (weight, dimensions, cost, fiscal) → pushed to Shopify for final polish (photos, videos, SEO) | Standard collection products                                                   |
+| **Direct creation** | Created directly in ERP                                                                                                                                                                                                                                          | Purchased goods, B2B confection, services, items not going through development |
+
+**Product lifecycle state** (explicit field on `erp.products`):
+
+`development` → `approved` → `operational` → `ready_to_publish` → `published` → `active` → `discontinued`
+
+**Ownership transfer rules after Shopify push:**
+
+| Field                    | Created in     | Master after Shopify push                       |
+| ------------------------ | -------------- | ----------------------------------------------- |
+| Name, description, tags  | PLM (creative) | **Shopify** — Shopify edits are NOT overwritten |
+| Price                    | ERP            | **ERP** — push overwrites Shopify               |
+| Cost, weight, dimensions | ERP            | **Never goes to Shopify** (internal)            |
+| Images, videos           | Shopify        | **Shopify** — ERP pulls backup copy via sync    |
+| Stock levels             | ERP            | **ERP** — push to Shopify                       |
+
+**Inventory sync model:**
+
+| Operation                                  | Authority                      | Notification                                       |
+| ------------------------------------------ | ------------------------------ | -------------------------------------------------- |
+| DTC sale (Shopify checkout)                | **Shopify** (atomic decrement) | ERP mirrors via webhook                            |
+| Production entry, adjustments, B2B, manual | **ERP**                        | ERP pushes to Shopify                              |
+| Reconciliation                             | Automatic (periodic)           | Re-sync on divergence, human alert after 3 retries |
+
+**Order sources:** The ERP receives orders from multiple channels via `order_source` enum:
+
+- `shopify` — DTC orders via Shopify webhook
+- `b2b_portal` — B2B wholesale orders
+- `manual` — Manual orders created in ERP (with payment link generation)
+- `custom_order` — Custom confection / services
 
 ---
 
@@ -47,63 +85,80 @@ The Mini-ERP + Fiscal module is the **operational backbone** of Ambaril. It owns
 
 ### 2.1 Ana Clara (Operations — Mobile)
 
-| # | Story | Acceptance Criteria |
-|---|-------|-------------------|
-| US-01 | As Ana Clara, I want to see all pending orders as cards on my phone so I can process them one by one during the day. | Mobile order list with large cards, status badges, swipe gestures. Loads in under 2s on 4G. |
-| US-02 | As Ana Clara, I want to tap an order card and see all details (customer, items, payment status) on a single scrollable mobile screen. | Order detail page with all info visible without horizontal scrolling. |
-| US-03 | As Ana Clara, I want to mark an order as "Separando" with a single big button so I can start picking items. | Action button at least 44px tall. Tap triggers status transition + inventory reservation. |
-| US-04 | As Ana Clara, I want to emit the NF-e for an order with one tap, and see immediate feedback on success or failure. | Button triggers NF-e emission via Focus NFe. Loading spinner. Success shows NF-e number. Failure shows error + retry button. |
-| US-05 | As Ana Clara, I want to generate a shipping label with one tap and see the tracking code immediately. | Button triggers Melhor Envio label generation. Success shows tracking code and label PDF link. |
-| US-06 | As Ana Clara, I want to mark an order as "Enviado" after I hand it to the carrier, with the tracking code already filled. | Confirm button. Status transitions to shipped. Customer notification triggered automatically. |
-| US-07 | As Ana Clara, I want to enter new stock when a production batch arrives, by selecting the SKU and typing the quantity. | Mobile stock entry form: SKU dropdown (searchable), quantity numeric input, confirm button. All touch targets >= 44px. |
-| US-08 | As Ana Clara, I want the full order processing flow (Separar -> NF-e -> Etiqueta -> Enviar) to be sequential big buttons so I never lose my place. | Step-by-step action flow on mobile with disabled/enabled states based on current order status. |
+| #     | Story                                                                                                                                              | Acceptance Criteria                                                                                                          |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| US-01 | As Ana Clara, I want to see all pending orders as cards on my phone so I can process them one by one during the day.                               | Mobile order list with large cards, status badges, swipe gestures. Loads in under 2s on 4G.                                  |
+| US-02 | As Ana Clara, I want to tap an order card and see all details (customer, items, payment status) on a single scrollable mobile screen.              | Order detail page with all info visible without horizontal scrolling.                                                        |
+| US-03 | As Ana Clara, I want to mark an order as "Separando" with a single big button so I can start picking items.                                        | Action button at least 44px tall. Tap triggers status transition + inventory reservation.                                    |
+| US-04 | As Ana Clara, I want to emit the NF-e for an order with one tap, and see immediate feedback on success or failure.                                 | Button triggers NF-e emission via Focus NFe. Loading spinner. Success shows NF-e number. Failure shows error + retry button. |
+| US-05 | As Ana Clara, I want to generate a shipping label with one tap and see the tracking code immediately.                                              | Button triggers Melhor Envio label generation. Success shows tracking code and label PDF link.                               |
+| US-06 | As Ana Clara, I want to mark an order as "Enviado" after I hand it to the carrier, with the tracking code already filled.                          | Confirm button. Status transitions to shipped. Customer notification triggered automatically.                                |
+| US-07 | As Ana Clara, I want to enter new stock when a production batch arrives, by selecting the SKU and typing the quantity.                             | Mobile stock entry form: SKU dropdown (searchable), quantity numeric input, confirm button. All touch targets >= 44px.       |
+| US-08 | As Ana Clara, I want the full order processing flow (Separar -> NF-e -> Etiqueta -> Enviar) to be sequential big buttons so I never lose my place. | Step-by-step action flow on mobile with disabled/enabled states based on current order status.                               |
 
 ### 2.2 Tavares (Operations — Desktop & Mobile)
 
-| # | Story | Acceptance Criteria |
-|---|-------|-------------------|
-| US-09 | As Tavares, I want to see the inventory dashboard with all SKUs, their available quantities, and depletion velocity so I can anticipate stockouts. | Table with columns: SKU, Product, Size, Color, Available, Reserved, InProd, Velocity, DaysToZero, Badge. Sortable columns. |
-| US-10 | As Tavares, I want to receive an alert when a SKU's estimated days-to-zero drops below 14 days so I can reorder. | Alert appears in notification bell + Discord #alertas. Badge shows "Alerta" on inventory row. |
-| US-11 | As Tavares, I want to see the order pipeline as a Kanban board so I can see how many orders are in each stage. | Kanban with columns: Pendente, Pago, Separacao, Enviado, Entregue. Card counts per column. |
-| US-12 | As Tavares, I want to filter the inventory by category, low-stock only, or search by SKU code so I can find what I need quickly. | Filter bar with category dropdown, "Low Stock" toggle, search input. Results update in real-time. |
-| US-13 | As Tavares, I want to view the full movement log for any SKU so I can trace every entry, exit, and adjustment. | Chronological list: date, type (sale/return/adjustment/etc.), quantity (+/-), reference, user. Filterable by date range and type. |
-| US-14 | As Tavares, I want to register inventory adjustments (loss, damage, manual correction) with a reason note. | Adjustment form: SKU selector, quantity, movement type (loss/adjustment), notes field. Logged with user ID. |
+| #     | Story                                                                                                                                              | Acceptance Criteria                                                                                                               |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| US-09 | As Tavares, I want to see the inventory dashboard with all SKUs, their available quantities, and depletion velocity so I can anticipate stockouts. | Table with columns: SKU, Product, Size, Color, Available, Reserved, InProd, Velocity, DaysToZero, Badge. Sortable columns.        |
+| US-10 | As Tavares, I want to receive an alert when a SKU's estimated days-to-zero drops below 14 days so I can reorder.                                   | Alert appears in notification bell + Discord #alertas. Badge shows "Alerta" on inventory row.                                     |
+| US-11 | As Tavares, I want to see the order pipeline as a Kanban board so I can see how many orders are in each stage.                                     | Kanban with columns: Pendente, Pago, Separacao, Enviado, Entregue. Card counts per column.                                        |
+| US-12 | As Tavares, I want to filter the inventory by category, low-stock only, or search by SKU code so I can find what I need quickly.                   | Filter bar with category dropdown, "Low Stock" toggle, search input. Results update in real-time.                                 |
+| US-13 | As Tavares, I want to view the full movement log for any SKU so I can trace every entry, exit, and adjustment.                                     | Chronological list: date, type (sale/return/adjustment/etc.), quantity (+/-), reference, user. Filterable by date range and type. |
+| US-14 | As Tavares, I want to register inventory adjustments (loss, damage, manual correction) with a reason note.                                         | Adjustment form: SKU selector, quantity, movement type (loss/adjustment), notes field. Logged with user ID.                       |
 
 ### 2.3 Pedro (Finance)
 
-| # | Story | Acceptance Criteria |
-|---|-------|-------------------|
-| US-15 | As Pedro, I want to use the Margin Calculator to see the exact margin for each SKU, broken down by cost component. | Card showing: production cost, avg shipping, gateway fee, tax, total cost, price, margin R$, margin %. |
-| US-16 | As Pedro, I want to simulate a different price in the Margin Calculator and see how the margin changes before we commit. | "Simular" input field. Typing a new price instantly recalculates margin below. Does not save until confirmed. |
-| US-17 | As Pedro, I want to see a ranking of SKUs by margin percentage so I can identify our most and least profitable items. | Table sorted by margin% descending. Columns: SKU, Product, Price, Cost, Margin R$, Margin %. Color-coded (green > 50%, yellow 30-50%, red < 30%). |
-| US-18 | As Pedro, I want to generate and review the monthly DRE (Income Statement) so I can understand our financial position. | DRE report with all line items: Receita Bruta, (-) Descontos, (-) Devoluções, = Receita Líquida, (-) CMV, = Margem Bruta, (-) Despesas Operacionais, = Lucro Líquido. Period selector (month/year). |
-| US-19 | As Pedro, I want to approve a DRE once I've reviewed it, locking it from further edits. | "Aprovar" button. Changes status from draft to final. Records approved_by. Final DRE cannot be edited. |
-| US-20 | As Pedro, I want to see the financial reconciliation screen comparing Mercado Pago records with our internal transactions. | Side-by-side comparison: MP transaction vs. ERP transaction. Highlight discrepancies. Totals per period. |
+| #     | Story                                                                                                                      | Acceptance Criteria                                                                                                                                                                                 |
+| ----- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-15 | As Pedro, I want to use the Margin Calculator to see the exact margin for each SKU, broken down by cost component.         | Card showing: production cost, avg shipping, gateway fee, tax, total cost, price, margin R$, margin %.                                                                                              |
+| US-16 | As Pedro, I want to simulate a different price in the Margin Calculator and see how the margin changes before we commit.   | "Simular" input field. Typing a new price instantly recalculates margin below. Does not save until confirmed.                                                                                       |
+| US-17 | As Pedro, I want to see a ranking of SKUs by margin percentage so I can identify our most and least profitable items.      | Table sorted by margin% descending. Columns: SKU, Product, Price, Cost, Margin R$, Margin %. Color-coded (green > 50%, yellow 30-50%, red < 30%).                                                   |
+| US-18 | As Pedro, I want to generate and review the monthly DRE (Income Statement) so I can understand our financial position.     | DRE report with all line items: Receita Bruta, (-) Descontos, (-) Devoluções, = Receita Líquida, (-) CMV, = Margem Bruta, (-) Despesas Operacionais, = Lucro Líquido. Period selector (month/year). |
+| US-19 | As Pedro, I want to approve a DRE once I've reviewed it, locking it from further edits.                                    | "Aprovar" button. Changes status from draft to final. Records approved_by. Final DRE cannot be edited.                                                                                              |
+| US-20 | As Pedro, I want to see the financial reconciliation screen comparing Mercado Pago records with our internal transactions. | Side-by-side comparison: MP transaction vs. ERP transaction. Highlight discrepancies. Totals per period.                                                                                            |
 
 ### 2.4 Marcus (Admin)
 
-| # | Story | Acceptance Criteria |
-|---|-------|-------------------|
+| #     | Story                                                                                                                                                | Acceptance Criteria                                                                                      |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
 | US-21 | As Marcus, I want a high-level overview of the ERP: orders today, revenue, pending orders, inventory alerts, so I can assess operations at a glance. | Summary cards on ERP home: Orders Today, Revenue Today, Pending Orders, Low Stock Alerts, NF-e Failures. |
-| US-22 | As Marcus, I want full access to every ERP feature including deleting products, cancelling orders, and managing NF-e. | Admin role has all permissions. Delete and admin actions visible. |
+| US-22 | As Marcus, I want full access to every ERP feature including deleting products, cancelling orders, and managing NF-e.                                | Admin role has all permissions. Delete and admin actions visible.                                        |
 
 ### 2.5 System
 
-| # | Story | Acceptance Criteria |
-|---|-------|-------------------|
-| US-23 | As the system, I want to automatically reserve inventory when an order is paid so two orders can't claim the same stock. | On `order.paid`: decrement `quantity_available`, increment `quantity_reserved` for each SKU in the order. |
+| #     | Story                                                                                                                           | Acceptance Criteria                                                                                                    |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| US-23 | As the system, I want to automatically reserve inventory when an order is paid so two orders can't claim the same stock.        | On `order.paid`: decrement `quantity_available`, increment `quantity_reserved` for each SKU in the order.              |
 | US-24 | As the system, I want to calculate depletion velocity daily (30-day rolling average of exits) so forecasting is always current. | Daily job computes `depletion_velocity` per SKU from `inventory_movements` where type in (sale, loss) in last 30 days. |
-| US-25 | As the system, I want to alert operations when a SKU hits its reorder point or when days-to-zero < 14. | Flare event: `stock.low` at reorder point, `stock.critical` when days-to-zero < 7. |
-| US-26 | As the system, I want to auto-emit NF-e when an order transitions to "Separando" so Ana Clara doesn't have to remember. | On status transition to `separating`: queue NF-e emission job. If emission fails, show retry button and alert Discord. |
-| US-27 | As the system, I want to record Mercado Pago webhook events as financial transactions so reconciliation is automatic. | Webhook handler creates `erp.financial_transactions` row on payment.approved, refund, chargeback events. |
+| US-25 | As the system, I want to alert operations when a SKU hits its reorder point or when days-to-zero < 14.                          | Flare event: `stock.low` at reorder point, `stock.critical` when days-to-zero < 7.                                     |
+| US-26 | As the system, I want to auto-emit NF-e when an order transitions to "Separando" so Ana Clara doesn't have to remember.         | On status transition to `separating`: queue NF-e emission job. If emission fails, show retry button and alert Discord. |
+| US-27 | As the system, I want to record Mercado Pago webhook events as financial transactions so reconciliation is automatic.           | Webhook handler creates `erp.financial_transactions` row on payment.approved, refund, chargeback events.               |
 
 ### 2.6 Pandora96 — Tier Classification & Revenue Leak
 
-| # | Story | Acceptance Criteria |
-|---|-------|-------------------|
-| US-28 | As Tavares, I want to see SKUs classified into tiers (Ouro/Prata/Bronze) based on depletion velocity and sales volume so I can prioritize restocking decisions. | Tier badge on inventory table (gold/silver/bronze color-coded). Sortable by tier column. Filterable by tier via dropdown. SKUs with < 30 days of data show "Sem classificacao". |
-| US-29 | As Marcus, I want to see estimated revenue leak per out-of-stock SKU so I can quantify the cost of stockouts. | Revenue Leak card on inventory dashboard: R$ lost per SKU = visits x conversion rate x avg ticket. Top 10 SKUs by loss. Weekly trend sparkline. Data sourced from `erp.revenue_leak_daily`. |
-| US-30 | As Tavares, I want to be alerted when a Gold-tier SKU has fewer than 7 days of coverage so I can trigger restocking urgently. | Flare event `inventory.coverage_critical` fires. Discord #alertas notification with SKU details. In-app notification to `operations` role. Badge "OURO CRITICO" on inventory row. |
+| #     | Story                                                                                                                                                           | Acceptance Criteria                                                                                                                                                                         |
+| ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-28 | As Tavares, I want to see SKUs classified into tiers (Ouro/Prata/Bronze) based on depletion velocity and sales volume so I can prioritize restocking decisions. | Tier badge on inventory table (gold/silver/bronze color-coded). Sortable by tier column. Filterable by tier via dropdown. SKUs with < 30 days of data show "Sem classificacao".             |
+| US-29 | As Marcus, I want to see estimated revenue leak per out-of-stock SKU so I can quantify the cost of stockouts.                                                   | Revenue Leak card on inventory dashboard: R$ lost per SKU = visits x conversion rate x avg ticket. Top 10 SKUs by loss. Weekly trend sparkline. Data sourced from `erp.revenue_leak_daily`. |
+| US-30 | As Tavares, I want to be alerted when a Gold-tier SKU has fewer than 7 days of coverage so I can trigger restocking urgently.                                   | Flare event `inventory.coverage_critical` fires. Discord #alertas notification with SKU details. In-app notification to `operations` role. Badge "OURO CRITICO" on inventory row.           |
+
+### 2.7 Manual Orders & Payment Links
+
+| #     | Story                                                                                                                                                             | Acceptance Criteria                                                                                                                                    |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| US-31 | As operations, I want to create a manual order in the ERP (B2B, custom, service) by selecting or creating products, setting quantities, and assigning a customer. | Order creation form: customer search/create, add items (existing SKU or create new), set prices, add notes. order_source = 'manual' or 'custom_order'. |
+| US-32 | As operations, I want to generate a payment link for a manual order so the customer can pay via PIX, card, or boleto faturado.                                    | Generate link via Mercado Pago API. Link shows order summary + payment options. Upon payment, order transitions to 'paid' automatically via webhook.   |
+| US-33 | As operations, I want to mark an order as bonification (seeding/gift) so it follows the fulfillment flow but is excluded from revenue in the DRE.                 | Toggle 'is_bonification' on order. Bonification orders generate NF-e with CFOP de bonificação. Excluded from gross_revenue in DRE.                     |
+
+### 2.8 Cloud Estoque (Pre-sale)
+
+| #     | Story                                                                                                                                                        | Acceptance Criteria                                                                                                                                                      |
+| ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----- | ------------------------------------------------------------------------------------ |
+| US-34 | As Tavares, I want to enable cloud selling for a SKU that is out of physical stock but has production in progress, so customers can pre-order.               | Toggle cloud_selling_enabled on inventory. Set delivery estimate (manual date, or linked to PLM production order). Set optional discount and frete policy.               |
+| US-35 | As the system, I want to push cloud stock metadata to Shopify so the product page shows a pre-sale badge with estimated delivery date and optional discount. | Push metafields to Shopify: cloud_enabled, delivery_estimate, discount_percent. Shopify theme displays badge. Delivery estimate updates daily as date approaches.        |
+| US-36 | As the system, I want to handle mixed orders (physical + cloud items) by creating separate shipments with independent NF-e and tracking.                     | Order with mixed items creates 2 shipment records. Each shipment has its own NF-e and shipping label. Cloud shipment waits in 'awaiting_production' until stock arrives. |
+| US-37 | As Marcus, I want to configure the cloud delivery estimate source: manual date, PLM production timeline, or other.                                           | Settings per SKU: delivery_source = 'manual'                                                                                                                             | 'plm' | custom. When 'plm', estimate auto-updates from production_order expected_completion. |
 
 ---
 
@@ -286,6 +341,14 @@ global.users.id           --> erp.margin_calculations.calculated_by
 global.users.id           --> erp.income_statements.approved_by
 ```
 
+**ERP-specific order fields** (added to order entity or as ERP overlay):
+
+| Field           | Type                                                    | Description                                                |
+| --------------- | ------------------------------------------------------- | ---------------------------------------------------------- |
+| order_source    | ENUM('shopify', 'b2b_portal', 'manual', 'custom_order') | Channel origin. Default: 'shopify'.                        |
+| is_bonification | BOOLEAN DEFAULT FALSE                                   | Seeding/gift orders excluded from DRE revenue calculations |
+| auto_emit_nfe   | BOOLEAN DEFAULT TRUE                                    | Override: set FALSE for B2B faturado (manual NF-e)         |
+
 ### 3.2 Enums
 
 ```sql
@@ -309,22 +372,26 @@ CREATE TYPE erp.shipping_label_status AS ENUM (
     'pending', 'generated', 'shipped', 'in_transit', 'delivered', 'returned'
 );
 CREATE TYPE erp.income_statement_status AS ENUM ('draft', 'final');
+CREATE TYPE erp.order_source AS ENUM (
+    'shopify', 'b2b_portal', 'manual', 'custom_order'
+);
 ```
 
 ### 3.3 erp.products
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| name | VARCHAR(255) | NOT NULL | Product display name (e.g., "Camiseta Preta Basic") |
-| slug | VARCHAR(255) | NOT NULL, UNIQUE | URL-friendly identifier (e.g., "camiseta-preta-basic") |
-| description | TEXT | NULL | Product description for internal use |
-| category | VARCHAR(100) | NOT NULL | Product category (e.g., "camiseta", "moletom", "calca", "acessorio") |
-| images | JSONB | NOT NULL DEFAULT '[]' | Array of image objects: `[{ "url": "...", "alt": "...", "position": 1 }]` |
-| is_active | BOOLEAN | NOT NULL DEFAULT TRUE | Soft-toggle for catalog visibility |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| deleted_at | TIMESTAMPTZ | NULL | Soft delete |
+| Column          | Type         | Constraints                    | Description                                                                                              |
+| --------------- | ------------ | ------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| id              | UUID         | PK, DEFAULT gen_random_uuid()  | UUID v7                                                                                                  |
+| name            | VARCHAR(255) | NOT NULL                       | Product display name (e.g., "Camiseta Preta Basic")                                                      |
+| slug            | VARCHAR(255) | NOT NULL, UNIQUE               | URL-friendly identifier (e.g., "camiseta-preta-basic")                                                   |
+| description     | TEXT         | NULL                           | Product description for internal use                                                                     |
+| category        | VARCHAR(100) | NOT NULL                       | Product category (e.g., "camiseta", "moletom", "calca", "acessorio")                                     |
+| images          | JSONB        | NOT NULL DEFAULT '[]'          | Array of image objects: `[{ "url": "...", "alt": "...", "position": 1 }]`                                |
+| is_active       | BOOLEAN      | NOT NULL DEFAULT TRUE          | Soft-toggle for catalog visibility                                                                       |
+| lifecycle_state | VARCHAR(20)  | NOT NULL DEFAULT 'operational' | Product lifecycle: development, approved, operational, ready_to_publish, published, active, discontinued |
+| created_at      | TIMESTAMPTZ  | NOT NULL DEFAULT NOW()         |                                                                                                          |
+| updated_at      | TIMESTAMPTZ  | NOT NULL DEFAULT NOW()         |                                                                                                          |
+| deleted_at      | TIMESTAMPTZ  | NULL                           | Soft delete                                                                                              |
 
 **Indexes:**
 
@@ -338,22 +405,22 @@ CREATE INDEX idx_products_name_search ON erp.products USING GIN (to_tsvector('po
 
 ### 3.4 erp.skus
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| product_id | UUID | NOT NULL, FK erp.products(id) | Parent product |
-| sku_code | VARCHAR(50) | NOT NULL, UNIQUE | Human-readable SKU code (e.g., "SKU-0412-P-PRETA") |
-| size | VARCHAR(10) | NOT NULL | Size variant (e.g., "PP", "P", "M", "G", "GG", "XGG") |
-| color | VARCHAR(50) | NOT NULL | Color variant (e.g., "Preto", "Branco", "Off-White") |
-| price | NUMERIC(12,2) | NOT NULL | Current selling price in BRL |
-| compare_at_price | NUMERIC(12,2) | NULL | Original/strike-through price (for showing discounts) |
-| cost_price | NUMERIC(12,2) | NOT NULL | Unit production/purchase cost. Fed by PCP cost_analyses. |
-| weight_grams | INTEGER | NOT NULL | Weight in grams (for shipping calculation) |
-| dimensions | JSONB | NULL | `{ "length_cm": 30, "width_cm": 20, "height_cm": 5 }` |
-| barcode | VARCHAR(50) | NULL | EAN-13 or internal barcode |
-| is_active | BOOLEAN | NOT NULL DEFAULT TRUE | Whether this variant is available for sale |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| Column           | Type          | Constraints                   | Description                                              |
+| ---------------- | ------------- | ----------------------------- | -------------------------------------------------------- |
+| id               | UUID          | PK, DEFAULT gen_random_uuid() | UUID v7                                                  |
+| product_id       | UUID          | NOT NULL, FK erp.products(id) | Parent product                                           |
+| sku_code         | VARCHAR(50)   | NOT NULL, UNIQUE              | Human-readable SKU code (e.g., "SKU-0412-P-PRETA")       |
+| size             | VARCHAR(10)   | NOT NULL                      | Size variant (e.g., "PP", "P", "M", "G", "GG", "XGG")    |
+| color            | VARCHAR(50)   | NOT NULL                      | Color variant (e.g., "Preto", "Branco", "Off-White")     |
+| price            | NUMERIC(12,2) | NOT NULL                      | Current selling price in BRL                             |
+| compare_at_price | NUMERIC(12,2) | NULL                          | Original/strike-through price (for showing discounts)    |
+| cost_price       | NUMERIC(12,2) | NOT NULL                      | Unit production/purchase cost. Fed by PLM cost_analyses. |
+| weight_grams     | INTEGER       | NOT NULL                      | Weight in grams (for shipping calculation)               |
+| dimensions       | JSONB         | NULL                          | `{ "length_cm": 30, "width_cm": 20, "height_cm": 5 }`    |
+| barcode          | VARCHAR(50)   | NULL                          | EAN-13 or internal barcode                               |
+| is_active        | BOOLEAN       | NOT NULL DEFAULT TRUE         | Whether this variant is available for sale               |
+| created_at       | TIMESTAMPTZ   | NOT NULL DEFAULT NOW()        |                                                          |
+| updated_at       | TIMESTAMPTZ   | NOT NULL DEFAULT NOW()        |                                                          |
 
 **Indexes:**
 
@@ -368,19 +435,25 @@ CREATE INDEX idx_skus_barcode ON erp.skus (barcode) WHERE barcode IS NOT NULL;
 
 ### 3.5 erp.inventory
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| sku_id | UUID | NOT NULL, FK erp.skus(id), UNIQUE | One inventory record per SKU |
-| quantity_available | INTEGER | NOT NULL DEFAULT 0 | Units available for sale |
-| quantity_reserved | INTEGER | NOT NULL DEFAULT 0 | Units reserved by paid orders not yet shipped |
-| quantity_in_production | INTEGER | NOT NULL DEFAULT 0 | Units currently being produced (from PCP) |
-| quantity_in_transit | INTEGER | NOT NULL DEFAULT 0 | Units shipped to warehouse but not yet received |
-| reorder_point | INTEGER | NOT NULL DEFAULT 10 | Alert threshold: notify when available <= reorder_point |
-| depletion_velocity | NUMERIC(8,2) | NOT NULL DEFAULT 0 | Average units sold per day (30-day rolling window) |
-| last_entry_at | TIMESTAMPTZ | NULL | Timestamp of last stock increase (production_entry, purchase, return) |
-| last_exit_at | TIMESTAMPTZ | NULL | Timestamp of last stock decrease (sale, loss) |
-| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| Column                   | Type         | Constraints                       | Description                                                           |
+| ------------------------ | ------------ | --------------------------------- | --------------------------------------------------------------------- |
+| id                       | UUID         | PK, DEFAULT gen_random_uuid()     | UUID v7                                                               |
+| sku_id                   | UUID         | NOT NULL, FK erp.skus(id), UNIQUE | One inventory record per SKU                                          |
+| quantity_available       | INTEGER      | NOT NULL DEFAULT 0                | Units available for sale                                              |
+| quantity_reserved        | INTEGER      | NOT NULL DEFAULT 0                | Units reserved by paid orders not yet shipped                         |
+| quantity_in_production   | INTEGER      | NOT NULL DEFAULT 0                | Units currently being produced (from PLM)                             |
+| quantity_in_transit      | INTEGER      | NOT NULL DEFAULT 0                | Units shipped to warehouse but not yet received                       |
+| reorder_point            | INTEGER      | NOT NULL DEFAULT 10               | Alert threshold: notify when available <= reorder_point               |
+| depletion_velocity       | NUMERIC(8,2) | NOT NULL DEFAULT 0                | Average units sold per day (30-day rolling window)                    |
+| cloud_selling_enabled    | BOOLEAN      | NOT NULL DEFAULT FALSE            | Whether this SKU accepts pre-sale when out of physical stock          |
+| cloud_delivery_estimate  | DATE         | NULL                              | Estimated availability date for cloud stock (manual or from PLM)      |
+| cloud_discount_percent   | NUMERIC(5,2) | NULL                              | Optional discount for cloud purchases (e.g., 10.00 = 10%)             |
+| cloud_frete_policy       | VARCHAR(20)  | NULL                              | 'brand_absorbs', 'customer_pays', 'free_shipping'                     |
+| quantity_cloud_available | INTEGER      | NOT NULL DEFAULT 0                | Units in production available for pre-sale                            |
+| quantity_cloud_reserved  | INTEGER      | NOT NULL DEFAULT 0                | Units already sold as cloud pre-sale                                  |
+| last_entry_at            | TIMESTAMPTZ  | NULL                              | Timestamp of last stock increase (production_entry, purchase, return) |
+| last_exit_at             | TIMESTAMPTZ  | NULL                              | Timestamp of last stock decrease (sale, loss)                         |
+| updated_at               | TIMESTAMPTZ  | NOT NULL DEFAULT NOW()            |                                                                       |
 
 **Indexes:**
 
@@ -393,17 +466,17 @@ CREATE INDEX idx_inventory_velocity ON erp.inventory (depletion_velocity DESC);
 
 ### 3.6 erp.inventory_movements
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| sku_id | UUID | NOT NULL, FK erp.skus(id) | Which SKU was affected |
-| movement_type | erp.movement_type | NOT NULL | sale, return, adjustment, production_entry, purchase, loss |
-| quantity | INTEGER | NOT NULL | Positive = entry, negative = exit. Always stored with sign. |
-| reference_type | VARCHAR(50) | NULL | Source entity type: 'order', 'exchange_request', 'production_order', 'manual' |
-| reference_id | UUID | NULL | ID of the source entity |
-| notes | TEXT | NULL | Free-text note (required for adjustments and losses) |
-| user_id | UUID | NOT NULL, FK global.users(id) | Who performed or triggered this movement |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | Immutable — append-only log |
+| Column         | Type              | Constraints                   | Description                                                                   |
+| -------------- | ----------------- | ----------------------------- | ----------------------------------------------------------------------------- |
+| id             | UUID              | PK, DEFAULT gen_random_uuid() | UUID v7                                                                       |
+| sku_id         | UUID              | NOT NULL, FK erp.skus(id)     | Which SKU was affected                                                        |
+| movement_type  | erp.movement_type | NOT NULL                      | sale, return, adjustment, production_entry, purchase, loss                    |
+| quantity       | INTEGER           | NOT NULL                      | Positive = entry, negative = exit. Always stored with sign.                   |
+| reference_type | VARCHAR(50)       | NULL                          | Source entity type: 'order', 'exchange_request', 'production_order', 'manual' |
+| reference_id   | UUID              | NULL                          | ID of the source entity                                                       |
+| notes          | TEXT              | NULL                          | Free-text note (required for adjustments and losses)                          |
+| user_id        | UUID              | NOT NULL, FK global.users(id) | Who performed or triggered this movement                                      |
+| created_at     | TIMESTAMPTZ       | NOT NULL DEFAULT NOW()        | Immutable — append-only log                                                   |
 
 > **Immutability:** This table is append-only. Movements are never updated or deleted. To correct a mistake, insert a compensating movement (e.g., a positive adjustment to reverse a loss).
 
@@ -422,26 +495,26 @@ CREATE INDEX idx_movements_sku_30d ON erp.inventory_movements (sku_id, created_a
 
 ### 3.7 erp.nfe_documents
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| order_id | UUID | NOT NULL, FK checkout.orders(id) | Which order this NF-e belongs to |
-| type | erp.nfe_type | NOT NULL | sale (normal invoice) or return (Trocas return invoice) |
-| nfe_number | INTEGER | NULL | NF-e number assigned by SEFAZ (NULL until authorized) |
-| nfe_key | VARCHAR(44) | NULL | 44-digit NF-e access key (NULL until authorized) |
-| series | INTEGER | NOT NULL DEFAULT 1 | NF-e series number |
-| status | erp.nfe_status | NOT NULL DEFAULT 'pending' | pending -> processing -> authorized / rejected / denied / cancelled |
-| xml_url | TEXT | NULL | S3 URL to the signed XML file |
-| pdf_url | TEXT | NULL | S3 URL to the DANFE PDF |
-| api_provider | VARCHAR(50) | NOT NULL DEFAULT 'focus_nfe' | Which NF-e API provider was used |
-| api_request | JSONB | NULL | Full request payload sent to the NF-e API (for debugging) |
-| api_response | JSONB | NULL | Full response payload from the NF-e API (for debugging) |
-| error_message | TEXT | NULL | Human-readable error message if rejected/denied |
-| retry_count | INTEGER | NOT NULL DEFAULT 0 | Number of emission attempts |
-| emitted_at | TIMESTAMPTZ | NULL | When the NF-e was authorized by SEFAZ |
-| cancelled_at | TIMESTAMPTZ | NULL | When the NF-e was cancelled (within 24h window) |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| Column        | Type           | Constraints                      | Description                                                         |
+| ------------- | -------------- | -------------------------------- | ------------------------------------------------------------------- |
+| id            | UUID           | PK, DEFAULT gen_random_uuid()    | UUID v7                                                             |
+| order_id      | UUID           | NOT NULL, FK checkout.orders(id) | Which order this NF-e belongs to                                    |
+| type          | erp.nfe_type   | NOT NULL                         | sale (normal invoice) or return (Trocas return invoice)             |
+| nfe_number    | INTEGER        | NULL                             | NF-e number assigned by SEFAZ (NULL until authorized)               |
+| nfe_key       | VARCHAR(44)    | NULL                             | 44-digit NF-e access key (NULL until authorized)                    |
+| series        | INTEGER        | NOT NULL DEFAULT 1               | NF-e series number                                                  |
+| status        | erp.nfe_status | NOT NULL DEFAULT 'pending'       | pending -> processing -> authorized / rejected / denied / cancelled |
+| xml_url       | TEXT           | NULL                             | S3 URL to the signed XML file                                       |
+| pdf_url       | TEXT           | NULL                             | S3 URL to the DANFE PDF                                             |
+| api_provider  | VARCHAR(50)    | NOT NULL DEFAULT 'focus_nfe'     | Which NF-e API provider was used                                    |
+| api_request   | JSONB          | NULL                             | Full request payload sent to the NF-e API (for debugging)           |
+| api_response  | JSONB          | NULL                             | Full response payload from the NF-e API (for debugging)             |
+| error_message | TEXT           | NULL                             | Human-readable error message if rejected/denied                     |
+| retry_count   | INTEGER        | NOT NULL DEFAULT 0               | Number of emission attempts                                         |
+| emitted_at    | TIMESTAMPTZ    | NULL                             | When the NF-e was authorized by SEFAZ                               |
+| cancelled_at  | TIMESTAMPTZ    | NULL                             | When the NF-e was cancelled (within 24h window)                     |
+| created_at    | TIMESTAMPTZ    | NOT NULL DEFAULT NOW()           |                                                                     |
+| updated_at    | TIMESTAMPTZ    | NOT NULL DEFAULT NOW()           |                                                                     |
 
 **Indexes:**
 
@@ -457,19 +530,19 @@ CREATE INDEX idx_nfe_pending_retry ON erp.nfe_documents (retry_count)
 
 ### 3.8 erp.financial_transactions
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| order_id | UUID | NOT NULL, FK checkout.orders(id) | Which order this transaction belongs to |
-| type | erp.transaction_type | NOT NULL | sale, refund, chargeback, fee |
-| amount | NUMERIC(12,2) | NOT NULL | Transaction amount in BRL. Positive for sale, negative for refund/chargeback. |
-| payment_method | erp.payment_method | NOT NULL | credit_card, pix, bank_slip |
-| payment_provider | VARCHAR(50) | NOT NULL DEFAULT 'mercado_pago' | Payment gateway identifier |
-| provider_transaction_id | VARCHAR(255) | NULL | External transaction ID from the payment provider |
-| status | erp.transaction_status | NOT NULL DEFAULT 'pending' | pending -> settled / failed |
-| metadata | JSONB | NULL | Provider-specific data: installments, card brand, PIX end-to-end ID, etc. |
-| settled_at | TIMESTAMPTZ | NULL | When the funds were confirmed/settled |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| Column                  | Type                   | Constraints                      | Description                                                                   |
+| ----------------------- | ---------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
+| id                      | UUID                   | PK, DEFAULT gen_random_uuid()    | UUID v7                                                                       |
+| order_id                | UUID                   | NOT NULL, FK checkout.orders(id) | Which order this transaction belongs to                                       |
+| type                    | erp.transaction_type   | NOT NULL                         | sale, refund, chargeback, fee                                                 |
+| amount                  | NUMERIC(12,2)          | NOT NULL                         | Transaction amount in BRL. Positive for sale, negative for refund/chargeback. |
+| payment_method          | erp.payment_method     | NOT NULL                         | credit_card, pix, bank_slip                                                   |
+| payment_provider        | VARCHAR(50)            | NOT NULL DEFAULT 'mercado_pago'  | Payment gateway identifier                                                    |
+| provider_transaction_id | VARCHAR(255)           | NULL                             | External transaction ID from the payment provider                             |
+| status                  | erp.transaction_status | NOT NULL DEFAULT 'pending'       | pending -> settled / failed                                                   |
+| metadata                | JSONB                  | NULL                             | Provider-specific data: installments, card brand, PIX end-to-end ID, etc.     |
+| settled_at              | TIMESTAMPTZ            | NULL                             | When the funds were confirmed/settled                                         |
+| created_at              | TIMESTAMPTZ            | NOT NULL DEFAULT NOW()           |                                                                               |
 
 > **Immutability:** Financial transactions are append-only. A refund is a new row with `type=refund` and negative amount, not an update to the original sale row.
 
@@ -488,24 +561,24 @@ CREATE INDEX idx_ft_created ON erp.financial_transactions (created_at DESC);
 
 ### 3.9 erp.margin_calculations
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| sku_id | UUID | NOT NULL, FK erp.skus(id) | Which SKU this calculation is for |
-| production_cost | NUMERIC(10,2) | NOT NULL | Unit production cost (from PCP cost_analyses or manual entry) |
-| avg_shipping_cost | NUMERIC(10,2) | NOT NULL | Average shipping cost per unit (calculated from recent labels) |
-| gateway_fee_rate | NUMERIC(5,4) | NOT NULL | Payment gateway fee as decimal (e.g., 0.0499 = 4.99%) |
-| tax_rate | NUMERIC(5,4) | NOT NULL | Tax rate as decimal (e.g., 0.0400 = 4.00% Simples Nacional) |
-| total_cost | NUMERIC(10,2) | NOT NULL | Computed: production_cost + avg_shipping_cost + (price * gateway_fee_rate) + (price * tax_rate) |
-| price | NUMERIC(10,2) | NOT NULL | Current selling price (snapshot at calculation time) |
-| margin_amount | NUMERIC(10,2) | NOT NULL | price - total_cost |
-| margin_percent | NUMERIC(5,2) | NOT NULL | (margin_amount / price) * 100 |
-| simulated_price | NUMERIC(10,2) | NULL | Optional: hypothetical price for "what-if" simulation |
-| simulated_margin_percent | NUMERIC(5,2) | NULL | Margin % at the simulated price |
-| calculated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | When this calculation was performed |
-| calculated_by | UUID | NOT NULL, FK global.users(id) | Who triggered the calculation |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| Column                   | Type          | Constraints                   | Description                                                                                     |
+| ------------------------ | ------------- | ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| id                       | UUID          | PK, DEFAULT gen_random_uuid() | UUID v7                                                                                         |
+| sku_id                   | UUID          | NOT NULL, FK erp.skus(id)     | Which SKU this calculation is for                                                               |
+| production_cost          | NUMERIC(10,2) | NOT NULL                      | Unit production cost (from PLM cost_analyses or manual entry)                                   |
+| avg_shipping_cost        | NUMERIC(10,2) | NOT NULL                      | Average shipping cost per unit (calculated from recent labels)                                  |
+| gateway_fee_rate         | NUMERIC(5,4)  | NOT NULL                      | Payment gateway fee as decimal (e.g., 0.0499 = 4.99%)                                           |
+| tax_rate                 | NUMERIC(5,4)  | NOT NULL                      | Tax rate as decimal (e.g., 0.0400 = 4.00% Simples Nacional)                                     |
+| total_cost               | NUMERIC(10,2) | NOT NULL                      | Computed: production*cost + avg_shipping_cost + (price * gateway*fee_rate) + (price * tax_rate) |
+| price                    | NUMERIC(10,2) | NOT NULL                      | Current selling price (snapshot at calculation time)                                            |
+| margin_amount            | NUMERIC(10,2) | NOT NULL                      | price - total_cost                                                                              |
+| margin_percent           | NUMERIC(5,2)  | NOT NULL                      | (margin_amount / price) \* 100                                                                  |
+| simulated_price          | NUMERIC(10,2) | NULL                          | Optional: hypothetical price for "what-if" simulation                                           |
+| simulated_margin_percent | NUMERIC(5,2)  | NULL                          | Margin % at the simulated price                                                                 |
+| calculated_at            | TIMESTAMPTZ   | NOT NULL DEFAULT NOW()        | When this calculation was performed                                                             |
+| calculated_by            | UUID          | NOT NULL, FK global.users(id) | Who triggered the calculation                                                                   |
+| created_at               | TIMESTAMPTZ   | NOT NULL DEFAULT NOW()        |                                                                                                 |
+| updated_at               | TIMESTAMPTZ   | NOT NULL DEFAULT NOW()        |                                                                                                 |
 
 **Indexes:**
 
@@ -517,25 +590,25 @@ CREATE INDEX idx_margin_percent ON erp.margin_calculations (margin_percent DESC)
 
 ### 3.10 erp.income_statements
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| period_month | INTEGER | NOT NULL, CHECK (period_month BETWEEN 1 AND 12) | Month (1-12) |
-| period_year | INTEGER | NOT NULL, CHECK (period_year >= 2024) | Year (e.g., 2026) |
-| gross_revenue | NUMERIC(14,2) | NOT NULL | Sum of all sale transactions in the period |
-| discounts | NUMERIC(12,2) | NOT NULL DEFAULT 0 | Sum of all discount amounts applied |
-| returns | NUMERIC(12,2) | NOT NULL DEFAULT 0 | Sum of all refund/return amounts |
-| net_revenue | NUMERIC(14,2) | NOT NULL | gross_revenue - discounts - returns |
-| cogs | NUMERIC(12,2) | NOT NULL | Cost of Goods Sold: sum of (cost_price * quantity) for all items sold |
-| gross_margin | NUMERIC(14,2) | NOT NULL | net_revenue - cogs |
-| operational_expenses | JSONB | NOT NULL DEFAULT '{}' | Breakdown: `{ "marketing": 1500.00, "shipping": 3200.00, "platform_fees": 800.00, "personnel": 5000.00, "other": 200.00 }` |
-| net_income | NUMERIC(14,2) | NOT NULL | gross_margin - SUM(operational_expenses values) |
-| status | erp.income_statement_status | NOT NULL DEFAULT 'draft' | draft = editable, final = locked (approved by Pedro) |
-| notes | TEXT | NULL | Internal notes about the period |
-| generated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | When the report was generated |
-| approved_by | UUID | NULL, FK global.users(id) | Who approved (sets status to final). NULL if draft. |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| Column               | Type                        | Constraints                                     | Description                                                                                                                |
+| -------------------- | --------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| id                   | UUID                        | PK, DEFAULT gen_random_uuid()                   | UUID v7                                                                                                                    |
+| period_month         | INTEGER                     | NOT NULL, CHECK (period_month BETWEEN 1 AND 12) | Month (1-12)                                                                                                               |
+| period_year          | INTEGER                     | NOT NULL, CHECK (period_year >= 2024)           | Year (e.g., 2026)                                                                                                          |
+| gross_revenue        | NUMERIC(14,2)               | NOT NULL                                        | Sum of all sale transactions in the period                                                                                 |
+| discounts            | NUMERIC(12,2)               | NOT NULL DEFAULT 0                              | Sum of all discount amounts applied                                                                                        |
+| returns              | NUMERIC(12,2)               | NOT NULL DEFAULT 0                              | Sum of all refund/return amounts                                                                                           |
+| net_revenue          | NUMERIC(14,2)               | NOT NULL                                        | gross_revenue - discounts - returns                                                                                        |
+| cogs                 | NUMERIC(12,2)               | NOT NULL                                        | Cost of Goods Sold: sum of (cost_price \* quantity) for all items sold                                                     |
+| gross_margin         | NUMERIC(14,2)               | NOT NULL                                        | net_revenue - cogs                                                                                                         |
+| operational_expenses | JSONB                       | NOT NULL DEFAULT '{}'                           | Breakdown: `{ "marketing": 1500.00, "shipping": 3200.00, "platform_fees": 800.00, "personnel": 5000.00, "other": 200.00 }` |
+| net_income           | NUMERIC(14,2)               | NOT NULL                                        | gross_margin - SUM(operational_expenses values)                                                                            |
+| status               | erp.income_statement_status | NOT NULL DEFAULT 'draft'                        | draft = editable, final = locked (approved by Pedro)                                                                       |
+| notes                | TEXT                        | NULL                                            | Internal notes about the period                                                                                            |
+| generated_at         | TIMESTAMPTZ                 | NOT NULL DEFAULT NOW()                          | When the report was generated                                                                                              |
+| approved_by          | UUID                        | NULL, FK global.users(id)                       | Who approved (sets status to final). NULL if draft.                                                                        |
+| created_at           | TIMESTAMPTZ                 | NOT NULL DEFAULT NOW()                          |                                                                                                                            |
+| updated_at           | TIMESTAMPTZ                 | NOT NULL DEFAULT NOW()                          |                                                                                                                            |
 
 **Indexes:**
 
@@ -546,21 +619,21 @@ CREATE INDEX idx_dre_status ON erp.income_statements (status);
 
 ### 3.11 erp.shipping_labels
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| order_id | UUID | NOT NULL, FK checkout.orders(id) | Which order this label is for |
-| provider | VARCHAR(50) | NOT NULL DEFAULT 'melhor_envio' | Shipping provider API |
-| service_name | VARCHAR(100) | NOT NULL | Carrier and service (e.g., "Correios PAC", "Correios SEDEX", "Jadlog Package") |
-| tracking_code | VARCHAR(50) | NULL | Tracking code (populated after label generation) |
-| label_url | TEXT | NULL | URL to the label PDF |
-| cost | NUMERIC(8,2) | NOT NULL | Shipping cost in BRL |
-| estimated_delivery_days | INTEGER | NOT NULL | Business days for delivery |
-| status | erp.shipping_label_status | NOT NULL DEFAULT 'pending' | pending -> generated -> shipped -> in_transit -> delivered / returned |
-| shipped_at | TIMESTAMPTZ | NULL | When the package was handed to the carrier |
-| delivered_at | TIMESTAMPTZ | NULL | When the package was delivered to the customer |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| Column                  | Type                      | Constraints                      | Description                                                                    |
+| ----------------------- | ------------------------- | -------------------------------- | ------------------------------------------------------------------------------ |
+| id                      | UUID                      | PK, DEFAULT gen_random_uuid()    | UUID v7                                                                        |
+| order_id                | UUID                      | NOT NULL, FK checkout.orders(id) | Which order this label is for                                                  |
+| provider                | VARCHAR(50)               | NOT NULL DEFAULT 'melhor_envio'  | Shipping provider API                                                          |
+| service_name            | VARCHAR(100)              | NOT NULL                         | Carrier and service (e.g., "Correios PAC", "Correios SEDEX", "Jadlog Package") |
+| tracking_code           | VARCHAR(50)               | NULL                             | Tracking code (populated after label generation)                               |
+| label_url               | TEXT                      | NULL                             | URL to the label PDF                                                           |
+| cost                    | NUMERIC(8,2)              | NOT NULL                         | Shipping cost in BRL                                                           |
+| estimated_delivery_days | INTEGER                   | NOT NULL                         | Business days for delivery                                                     |
+| status                  | erp.shipping_label_status | NOT NULL DEFAULT 'pending'       | pending -> generated -> shipped -> in_transit -> delivered / returned          |
+| shipped_at              | TIMESTAMPTZ               | NULL                             | When the package was handed to the carrier                                     |
+| delivered_at            | TIMESTAMPTZ               | NULL                             | When the package was delivered to the customer                                 |
+| created_at              | TIMESTAMPTZ               | NOT NULL DEFAULT NOW()           |                                                                                |
+| updated_at              | TIMESTAMPTZ               | NOT NULL DEFAULT NOW()           |                                                                                |
 
 **Indexes:**
 
@@ -957,6 +1030,7 @@ Stacked bar or donut chart within the DRE section showing percentage breakdown o
 ```
 
 **PT-BR labels:**
+
 - Chart title: "Composicao de Custos"
 - Categories: "Produto" (COGS), "Marketing", "Pessoal", "Infraestrutura", "Frete"
 - Comparison column header: "Variacao"
@@ -1171,6 +1245,30 @@ Stacked bar or donut chart within the DRE section showing percentage breakdown o
   registrada: +50 unidades"
 ```
 
+### 4.13 Shopify ↔ ERP Reconciliation
+
+```
++-----------------------------------------------------------------------------+
+|  ERP > Sincronizacao Shopify                    Ultima sync: ha 3 min       |
++-----------------------------------------------------------------------------+
+|                                                                               |
+|  +--- PEDIDOS ----------------+  +--- ESTOQUE ----------------+             |
+|  | Shopify (hoje):  47        |  | Divergencias:  0           |             |
+|  | ERP (hoje):      47   OK   |  | SKUs monitorados: 142 OK  |             |
+|  | Pendentes sync:   0        |  | Ultimo push: ha 5 min     |             |
+|  +----------------------------+  +----------------------------+             |
+|                                                                               |
+|  PENDENTES DE SINCRONIZACAO (0)                                              |
+|  +--------+----------+----------+--------+                                   |
+|  | Pedido | Hora     | Status   | Acao   |                                   |
+|  +--------+----------+----------+--------+                                   |
+|  | (nenhum pendente)                      |                                   |
+|  +----------------------------------------+                                   |
+|                                                                               |
+|  [Forcar resincronizacao]     [Ver historico de sync]                        |
++-----------------------------------------------------------------------------+
+```
+
 ---
 
 ## 5. API Endpoints
@@ -1179,115 +1277,115 @@ All endpoints follow the patterns defined in [API.md](../../architecture/API.md)
 
 ### 5.1 Products
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/products` | Internal | List products (paginated) | `?cursor=&limit=25&search=&category=&isActive=&sort=-createdAt` | `{ data: Product[], meta: Pagination }` |
-| GET | `/products/:id` | Internal | Get product detail with SKUs | `?include=skus,inventory` | `{ data: Product }` |
-| POST | `/products` | Internal | Create product | `{ name, slug?, description?, category, images?, is_active? }` | `201 { data: Product }` |
-| PATCH | `/products/:id` | Internal | Update product | `{ name?, slug?, description?, category?, images?, is_active? }` | `{ data: Product }` |
-| DELETE | `/products/:id` | Internal | Soft-delete product | -- | `204` |
+| Method | Path            | Auth     | Description                  | Request Body / Query                                             | Response                                |
+| ------ | --------------- | -------- | ---------------------------- | ---------------------------------------------------------------- | --------------------------------------- |
+| GET    | `/products`     | Internal | List products (paginated)    | `?cursor=&limit=25&search=&category=&isActive=&sort=-createdAt`  | `{ data: Product[], meta: Pagination }` |
+| GET    | `/products/:id` | Internal | Get product detail with SKUs | `?include=skus,inventory`                                        | `{ data: Product }`                     |
+| POST   | `/products`     | Internal | Create product               | `{ name, slug?, description?, category, images?, is_active? }`   | `201 { data: Product }`                 |
+| PATCH  | `/products/:id` | Internal | Update product               | `{ name?, slug?, description?, category?, images?, is_active? }` | `{ data: Product }`                     |
+| DELETE | `/products/:id` | Internal | Soft-delete product          | --                                                               | `204`                                   |
 
 ### 5.2 SKUs
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/products/:productId/skus` | Internal | List SKUs for a product | `?isActive=` | `{ data: Sku[] }` |
-| GET | `/skus/:id` | Internal | Get single SKU detail | `?include=inventory,margin` | `{ data: Sku }` |
-| POST | `/products/:productId/skus` | Internal | Create SKU for a product | `{ sku_code, size, color, price, compare_at_price?, cost_price, weight_grams, dimensions?, barcode?, is_active? }` | `201 { data: Sku }` |
-| PATCH | `/skus/:id` | Internal | Update SKU | `{ price?, compare_at_price?, cost_price?, weight_grams?, dimensions?, barcode?, is_active? }` | `{ data: Sku }` |
-| DELETE | `/skus/:id` | Internal | Deactivate SKU (soft) | -- | `204` |
+| Method | Path                        | Auth     | Description              | Request Body / Query                                                                                               | Response            |
+| ------ | --------------------------- | -------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------ | ------------------- |
+| GET    | `/products/:productId/skus` | Internal | List SKUs for a product  | `?isActive=`                                                                                                       | `{ data: Sku[] }`   |
+| GET    | `/skus/:id`                 | Internal | Get single SKU detail    | `?include=inventory,margin`                                                                                        | `{ data: Sku }`     |
+| POST   | `/products/:productId/skus` | Internal | Create SKU for a product | `{ sku_code, size, color, price, compare_at_price?, cost_price, weight_grams, dimensions?, barcode?, is_active? }` | `201 { data: Sku }` |
+| PATCH  | `/skus/:id`                 | Internal | Update SKU               | `{ price?, compare_at_price?, cost_price?, weight_grams?, dimensions?, barcode?, is_active? }`                     | `{ data: Sku }`     |
+| DELETE | `/skus/:id`                 | Internal | Deactivate SKU (soft)    | --                                                                                                                 | `204`               |
 
 ### 5.3 Inventory
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/inventory` | Internal | List all inventory records | `?sort=-depletionVelocity&lowStockOnly=true&search=&category=&cursor=&limit=25` | `{ data: InventoryRow[], meta: Pagination }` |
-| GET | `/inventory/:skuId` | Internal | Get inventory for a specific SKU | -- | `{ data: Inventory }` |
-| PATCH | `/inventory/:skuId` | Internal | Update inventory settings | `{ reorder_point? }` | `{ data: Inventory }` |
-| GET | `/inventory/:skuId/movements` | Internal | List movements for a SKU | `?type=&dateFrom=&dateTo=&cursor=&limit=25` | `{ data: Movement[], meta: Pagination }` |
-| POST | `/inventory/:skuId/movements` | Internal | Record manual movement | `{ movement_type, quantity, reference_type?, reference_id?, notes? }` | `201 { data: Movement }` |
+| Method | Path                          | Auth     | Description                      | Request Body / Query                                                            | Response                                     |
+| ------ | ----------------------------- | -------- | -------------------------------- | ------------------------------------------------------------------------------- | -------------------------------------------- |
+| GET    | `/inventory`                  | Internal | List all inventory records       | `?sort=-depletionVelocity&lowStockOnly=true&search=&category=&cursor=&limit=25` | `{ data: InventoryRow[], meta: Pagination }` |
+| GET    | `/inventory/:skuId`           | Internal | Get inventory for a specific SKU | --                                                                              | `{ data: Inventory }`                        |
+| PATCH  | `/inventory/:skuId`           | Internal | Update inventory settings        | `{ reorder_point? }`                                                            | `{ data: Inventory }`                        |
+| GET    | `/inventory/:skuId/movements` | Internal | List movements for a SKU         | `?type=&dateFrom=&dateTo=&cursor=&limit=25`                                     | `{ data: Movement[], meta: Pagination }`     |
+| POST   | `/inventory/:skuId/movements` | Internal | Record manual movement           | `{ movement_type, quantity, reference_type?, reference_id?, notes? }`           | `201 { data: Movement }`                     |
 
 ### 5.4 Orders (ERP Operations)
 
 Orders are created by the Checkout module. ERP manages fulfillment state transitions.
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/orders` | Internal | List orders (paginated, filterable) | `?status=&cursor=&limit=25&search=&dateFrom=&dateTo=&sort=-createdAt` | `{ data: Order[], meta: Pagination }` |
-| GET | `/orders/:id` | Internal | Get order detail (items, payment, shipping, NF-e, timeline) | `?include=items,nfe,shipping,transactions,timeline` | `{ data: Order }` |
-| GET | `/orders/pipeline` | Internal | Get order counts by status (for Kanban) | -- | `{ data: { pending: N, paid: N, separating: N, shipped: N, delivered: N } }` |
-| POST | `/orders/:id/actions/mark-separating` | Internal | Transition order to separating | -- | `{ data: Order }` |
-| POST | `/orders/:id/actions/generate-nfe` | Internal | Emit NF-e for order | -- | `{ data: NfeDocument }` |
-| POST | `/orders/:id/actions/generate-label` | Internal | Generate shipping label | `{ service_name? }` | `{ data: ShippingLabel }` |
-| POST | `/orders/:id/actions/mark-shipped` | Internal | Mark order as shipped | -- | `{ data: Order }` |
-| POST | `/orders/:id/actions/mark-delivered` | Internal | Mark order as delivered | -- | `{ data: Order }` |
-| POST | `/orders/:id/actions/cancel` | Internal | Cancel order | `{ reason? }` | `{ data: Order }` |
+| Method | Path                                  | Auth     | Description                                                 | Request Body / Query                                                  | Response                                                                     |
+| ------ | ------------------------------------- | -------- | ----------------------------------------------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| GET    | `/orders`                             | Internal | List orders (paginated, filterable)                         | `?status=&cursor=&limit=25&search=&dateFrom=&dateTo=&sort=-createdAt` | `{ data: Order[], meta: Pagination }`                                        |
+| GET    | `/orders/:id`                         | Internal | Get order detail (items, payment, shipping, NF-e, timeline) | `?include=items,nfe,shipping,transactions,timeline`                   | `{ data: Order }`                                                            |
+| GET    | `/orders/pipeline`                    | Internal | Get order counts by status (for Kanban)                     | --                                                                    | `{ data: { pending: N, paid: N, separating: N, shipped: N, delivered: N } }` |
+| POST   | `/orders/:id/actions/mark-separating` | Internal | Transition order to separating                              | --                                                                    | `{ data: Order }`                                                            |
+| POST   | `/orders/:id/actions/generate-nfe`    | Internal | Emit NF-e for order                                         | --                                                                    | `{ data: NfeDocument }`                                                      |
+| POST   | `/orders/:id/actions/generate-label`  | Internal | Generate shipping label                                     | `{ service_name? }`                                                   | `{ data: ShippingLabel }`                                                    |
+| POST   | `/orders/:id/actions/mark-shipped`    | Internal | Mark order as shipped                                       | --                                                                    | `{ data: Order }`                                                            |
+| POST   | `/orders/:id/actions/mark-delivered`  | Internal | Mark order as delivered                                     | --                                                                    | `{ data: Order }`                                                            |
+| POST   | `/orders/:id/actions/cancel`          | Internal | Cancel order                                                | `{ reason? }`                                                         | `{ data: Order }`                                                            |
 
 ### 5.5 NF-e Documents
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/nfe-documents` | Internal | List all NF-e documents | `?status=&type=&dateFrom=&dateTo=&cursor=&limit=25` | `{ data: NfeDocument[], meta: Pagination }` |
-| GET | `/nfe-documents/:id` | Internal | Get NF-e detail | -- | `{ data: NfeDocument }` |
-| POST | `/nfe-documents/:id/actions/emit` | Internal | (Re-)emit an NF-e | -- | `{ data: NfeDocument }` |
-| POST | `/nfe-documents/:id/actions/cancel` | Internal | Cancel an authorized NF-e (within 24h) | `{ reason }` | `{ data: NfeDocument }` |
-| POST | `/nfe-documents/:id/actions/retry` | Internal | Retry a failed NF-e emission | -- | `{ data: NfeDocument }` |
+| Method | Path                                | Auth     | Description                            | Request Body / Query                                | Response                                    |
+| ------ | ----------------------------------- | -------- | -------------------------------------- | --------------------------------------------------- | ------------------------------------------- |
+| GET    | `/nfe-documents`                    | Internal | List all NF-e documents                | `?status=&type=&dateFrom=&dateTo=&cursor=&limit=25` | `{ data: NfeDocument[], meta: Pagination }` |
+| GET    | `/nfe-documents/:id`                | Internal | Get NF-e detail                        | --                                                  | `{ data: NfeDocument }`                     |
+| POST   | `/nfe-documents/:id/actions/emit`   | Internal | (Re-)emit an NF-e                      | --                                                  | `{ data: NfeDocument }`                     |
+| POST   | `/nfe-documents/:id/actions/cancel` | Internal | Cancel an authorized NF-e (within 24h) | `{ reason }`                                        | `{ data: NfeDocument }`                     |
+| POST   | `/nfe-documents/:id/actions/retry`  | Internal | Retry a failed NF-e emission           | --                                                  | `{ data: NfeDocument }`                     |
 
 ### 5.6 Shipping Labels
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/shipping-labels` | Internal | List shipping labels | `?status=&cursor=&limit=25` | `{ data: ShippingLabel[], meta: Pagination }` |
-| GET | `/shipping-labels/:id` | Internal | Get shipping label detail | -- | `{ data: ShippingLabel }` |
-| POST | `/shipping-labels/:id/actions/track` | Internal | Force tracking status refresh | -- | `{ data: ShippingLabel }` |
+| Method | Path                                 | Auth     | Description                   | Request Body / Query        | Response                                      |
+| ------ | ------------------------------------ | -------- | ----------------------------- | --------------------------- | --------------------------------------------- |
+| GET    | `/shipping-labels`                   | Internal | List shipping labels          | `?status=&cursor=&limit=25` | `{ data: ShippingLabel[], meta: Pagination }` |
+| GET    | `/shipping-labels/:id`               | Internal | Get shipping label detail     | --                          | `{ data: ShippingLabel }`                     |
+| POST   | `/shipping-labels/:id/actions/track` | Internal | Force tracking status refresh | --                          | `{ data: ShippingLabel }`                     |
 
 ### 5.7 Financial Transactions
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/financial-transactions` | Internal | List transactions | `?type=&status=&paymentMethod=&dateFrom=&dateTo=&cursor=&limit=25` | `{ data: Transaction[], meta: Pagination }` |
-| GET | `/financial-transactions/:id` | Internal | Get transaction detail | -- | `{ data: Transaction }` |
-| GET | `/financial-transactions/reconciliation` | Internal | Get reconciliation summary | `?dateFrom=&dateTo=&provider=mercado_pago` | `{ data: ReconciliationSummary }` |
+| Method | Path                                     | Auth     | Description                | Request Body / Query                                               | Response                                    |
+| ------ | ---------------------------------------- | -------- | -------------------------- | ------------------------------------------------------------------ | ------------------------------------------- |
+| GET    | `/financial-transactions`                | Internal | List transactions          | `?type=&status=&paymentMethod=&dateFrom=&dateTo=&cursor=&limit=25` | `{ data: Transaction[], meta: Pagination }` |
+| GET    | `/financial-transactions/:id`            | Internal | Get transaction detail     | --                                                                 | `{ data: Transaction }`                     |
+| GET    | `/financial-transactions/reconciliation` | Internal | Get reconciliation summary | `?dateFrom=&dateTo=&provider=mercado_pago`                         | `{ data: ReconciliationSummary }`           |
 
 ### 5.8 Margin Calculator
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/margin-calculations` | Internal | List latest margin calculations per SKU | `?sort=-marginPercent&cursor=&limit=25` | `{ data: MarginCalculation[], meta: Pagination }` |
-| GET | `/margin-calculations/:skuId` | Internal | Get latest margin for a SKU | -- | `{ data: MarginCalculation }` |
-| POST | `/margin-calculations/:skuId/actions/calculate` | Internal | Calculate margin for a SKU | `{ production_cost?, avg_shipping_cost?, gateway_fee_rate?, tax_rate? }` | `{ data: MarginCalculation }` |
-| POST | `/margin-calculations/:skuId/actions/simulate` | Internal | Simulate margin at a given price | `{ simulated_price }` | `{ data: MarginCalculation }` |
-| GET | `/margin-calculations/config` | Internal | Get default gateway and tax rates | -- | `{ data: { gateway_fee_rate, tax_rate } }` |
-| PUT | `/margin-calculations/config` | Internal | Update default rates | `{ gateway_fee_rate?, tax_rate? }` | `{ data: { gateway_fee_rate, tax_rate } }` |
+| Method | Path                                            | Auth     | Description                             | Request Body / Query                                                     | Response                                          |
+| ------ | ----------------------------------------------- | -------- | --------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------- |
+| GET    | `/margin-calculations`                          | Internal | List latest margin calculations per SKU | `?sort=-marginPercent&cursor=&limit=25`                                  | `{ data: MarginCalculation[], meta: Pagination }` |
+| GET    | `/margin-calculations/:skuId`                   | Internal | Get latest margin for a SKU             | --                                                                       | `{ data: MarginCalculation }`                     |
+| POST   | `/margin-calculations/:skuId/actions/calculate` | Internal | Calculate margin for a SKU              | `{ production_cost?, avg_shipping_cost?, gateway_fee_rate?, tax_rate? }` | `{ data: MarginCalculation }`                     |
+| POST   | `/margin-calculations/:skuId/actions/simulate`  | Internal | Simulate margin at a given price        | `{ simulated_price }`                                                    | `{ data: MarginCalculation }`                     |
+| GET    | `/margin-calculations/config`                   | Internal | Get default gateway and tax rates       | --                                                                       | `{ data: { gateway_fee_rate, tax_rate } }`        |
+| PUT    | `/margin-calculations/config`                   | Internal | Update default rates                    | `{ gateway_fee_rate?, tax_rate? }`                                       | `{ data: { gateway_fee_rate, tax_rate } }`        |
 
 ### 5.9 DRE / Income Statement
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/income-statements` | Internal | List all DRE reports | `?year=&status=&sort=-periodYear,-periodMonth` | `{ data: IncomeStatement[] }` |
-| GET | `/income-statements/:id` | Internal | Get DRE detail | -- | `{ data: IncomeStatement }` |
-| POST | `/income-statements/actions/generate` | Internal | Generate DRE for a period | `{ period_month, period_year }` | `201 { data: IncomeStatement }` |
-| PATCH | `/income-statements/:id` | Internal | Update DRE (operational expenses, notes) | `{ operational_expenses?, notes? }` | `{ data: IncomeStatement }` |
-| POST | `/income-statements/:id/actions/approve` | Internal | Approve and lock DRE | -- | `{ data: IncomeStatement }` |
+| Method | Path                                     | Auth     | Description                              | Request Body / Query                           | Response                        |
+| ------ | ---------------------------------------- | -------- | ---------------------------------------- | ---------------------------------------------- | ------------------------------- |
+| GET    | `/income-statements`                     | Internal | List all DRE reports                     | `?year=&status=&sort=-periodYear,-periodMonth` | `{ data: IncomeStatement[] }`   |
+| GET    | `/income-statements/:id`                 | Internal | Get DRE detail                           | --                                             | `{ data: IncomeStatement }`     |
+| POST   | `/income-statements/actions/generate`    | Internal | Generate DRE for a period                | `{ period_month, period_year }`                | `201 { data: IncomeStatement }` |
+| PATCH  | `/income-statements/:id`                 | Internal | Update DRE (operational expenses, notes) | `{ operational_expenses?, notes? }`            | `{ data: IncomeStatement }`     |
+| POST   | `/income-statements/:id/actions/approve` | Internal | Approve and lock DRE                     | --                                             | `{ data: IncomeStatement }`     |
 
 ### 5.10 Internal Event Receivers
 
 These are internal endpoints called by other modules (not exposed to external clients):
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/internal/orders/create-from-checkout` | Service-to-service | Called by Checkout on order.paid. Creates order in ERP pipeline. |
-| POST | `/internal/inventory/production-entry` | Service-to-service | Called by PCP when production_order completes stock_entry stage. |
-| POST | `/internal/inventory/return-entry` | Service-to-service | Called by Trocas when exchange return is received and inspected. |
-| POST | `/internal/nfe/emit-return` | Service-to-service | Called by Trocas to request return NF-e for a completed exchange. |
+| Method | Path                                    | Auth               | Description                                                       |
+| ------ | --------------------------------------- | ------------------ | ----------------------------------------------------------------- |
+| POST   | `/internal/orders/create-from-checkout` | Service-to-service | Called by Checkout on order.paid. Creates order in ERP pipeline.  |
+| POST   | `/internal/inventory/production-entry`  | Service-to-service | Called by PLM when production_order completes stock_entry stage.  |
+| POST   | `/internal/inventory/return-entry`      | Service-to-service | Called by Trocas when exchange return is received and inspected.  |
+| POST   | `/internal/nfe/emit-return`             | Service-to-service | Called by Trocas to request return NF-e for a completed exchange. |
 
 ### 5.11 Webhook Receivers
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/api/v1/webhooks/mercado-pago` | Signature verification | Mercado Pago payment/refund/chargeback webhook |
-| POST | `/api/v1/webhooks/melhor-envio` | Signature verification | Melhor Envio tracking status updates |
-| POST | `/api/v1/webhooks/focus-nfe` | Signature verification | Focus NFe NF-e status callbacks (authorized, rejected, denied) |
+| Method | Path                            | Auth                   | Description                                                    |
+| ------ | ------------------------------- | ---------------------- | -------------------------------------------------------------- |
+| POST   | `/api/v1/webhooks/mercado-pago` | Signature verification | Mercado Pago payment/refund/chargeback webhook                 |
+| POST   | `/api/v1/webhooks/melhor-envio` | Signature verification | Melhor Envio tracking status updates                           |
+| POST   | `/api/v1/webhooks/focus-nfe`    | Signature verification | Focus NFe NF-e status callbacks (authorized, rejected, denied) |
 
 ---
 
@@ -1295,85 +1393,116 @@ These are internal endpoints called by other modules (not exposed to external cl
 
 ### 6.1 Order FSM (Finite State Machine)
 
-| # | Rule | Detail |
-|---|------|--------|
-| R1 | **Valid state transitions** | `pending` -> `paid` -> `separating` -> `shipped` -> `delivered`. Also: any state -> `cancelled` (except `delivered`). Also: `shipped` -> `returned` (via Trocas). No skipping states. No backward transitions except cancel. |
-| R2 | **pending -> paid** | Triggered automatically by Mercado Pago webhook (`payment.approved`). System creates `financial_transactions` row (type=sale). System decrements `inventory.quantity_available` and increments `inventory.quantity_reserved` for each line item. Emits `order.paid` Flare event. |
-| R3 | **paid -> separating** | Triggered by Ana Clara tapping "Marcar Separando". Requires: payment confirmed (status = paid). On transition: queue NF-e emission job (auto-emit). Emits `order.separating` Flare event. |
-| R4 | **separating -> shipped** | Triggered by Ana Clara tapping "Marcar Enviado". Requires: NF-e authorized AND shipping label generated. On transition: decrement `inventory.quantity_reserved`, create `inventory_movements` row (type=sale, negative quantity). Update `shipping_labels.shipped_at`. Emits `order.shipped` Flare event (triggers customer WhatsApp notification with tracking code). |
-| R5 | **shipped -> delivered** | Triggered by Melhor Envio tracking webhook OR manual mark by operations. On transition: update `shipping_labels.delivered_at`. Emits `order.delivered` Flare event (triggers customer WhatsApp confirmation + CRM post-purchase review automation). |
-| R6 | **Cancel from any pre-delivered state** | Requires: status in (pending, paid, separating, shipped). On cancel from `paid` or later: reverse inventory reservation (increment `quantity_available`, decrement `quantity_reserved`), create `inventory_movements` row (type=return, positive quantity). If NF-e was authorized: queue NF-e cancellation (within 24h) or flag for manual handling. If payment was made: queue refund via Mercado Pago API, create `financial_transactions` row (type=refund, negative amount). |
-| R7 | **Delivered orders are immutable** | Once `delivered`, the order cannot be cancelled. Returns and exchanges go through the Trocas module, which creates a separate exchange_request referencing this order. |
+| #   | Rule                                    | Detail                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| --- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | **Valid state transitions**             | `pending` -> `paid` -> `separating` -> `shipped` -> `delivered`. Also: `paid` -> `awaiting_production` -> `separating` (for cloud orders). Also: any state -> `cancelled` (except `delivered`). Also: `shipped` -> `returned` (via Trocas). No skipping states. No backward transitions except cancel.                                                                                                                                                                            |
+| R1b | **paid -> awaiting_production**         | For orders containing cloud stock items. Order waits until production entry is recorded for the cloud SKU. On production entry: auto-transition to `separating` if all items are now in stock. Emits `order.awaiting_production` Flare event.                                                                                                                                                                                                                                     |
+| R2  | **pending -> paid**                     | Triggered automatically by Mercado Pago webhook (`payment.approved`). System creates `financial_transactions` row (type=sale). System decrements `inventory.quantity_available` and increments `inventory.quantity_reserved` for each line item. Emits `order.paid` Flare event.                                                                                                                                                                                                  |
+| R3  | **paid -> separating**                  | Triggered by Ana Clara tapping "Marcar Separando". Requires: payment confirmed (status = paid). On transition: queue NF-e emission job (auto-emit). Emits `order.separating` Flare event.                                                                                                                                                                                                                                                                                         |
+| R4  | **separating -> shipped**               | Triggered by Ana Clara tapping "Marcar Enviado". Requires: NF-e authorized AND shipping label generated. On transition: decrement `inventory.quantity_reserved`, create `inventory_movements` row (type=sale, negative quantity). Update `shipping_labels.shipped_at`. Emits `order.shipped` Flare event (triggers customer WhatsApp notification with tracking code).                                                                                                            |
+| R5  | **shipped -> delivered**                | Triggered by Melhor Envio tracking webhook OR manual mark by operations. On transition: update `shipping_labels.delivered_at`. Emits `order.delivered` Flare event (triggers customer WhatsApp confirmation + CRM post-purchase review automation).                                                                                                                                                                                                                               |
+| R6  | **Cancel from any pre-delivered state** | Requires: status in (pending, paid, separating, shipped). On cancel from `paid` or later: reverse inventory reservation (increment `quantity_available`, decrement `quantity_reserved`), create `inventory_movements` row (type=return, positive quantity). If NF-e was authorized: queue NF-e cancellation (within 24h) or flag for manual handling. If payment was made: queue refund via Mercado Pago API, create `financial_transactions` row (type=refund, negative amount). |
+| R7  | **Delivered orders are immutable**      | Once `delivered`, the order cannot be cancelled. Returns and exchanges go through the Trocas module, which creates a separate exchange_request referencing this order.                                                                                                                                                                                                                                                                                                            |
 
 ### 6.2 Inventory Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R8 | **Depletion velocity calculation** | `depletion_velocity` = total units exited (sale + loss movements) in the last 30 days / 30. Recalculated daily at 04:00 BRT by the `erp:inventory-depletion` background job. Rounded to 2 decimal places. |
-| R9 | **Days until zero** | Computed value (not stored): `days_until_zero = quantity_available / depletion_velocity`. If velocity is 0, days_until_zero = infinity (displayed as "--"). |
-| R10 | **Reorder point alert** | When `quantity_available <= reorder_point` AND `quantity_available > 0`: emit Flare event `stock.low` (priority: high). Notification sent to operations via in-app and Discord #alertas. Alert fires once per SKU until restocked above reorder_point. |
-| R11 | **Critical stock alert** | When `days_until_zero < 7` (and depletion_velocity > 0): emit Flare event `stock.critical` (priority: critical). Discord notification includes @operations mention. |
-| R12 | **Zero stock alert** | When `quantity_available = 0` AND `quantity_in_production = 0`: emit Flare event `stock.critical` with `is_zero_stock = true` flag. SKU card in inventory dashboard shows red "SEM ESTOQUE" badge. |
+| #   | Rule                               | Detail                                                                                                                                                                                                                                                 |
+| --- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| R8  | **Depletion velocity calculation** | `depletion_velocity` = total units exited (sale + loss movements) in the last 30 days / 30. Recalculated daily at 04:00 BRT by the `erp:inventory-depletion` background job. Rounded to 2 decimal places.                                              |
+| R9  | **Days until zero**                | Computed value (not stored): `days_until_zero = quantity_available / depletion_velocity`. If velocity is 0, days_until_zero = infinity (displayed as "--").                                                                                            |
+| R10 | **Reorder point alert**            | When `quantity_available <= reorder_point` AND `quantity_available > 0`: emit Flare event `stock.low` (priority: high). Notification sent to operations via in-app and Discord #alertas. Alert fires once per SKU until restocked above reorder_point. |
+| R11 | **Critical stock alert**           | When `days_until_zero < 7` (and depletion_velocity > 0): emit Flare event `stock.critical` (priority: critical). Discord notification includes @operations mention.                                                                                    |
+| R12 | **Zero stock alert**               | When `quantity_available = 0` AND `quantity_in_production = 0`: emit Flare event `stock.critical` with `is_zero_stock = true` flag. SKU card in inventory dashboard shows red "SEM ESTOQUE" badge.                                                     |
 
 ### 6.3 NF-e (Fiscal) Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R13 | **Auto-emit on separating** | When an order transitions to `separating`, the system automatically queues an NF-e emission job. The job calls Focus NFe API with order data (customer CPF, items, values, taxes). If the API returns `authorized`, the NF-e row is updated with `nfe_number`, `nfe_key`, XML/PDF URLs, and `emitted_at`. |
-| R14 | **Retry on failure** | If NF-e emission returns `rejected` or `denied`: increment `retry_count`, store `error_message`, emit `nfe.rejected` Flare event. Auto-retry up to 3 times with exponential backoff (1min, 5min, 15min). After 3 failures: stop retrying, alert Discord, require manual intervention via retry button. |
-| R15 | **Return NF-e from Trocas** | When the Trocas module completes an exchange that requires a return NF-e, it calls `/internal/nfe/emit-return`. ERP creates an `nfe_documents` row with `type=return` referencing the original order. Return NF-e references the original NF-e key. |
-| R16 | **NF-e immutability** | Once an NF-e is authorized, its data (number, key, XML) cannot be modified. Cancellation is only possible within 24 hours of authorization via SEFAZ cancellation protocol. After 24 hours, correction letters (CC-e) must be used (future enhancement). |
+| #    | Rule                        | Detail                                                                                                                                                                                                                                                                                                    |
+| ---- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R13  | **Auto-emit on separating** | When an order transitions to `separating`, the system automatically queues an NF-e emission job. The job calls Focus NFe API with order data (customer CPF, items, values, taxes). If the API returns `authorized`, the NF-e row is updated with `nfe_number`, `nfe_key`, XML/PDF URLs, and `emitted_at`. |
+| R14  | **Retry on failure**        | If NF-e emission returns `rejected` or `denied`: increment `retry_count`, store `error_message`, emit `nfe.rejected` Flare event. Auto-retry up to 3 times with exponential backoff (1min, 5min, 15min). After 3 failures: stop retrying, alert Discord, require manual intervention via retry button.    |
+| R15  | **Return NF-e from Trocas** | When the Trocas module completes an exchange that requires a return NF-e, it calls `/internal/nfe/emit-return`. ERP creates an `nfe_documents` row with `type=return` referencing the original order. Return NF-e references the original NF-e key.                                                       |
+| R16  | **NF-e immutability**       | Once an NF-e is authorized, its data (number, key, XML) cannot be modified. Cancellation is only possible within 24 hours of authorization via SEFAZ cancellation protocol. After 24 hours, correction letters (CC-e) must be used (future enhancement).                                                  |
+| R16b | **NF-e de bonificação**     | Orders with `is_bonification = true` emit NF-e with CFOP de remessa de bonificação (instead of sale CFOP). Revenue from these orders is excluded from DRE gross_revenue calculation.                                                                                                                      |
 
 ### 6.4 Margin Calculator Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R17 | **Margin formula** | `total_cost = production_cost + avg_shipping_cost + (price * gateway_fee_rate) + (price * tax_rate)`. `margin_amount = price - total_cost`. `margin_percent = (margin_amount / price) * 100`. |
-| R18 | **Configurable rates** | `gateway_fee_rate` and `tax_rate` are stored as system-wide defaults (initially: gateway = 0.0499 for Mercado Pago, tax = 0.0400 for Simples Nacional). Can be overridden per calculation. Stored in `erp.margin_calculations` per-row for historical accuracy. |
-| R19 | **Average shipping cost** | `avg_shipping_cost` is calculated from the last 30 shipping labels generated: `AVG(erp.shipping_labels.cost) WHERE created_at >= NOW() - INTERVAL '30 days'`. If fewer than 5 labels exist, use a manual default (configurable, initial: R$ 18.90). |
-| R20 | **Price simulation** | When Pedro enters a `simulated_price`, the system recalculates: `simulated_total_cost = production_cost + avg_shipping_cost + (simulated_price * gateway_fee_rate) + (simulated_price * tax_rate)`, then `simulated_margin_percent = ((simulated_price - simulated_total_cost) / simulated_price) * 100`. Simulation is stored but does NOT update the actual SKU price until explicitly applied. |
+| #   | Rule                      | Detail                                                                                                                                                                                                                                                                                                                                                                                            |
+| --- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R17 | **Margin formula**        | `total_cost = production_cost + avg_shipping_cost + (price * gateway_fee_rate) + (price * tax_rate)`. `margin_amount = price - total_cost`. `margin_percent = (margin_amount / price) * 100`.                                                                                                                                                                                                     |
+| R18 | **Configurable rates**    | `gateway_fee_rate` and `tax_rate` are stored as system-wide defaults (initially: gateway = 0.0499 for Mercado Pago, tax = 0.0400 for Simples Nacional). Can be overridden per calculation. Stored in `erp.margin_calculations` per-row for historical accuracy.                                                                                                                                   |
+| R19 | **Average shipping cost** | `avg_shipping_cost` is calculated from the last 30 shipping labels generated: `AVG(erp.shipping_labels.cost) WHERE created_at >= NOW() - INTERVAL '30 days'`. If fewer than 5 labels exist, use a manual default (configurable, initial: R$ 18.90).                                                                                                                                               |
+| R20 | **Price simulation**      | When Pedro enters a `simulated_price`, the system recalculates: `simulated_total_cost = production_cost + avg_shipping_cost + (simulated_price * gateway_fee_rate) + (simulated_price * tax_rate)`, then `simulated_margin_percent = ((simulated_price - simulated_total_cost) / simulated_price) * 100`. Simulation is stored but does NOT update the actual SKU price until explicitly applied. |
 
 ### 6.5 DRE (Income Statement) Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R21 | **Gross revenue** | `gross_revenue = SUM(financial_transactions.amount) WHERE type = 'sale' AND status = 'settled' AND created_at WITHIN period`. Only settled (confirmed) sales count. |
-| R22 | **Discounts** | `discounts = SUM(checkout.orders.discount_amount) WHERE paid_at WITHIN period`. Captures all coupon and promotional discounts applied at checkout. |
-| R23 | **Returns** | `returns = ABS(SUM(financial_transactions.amount)) WHERE type = 'refund' AND created_at WITHIN period`. Always stored as positive in the DRE (subtracted from gross revenue). |
-| R24 | **Net revenue** | `net_revenue = gross_revenue - discounts - returns`. |
-| R25 | **COGS (Cost of Goods Sold)** | `cogs = SUM(erp.skus.cost_price * checkout.order_items.quantity) WHERE order.paid_at WITHIN period AND order.status NOT IN ('cancelled', 'returned')`. Uses cost_price at the time of sale (snapshot, not current). |
-| R26 | **Gross margin** | `gross_margin = net_revenue - cogs`. |
-| R27 | **Operational expenses** | Stored as JSONB with categories: `marketing` (ad spend), `shipping` (SUM of shipping_labels.cost for the period), `platform_fees` (SUM of financial_transactions where type = 'fee'), `personnel` (manual entry), `other` (manual entry). Marketing, personnel, and other are entered manually by Pedro. Shipping and platform_fees are auto-calculated. |
-| R28 | **Net income** | `net_income = gross_margin - SUM(ALL operational_expenses values)`. |
+| #   | Rule                          | Detail                                                                                                                                                                                                                                                                                                                                                   |
+| --- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R21 | **Gross revenue**             | `gross_revenue = SUM(financial_transactions.amount) WHERE type = 'sale' AND status = 'settled' AND created_at WITHIN period`. Only settled (confirmed) sales count.                                                                                                                                                                                      |
+| R22 | **Discounts**                 | `discounts = SUM(checkout.orders.discount_amount) WHERE paid_at WITHIN period`. Captures all coupon and promotional discounts applied at checkout.                                                                                                                                                                                                       |
+| R23 | **Returns**                   | `returns = ABS(SUM(financial_transactions.amount)) WHERE type = 'refund' AND created_at WITHIN period`. Always stored as positive in the DRE (subtracted from gross revenue).                                                                                                                                                                            |
+| R24 | **Net revenue**               | `net_revenue = gross_revenue - discounts - returns`.                                                                                                                                                                                                                                                                                                     |
+| R25 | **COGS (Cost of Goods Sold)** | `cogs = SUM(erp.skus.cost_price * checkout.order_items.quantity) WHERE order.paid_at WITHIN period AND order.status NOT IN ('cancelled', 'returned')`. Uses cost_price at the time of sale (snapshot, not current).                                                                                                                                      |
+| R26 | **Gross margin**              | `gross_margin = net_revenue - cogs`.                                                                                                                                                                                                                                                                                                                     |
+| R27 | **Operational expenses**      | Stored as JSONB with categories: `marketing` (ad spend), `shipping` (SUM of shipping_labels.cost for the period), `platform_fees` (SUM of financial_transactions where type = 'fee'), `personnel` (manual entry), `other` (manual entry). Marketing, personnel, and other are entered manually by Pedro. Shipping and platform_fees are auto-calculated. |
+| R28 | **Net income**                | `net_income = gross_margin - SUM(ALL operational_expenses values)`.                                                                                                                                                                                                                                                                                      |
+
+### 6.5.1 DRE per Collection (Drop)
+
+| #    | Rule                         | Detail                                                                                                                                                                                                                                                   |
+| ---- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- | ---------------------------------------------------------- |
+| R28b | **DRE per collection**       | DRE can be segmented by collection/drop. Revenue is attributed via product tags (every product has a drop tag, e.g., 'drop-12'). COGS uses the same tag-based attribution. Development costs come from `pcp.development_costs` linked to the collection. |
+| R28c | **Development costs in DRE** | Per-collection DRE includes a "Custos de Desenvolvimento" section with line items: modelagem, pilotos, telas de silk, fretes de amostra, aviamentos especiais. These costs are registered in PLM and pulled into the DRE via collection_id.              |
+| R28d | **DRE Forecast**             | Pedro creates monthly financial projections (DRE Planejado). System compares projected vs actual with delta %. Toggle view: "Projetado                                                                                                                   | Real | Comparativo". Projections stored in `erp.dre_projections`. |
+
+### 6.5.2 Margin Calculator — Live Mode
+
+| #    | Rule                   | Detail                                                                                                                                                                                                                          |
+| ---- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R28e | **Auto-recalculation** | Margin is recalculated automatically whenever any input changes: cost_price update from PLM, avg_shipping_cost recalculated daily, gateway/tax rate changed in settings. Historical snapshots are preserved for trend analysis. |
+| R28f | **Margin trend**       | Each recalculation creates a business_event record. Dashboard shows sparkline of margin trend per SKU over last 90 days.                                                                                                        |
 
 ### 6.6 Financial Rules
 
-| # | Rule | Detail |
-|---|------|--------|
+| #   | Rule                                    | Detail                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --- | --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | R29 | **Mercado Pago webhook -> transaction** | On `payment.approved`: create row (type=sale, status=pending). On `payment.money_released`: update status to settled, set settled_at. On `payment.refunded`: create new row (type=refund, negative amount). On `payment.chargeback`: create row (type=chargeback, negative amount), emit `chargeback.received` Flare event (critical priority). On `payment.fee`: create row (type=fee, negative amount). |
-| R30 | **Chargeback handling** | On chargeback: (1) create financial_transaction (type=chargeback, negative amount). (2) Emit critical alert to Discord #alertas with order details. (3) Flag order in the UI with red "CHARGEBACK" badge. (4) Do NOT auto-reverse inventory — manual decision required. (5) Pedro and Marcus receive in-app notification. |
+| R30 | **Chargeback handling**                 | On chargeback: (1) create financial_transaction (type=chargeback, negative amount). (2) Emit critical alert to Discord #alertas with order details. (3) Flag order in the UI with red "CHARGEBACK" badge. (4) Do NOT auto-reverse inventory — manual decision required. (5) Pedro and Marcus receive in-app notification.                                                                                 |
+
+### Banking Integration (Conciliação Bancária)
+
+ERP supports reconciliation with multiple financial institutions:
+
+| Institution       | Role                                 | Integration                                |
+| ----------------- | ------------------------------------ | ------------------------------------------ |
+| **Mercado Pago**  | Gateway (all DTC payments)           | Automatic via webhooks (v1)                |
+| **Itaú**          | Primary bank (credit building)       | API if available, OFX import fallback (v1) |
+| **Conta Simples** | Operations (free PIX, prepaid cards) | API if available, OFX import fallback (v1) |
+
+**OFX Import flow:** Pedro uploads OFX file from bank → system parses transactions → auto-matches with ERP records by amount + date → flags unmatched for manual review.
+
+**Cashflow cascade:** MP (gateway) → Itaú (main bank) → Conta Simples (operations). ERP tracks the full flow.
 
 ### 6.7 Product Tier Classification Rules (Pandora96)
 
-| # | Rule | Detail |
-|---|------|--------|
-| R31 | **Composite score formula** | SKUs are classified into tiers based on a composite score: `composite_score = (normalized_depletion_velocity * 0.6) + (normalized_units_sold_90d * 0.4)`. Both values are min-max normalized across all active SKUs before weighting. |
-| R32 | **Tier thresholds** | Gold (`gold`): top 20% by composite score. Silver (`silver`): next 30% (percentiles 50-80). Bronze (`bronze`): bottom 50%. `unranked`: SKUs with fewer than 30 days of sales data. Thresholds are recalculated dynamically based on the full active SKU population. |
-| R33 | **Daily recalculation** | Tier recalculation runs daily via background job `sku_tier_recalculation` at 03:00 UTC. The job processes all active SKUs with `deleted_at IS NULL` and at least one `inventory_movement` record. |
-| R34 | **Gold-tier restock alert** | Gold-tier SKUs trigger a restock alert when `days_to_zero < 7`. Emits Flare event `inventory.coverage_critical` (priority: critical). Discord #alertas notification includes @operations mention. In-app badge: "OURO CRITICO". |
-| R35 | **Bronze discontinuation review** | Bronze-tier SKUs with 0 sales in the last 60 days are automatically flagged for review/discontinuation. Flag appears as "REVISAR" badge on inventory table. Operations receives weekly digest of flagged SKUs via Flare. |
-| R36 | **Tier change audit log** | Every tier change is logged in `erp.inventory_movements` with `movement_type = 'tier_change'`. The `notes` field stores the transition (e.g., `"silver -> gold, score: 0.82"`). `reference_type = 'tier_recalculation'`. `user_id` is set to system user. |
+| #   | Rule                              | Detail                                                                                                                                                                                                                                                              |
+| --- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R31 | **Composite score formula**       | SKUs are classified into tiers based on a composite score: `composite_score = (normalized_depletion_velocity * 0.6) + (normalized_units_sold_90d * 0.4)`. Both values are min-max normalized across all active SKUs before weighting.                               |
+| R32 | **Tier thresholds**               | Gold (`gold`): top 20% by composite score. Silver (`silver`): next 30% (percentiles 50-80). Bronze (`bronze`): bottom 50%. `unranked`: SKUs with fewer than 30 days of sales data. Thresholds are recalculated dynamically based on the full active SKU population. |
+| R33 | **Daily recalculation**           | Tier recalculation runs daily via background job `sku_tier_recalculation` at 03:00 UTC. The job processes all active SKUs with `deleted_at IS NULL` and at least one `inventory_movement` record.                                                                   |
+| R34 | **Gold-tier restock alert**       | Gold-tier SKUs trigger a restock alert when `days_to_zero < 7`. Emits Flare event `inventory.coverage_critical` (priority: critical). Discord #alertas notification includes @operations mention. In-app badge: "OURO CRITICO".                                     |
+| R35 | **Bronze discontinuation review** | Bronze-tier SKUs with 0 sales in the last 60 days are automatically flagged for review/discontinuation. Flag appears as "REVISAR" badge on inventory table. Operations receives weekly digest of flagged SKUs via Flare.                                            |
+| R36 | **Tier change audit log**         | Every tier change is logged in `erp.inventory_movements` with `movement_type = 'tier_change'`. The `notes` field stores the transition (e.g., `"silver -> gold, score: 0.82"`). `reference_type = 'tier_recalculation'`. `user_id` is set to system user.           |
 
 ### 6.8 Revenue Leak Calculation (Pandora96)
 
-| # | Rule | Detail |
-|---|------|--------|
-| R37 | **Revenue leak formula** | Revenue leak per SKU per day = `daily_page_views * avg_conversion_rate * avg_order_value`. Calculated only for days where `quantity_available = 0` (out-of-stock). Accumulated across all out-of-stock days for cumulative leak. |
-| R38 | **Page views source** | `daily_page_views` sourced from Shopify Analytics API (`/admin/api/2024-01/reports.json`) for the product page. When Ambaril internal analytics become available, prefer internal source. Fallback: 30-day average page views if API is unavailable for a specific day. |
-| R39 | **Conversion rate calculation** | `avg_conversion_rate` = confirmed orders containing SKU in last 90 days / total product page views in last 90 days. Minimum sample: 10 orders. If fewer than 10 orders exist, use category-level average. Floor: 0.5%. Cap: 15%. |
-| R40 | **Average order value** | `avg_order_value` = average total of confirmed orders containing the SKU in the last 90 days. Uses the SKU's own order data, not the global average. If fewer than 10 orders exist, fall back to category average. |
-| R41 | **Daily aggregation** | Revenue leak is aggregated daily into `erp.revenue_leak_daily` table (or materialized view). Columns: `sku_id`, `date`, `page_views`, `conversion_rate`, `avg_order_value`, `estimated_leak`, `created_at`. Refresh runs as part of the `sku_tier_recalculation` job. |
-| R42 | **Dashboard display** | Cumulative revenue leak is displayed on: (1) ERP Inventory Dashboard — "Perda de Receita" summary card with Top 10 SKUs by leak amount. (2) Dashboard module (Beacon) — weekly revenue leak trend chart. Both views link to detailed per-SKU breakdown. |
+| #   | Rule                            | Detail                                                                                                                                                                                                                                                                  |
+| --- | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R37 | **Revenue leak formula**        | Revenue leak per SKU per day = `daily_page_views * avg_conversion_rate * avg_order_value`. Calculated only for days where `quantity_available = 0` (out-of-stock). Accumulated across all out-of-stock days for cumulative leak.                                        |
+| R38 | **Page views source**           | `daily_page_views` sourced from Shopify Analytics API (`/admin/api/2024-01/reports.json`) for the product page. When Ambaril internal analytics become available, prefer internal source. Fallback: 30-day average page views if API is unavailable for a specific day. |
+| R39 | **Conversion rate calculation** | `avg_conversion_rate` = confirmed orders containing SKU in last 90 days / total product page views in last 90 days. Minimum sample: 10 orders. If fewer than 10 orders exist, use category-level average. Floor: 0.5%. Cap: 15%.                                        |
+| R40 | **Average order value**         | `avg_order_value` = average total of confirmed orders containing the SKU in the last 90 days. Uses the SKU's own order data, not the global average. If fewer than 10 orders exist, fall back to category average.                                                      |
+| R41 | **Daily aggregation**           | Revenue leak is aggregated daily into `erp.revenue_leak_daily` table (or materialized view). Columns: `sku_id`, `date`, `page_views`, `conversion_rate`, `avg_order_value`, `estimated_leak`, `created_at`. Refresh runs as part of the `sku_tier_recalculation` job.   |
+| R42 | **Dashboard display**           | Cumulative revenue leak is displayed on: (1) ERP Inventory Dashboard — "Perda de Receita" summary card with Top 10 SKUs by leak amount. (2) Dashboard module (Beacon) — weekly revenue leak trend chart. Both views link to detailed per-SKU breakdown.                 |
 
 ---
 
@@ -1381,31 +1510,31 @@ These are internal endpoints called by other modules (not exposed to external cl
 
 ### 7.1 Inbound (modules that feed data INTO ERP)
 
-| Source Module | Event / Data | ERP Action |
-|--------------|-------------|------------|
-| **Checkout** | `order.paid` — full order with items, customer, payment | Create order in ERP pipeline (status=paid). Reserve inventory. Create financial transaction (type=sale). |
-| **PCP** | `production_order.stock_entry` — SKU IDs + quantities | Create `inventory_movements` (type=production_entry). Increment `inventory.quantity_available`. Decrement `inventory.quantity_in_production`. Update `inventory.last_entry_at`. |
-| **PCP** | `cost_analyses` — updated production costs | Update `erp.skus.cost_price`. Invalidate cached margin calculations. |
-| **Trocas** | `exchange.received` — returned items inspected | Create `inventory_movements` (type=return). Increment `inventory.quantity_available`. |
-| **Trocas** | `exchange.completed` — refund required | Create financial_transaction (type=refund). Request return NF-e if applicable. |
+| Source Module | Event / Data                                            | ERP Action                                                                                                                                                                      |
+| ------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Checkout**  | `order.paid` — full order with items, customer, payment | Create order in ERP pipeline (status=paid). Reserve inventory. Create financial transaction (type=sale).                                                                        |
+| **PLM**       | `production_order.stock_entry` — SKU IDs + quantities   | Create `inventory_movements` (type=production_entry). Increment `inventory.quantity_available`. Decrement `inventory.quantity_in_production`. Update `inventory.last_entry_at`. |
+| **PLM**       | `cost_analyses` — updated production costs              | Update `erp.skus.cost_price`. Invalidate cached margin calculations.                                                                                                            |
+| **Trocas**    | `exchange.received` — returned items inspected          | Create `inventory_movements` (type=return). Increment `inventory.quantity_available`.                                                                                           |
+| **Trocas**    | `exchange.completed` — refund required                  | Create financial_transaction (type=refund). Request return NF-e if applicable.                                                                                                  |
 
 ### 7.2 Outbound (ERP dispatches TO other modules)
 
-| Target | Data / Action | Trigger |
-|--------|--------------|---------|
-| **CRM** | Order status updates -> contact timeline | On each order state transition, CRM receives event for contact timeline + LTV update |
-| **CRM** | `order.delivered` -> post-purchase automation | Triggers CRM review request automation (7-day delay) |
-| **Creators** | `financial_transactions` (sale with coupon) -> commission | If order used a creator coupon, Creators module reads transaction to calculate commission |
-| **ClawdBot** (Discord) | Daily reports: orders processed, revenue, inventory alerts | Daily at 09:00 BRT, ClawdBot queries ERP analytics endpoints |
-| **Dashboard** (Beacon) | Real-time metrics: orders, revenue, inventory health | Dashboard polls/SSE from ERP for operational and financial panels |
+| Target                 | Data / Action                                              | Trigger                                                                                   |
+| ---------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| **CRM**                | Order status updates -> contact timeline                   | On each order state transition, CRM receives event for contact timeline + LTV update      |
+| **CRM**                | `order.delivered` -> post-purchase automation              | Triggers CRM review request automation (7-day delay)                                      |
+| **Creators**           | `financial_transactions` (sale with coupon) -> commission  | If order used a creator coupon, Creators module reads transaction to calculate commission |
+| **ClawdBot** (Discord) | Daily reports: orders processed, revenue, inventory alerts | Daily at 09:00 BRT, ClawdBot queries ERP analytics endpoints                              |
+| **Dashboard** (Beacon) | Real-time metrics: orders, revenue, inventory health       | Dashboard polls/SSE from ERP for operational and financial panels                         |
 
 ### 7.3 External Services
 
-| Service | Purpose | Integration Pattern |
-|---------|---------|-------------------|
-| **Focus NFe** | NF-e emission, cancellation, status tracking | REST API. API key auth. Request: order data + items + customer CPF + tax info. Response: NF-e number, key, XML, PDF. Webhook callback for async status updates. Retry with exponential backoff. |
-| **Melhor Envio** | Shipping label generation, carrier quotes, tracking | REST API. OAuth2 auth. Generate label -> get tracking code + PDF. Tracking webhook for status updates (shipped, in_transit, delivered, returned). |
-| **Mercado Pago** | Payment processing, refunds, chargebacks | Webhook receiver (signature verification via `x-signature` header). Events: payment.approved, payment.money_released, payment.refunded, payment.chargeback. Outbound API calls for refund requests. |
+| Service          | Purpose                                             | Integration Pattern                                                                                                                                                                                 |
+| ---------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Focus NFe**    | NF-e emission, cancellation, status tracking        | REST API. API key auth. Request: order data + items + customer CPF + tax info. Response: NF-e number, key, XML, PDF. Webhook callback for async status updates. Retry with exponential backoff.     |
+| **Melhor Envio** | Shipping label generation, carrier quotes, tracking | REST API. OAuth2 auth. Generate label -> get tracking code + PDF. Tracking webhook for status updates (shipped, in_transit, delivered, returned).                                                   |
+| **Mercado Pago** | Payment processing, refunds, chargebacks            | Webhook receiver (signature verification via `x-signature` header). Events: payment.approved, payment.money_released, payment.refunded, payment.chargeback. Outbound API calls for refund requests. |
 
 ### 7.4 Integration Diagram
 
@@ -1423,7 +1552,7 @@ These are internal endpoints called by other modules (not exposed to external cl
                          | event       |  Module  |     +----------------+
                          v             |          |
 +----------+      +-----------+        |          |     +----------------+
-|   PCP    |----->|           |------->|          |---->|  Mercado Pago  |
+|   PLM    |----->|           |------->|          |---->|  Mercado Pago  |
 | (prod    |      | Inventory |        |          |     | (Payments)     |
 |  entry)  |      |           |<-------|          |     +----------------+
 +----------+      +-----------+        +----+-----+
@@ -1439,24 +1568,30 @@ These are internal endpoints called by other modules (not exposed to external cl
                               +--------+  +---------------+  +----------+
 ```
 
+### 7.5 Business Event Log
+
+All significant business events in the ERP are recorded in `global.business_events` (centralized event store shared across all modules). Events include: margin changes, stock movements, order status transitions, NF-e emissions, price updates, tier changes. See platform documentation for schema.
+
+This enables: unified entity timeline, cross-module tracing, AI consumption by Genius/Astro, and historical analysis.
+
 ---
 
 ## 8. Background Jobs
 
 All jobs run via PostgreSQL job queue (`FOR UPDATE SKIP LOCKED`) + Vercel Cron. No Redis/BullMQ.
 
-| Job Name | Queue | Schedule | Priority | Description |
-|----------|-------|----------|----------|-------------|
-| `erp:inventory-depletion` | `erp` | Daily 04:00 BRT | Medium | Calculate depletion_velocity for all SKUs from 30-day rolling window of sale + loss movements. Update `erp.inventory.depletion_velocity`. |
-| `erp:stock-alert-scan` | `erp` | Daily 04:30 BRT | Medium | Scan all SKUs: emit `stock.low` for those at reorder_point, emit `stock.critical` for days_until_zero < 7 or quantity = 0. |
-| `erp:nfe-emit` | `erp` | On-demand (queued on order.separating) | High | Call Focus NFe API to emit NF-e. Handle success/failure. Retry with exponential backoff (1min, 5min, 15min). Max 3 retries. |
-| `erp:nfe-status-check` | `erp` | Every 5 minutes | Medium | Poll Focus NFe for status of NF-e documents stuck in `processing` state for > 5 minutes. Update status accordingly. |
-| `erp:shipping-tracking` | `erp` | Every 30 minutes | Low | Poll Melhor Envio for tracking updates on all labels with status `shipped` or `in_transit`. Update status and timestamps. |
-| `erp:daily-report` | `erp` | Daily 08:30 BRT | Low | Compile daily ERP report: orders processed, revenue, pending orders, inventory alerts, NF-e failures. Data consumed by ClawdBot for Discord report at 09:00. |
-| `erp:dre-auto-generate` | `erp` | Monthly 1st at 02:00 BRT | Medium | Auto-generate DRE for previous month with status=draft. Pedro reviews and approves. |
-| `erp:mp-reconciliation` | `erp` | Daily 06:00 BRT | Medium | Fetch Mercado Pago settlement report via API. Compare with internal `financial_transactions`. Flag discrepancies. |
-| `erp:sku-tier-recalculation` | `erp` | Daily 03:00 UTC | Medium | Recalculate tier classification (gold/silver/bronze) for all active SKUs with > 30 days sales data. Compute composite score from depletion velocity (0.6 weight) and units sold in 90 days (0.4 weight). Log tier changes in `erp.inventory_movements` (type=tier_change). Also refreshes `erp.revenue_leak_daily` aggregation. |
-| `erp:monthly-cost-review` | `erp` | Monthly 1st at 03:00 BRT | Low | Generate cost category comparison report: Produto (CMV), Marketing, Pessoal, Infraestrutura, Frete vs previous month. Calculate delta % per category. Send summary to Pedro (`finance`) and Marcus (`admin`) via Flare notification (`cost_review.generated`). Data feeds the Cost Composition Chart in DRE. |
+| Job Name                     | Queue | Schedule                               | Priority | Description                                                                                                                                                                                                                                                                                                                     |
+| ---------------------------- | ----- | -------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `erp:inventory-depletion`    | `erp` | Daily 04:00 BRT                        | Medium   | Calculate depletion_velocity for all SKUs from 30-day rolling window of sale + loss movements. Update `erp.inventory.depletion_velocity`.                                                                                                                                                                                       |
+| `erp:stock-alert-scan`       | `erp` | Daily 04:30 BRT                        | Medium   | Scan all SKUs: emit `stock.low` for those at reorder_point, emit `stock.critical` for days_until_zero < 7 or quantity = 0.                                                                                                                                                                                                      |
+| `erp:nfe-emit`               | `erp` | On-demand (queued on order.separating) | High     | Call Focus NFe API to emit NF-e. Handle success/failure. Retry with exponential backoff (1min, 5min, 15min). Max 3 retries.                                                                                                                                                                                                     |
+| `erp:nfe-status-check`       | `erp` | Every 5 minutes                        | Medium   | Poll Focus NFe for status of NF-e documents stuck in `processing` state for > 5 minutes. Update status accordingly.                                                                                                                                                                                                             |
+| `erp:shipping-tracking`      | `erp` | Every 30 minutes                       | Low      | Poll Melhor Envio for tracking updates on all labels with status `shipped` or `in_transit`. Update status and timestamps.                                                                                                                                                                                                       |
+| `erp:daily-report`           | `erp` | Daily 08:30 BRT                        | Low      | Compile daily ERP report: orders processed, revenue, pending orders, inventory alerts, NF-e failures. Data consumed by ClawdBot for Discord report at 09:00.                                                                                                                                                                    |
+| `erp:dre-auto-generate`      | `erp` | Monthly 1st at 02:00 BRT               | Medium   | Auto-generate DRE for previous month with status=draft. Pedro reviews and approves.                                                                                                                                                                                                                                             |
+| `erp:mp-reconciliation`      | `erp` | Daily 06:00 BRT                        | Medium   | Fetch Mercado Pago settlement report via API. Compare with internal `financial_transactions`. Flag discrepancies.                                                                                                                                                                                                               |
+| `erp:sku-tier-recalculation` | `erp` | Daily 03:00 UTC                        | Medium   | Recalculate tier classification (gold/silver/bronze) for all active SKUs with > 30 days sales data. Compute composite score from depletion velocity (0.6 weight) and units sold in 90 days (0.4 weight). Log tier changes in `erp.inventory_movements` (type=tier_change). Also refreshes `erp.revenue_leak_daily` aggregation. |
+| `erp:monthly-cost-review`    | `erp` | Monthly 1st at 03:00 BRT               | Low      | Generate cost category comparison report: Produto (CMV), Marketing, Pessoal, Infraestrutura, Frete vs previous month. Calculate delta % per category. Send summary to Pedro (`finance`) and Marcus (`admin`) via Flare notification (`cost_review.generated`). Data feeds the Cost Composition Chart in DRE.                    |
 
 ---
 
@@ -1464,40 +1599,41 @@ All jobs run via PostgreSQL job queue (`FOR UPDATE SKIP LOCKED`) + Vercel Cron. 
 
 From [AUTH.md](../../architecture/AUTH.md) section 3.4.4. Format: `{module}:{resource}:{action}`.
 
-| Permission | admin | pm | creative | operations | support | finance | commercial | b2b | creator |
-|-----------|-------|-----|----------|-----------|---------|---------|-----------|-----|---------|
-| `erp:orders:read` | Y | Y | -- | Y | Y | Y | -- | -- | -- |
-| `erp:orders:write` | Y | -- | -- | Y | -- | -- | -- | -- | -- |
-| `erp:orders:delete` | Y | -- | -- | -- | -- | -- | -- | -- | -- |
-| `erp:orders:admin` | Y | -- | -- | -- | -- | -- | -- | -- | -- |
-| `erp:products:read` | Y | Y | -- | Y | -- | Y | -- | -- | -- |
-| `erp:products:write` | Y | -- | -- | Y | -- | -- | -- | -- | -- |
-| `erp:products:delete` | Y | -- | -- | -- | -- | -- | -- | -- | -- |
-| `erp:products:admin` | Y | -- | -- | -- | -- | -- | -- | -- | -- |
-| `erp:skus:read` | Y | Y | -- | Y | -- | Y | -- | -- | -- |
-| `erp:skus:write` | Y | -- | -- | Y | -- | -- | -- | -- | -- |
-| `erp:skus:delete` | Y | -- | -- | -- | -- | -- | -- | -- | -- |
-| `erp:skus:admin` | Y | -- | -- | -- | -- | -- | -- | -- | -- |
-| `erp:inventory:read` | Y | Y | -- | Y | -- | Y | -- | -- | -- |
-| `erp:inventory:write` | Y | -- | -- | Y | -- | -- | -- | -- | -- |
-| `erp:inventory:admin` | Y | -- | -- | -- | -- | -- | -- | -- | -- |
-| `erp:nfe_documents:read` | Y | -- | -- | Y | -- | Y | -- | -- | -- |
-| `erp:nfe_documents:write` | Y | -- | -- | Y | -- | -- | -- | -- | -- |
-| `erp:nfe_documents:admin` | Y | -- | -- | -- | -- | -- | -- | -- | -- |
-| `erp:financial_transactions:read` | Y | -- | -- | -- | -- | Y | -- | -- | -- |
-| `erp:financial_transactions:write` | Y | -- | -- | -- | -- | Y | -- | -- | -- |
-| `erp:financial_transactions:admin` | Y | -- | -- | -- | -- | -- | -- | -- | -- |
-| `erp:margin_calculations:read` | Y | Y | -- | -- | -- | Y | -- | -- | -- |
-| `erp:margin_calculations:write` | Y | -- | -- | -- | -- | Y | -- | -- | -- |
-| `erp:margin_calculations:admin` | Y | -- | -- | -- | -- | -- | -- | -- | -- |
-| `erp:income_statements:read` | Y | Y | -- | -- | -- | Y | -- | -- | -- |
-| `erp:income_statements:write` | Y | -- | -- | -- | -- | Y | -- | -- | -- |
-| `erp:income_statements:admin` | Y | -- | -- | -- | -- | -- | -- | -- | -- |
-| `erp:shipping_labels:read` | Y | -- | -- | Y | Y | -- | -- | -- | -- |
-| `erp:shipping_labels:write` | Y | -- | -- | Y | -- | -- | -- | -- | -- |
-| `erp:shipping_labels:admin` | Y | -- | -- | -- | -- | -- | -- | -- | -- |
+| Permission                         | admin | pm  | creative | operations | support | finance | commercial | b2b | creator |
+| ---------------------------------- | ----- | --- | -------- | ---------- | ------- | ------- | ---------- | --- | ------- |
+| `erp:orders:read`                  | Y     | Y   | --       | Y          | Y       | Y       | --         | --  | --      |
+| `erp:orders:write`                 | Y     | --  | --       | Y          | --      | --      | --         | --  | --      |
+| `erp:orders:delete`                | Y     | --  | --       | --         | --      | --      | --         | --  | --      |
+| `erp:orders:admin`                 | Y     | --  | --       | --         | --      | --      | --         | --  | --      |
+| `erp:products:read`                | Y     | Y   | --       | Y          | --      | Y       | --         | --  | --      |
+| `erp:products:write`               | Y     | --  | --       | Y          | --      | --      | --         | --  | --      |
+| `erp:products:delete`              | Y     | --  | --       | --         | --      | --      | --         | --  | --      |
+| `erp:products:admin`               | Y     | --  | --       | --         | --      | --      | --         | --  | --      |
+| `erp:skus:read`                    | Y     | Y   | --       | Y          | --      | Y       | --         | --  | --      |
+| `erp:skus:write`                   | Y     | --  | --       | Y          | --      | --      | --         | --  | --      |
+| `erp:skus:delete`                  | Y     | --  | --       | --         | --      | --      | --         | --  | --      |
+| `erp:skus:admin`                   | Y     | --  | --       | --         | --      | --      | --         | --  | --      |
+| `erp:inventory:read`               | Y     | Y   | --       | Y          | --      | Y       | --         | --  | --      |
+| `erp:inventory:write`              | Y     | --  | --       | Y          | --      | --      | --         | --  | --      |
+| `erp:inventory:admin`              | Y     | --  | --       | --         | --      | --      | --         | --  | --      |
+| `erp:nfe_documents:read`           | Y     | --  | --       | Y          | --      | Y       | --         | --  | --      |
+| `erp:nfe_documents:write`          | Y     | --  | --       | Y          | --      | --      | --         | --  | --      |
+| `erp:nfe_documents:admin`          | Y     | --  | --       | --         | --      | --      | --         | --  | --      |
+| `erp:financial_transactions:read`  | Y     | --  | --       | --         | --      | Y       | --         | --  | --      |
+| `erp:financial_transactions:write` | Y     | --  | --       | --         | --      | Y       | --         | --  | --      |
+| `erp:financial_transactions:admin` | Y     | --  | --       | --         | --      | --      | --         | --  | --      |
+| `erp:margin_calculations:read`     | Y     | Y   | --       | --         | --      | Y       | --         | --  | --      |
+| `erp:margin_calculations:write`    | Y     | --  | --       | --         | --      | Y       | --         | --  | --      |
+| `erp:margin_calculations:admin`    | Y     | --  | --       | --         | --      | --      | --         | --  | --      |
+| `erp:income_statements:read`       | Y     | Y   | --       | --         | --      | Y       | --         | --  | --      |
+| `erp:income_statements:write`      | Y     | --  | --       | --         | --      | Y       | --         | --  | --      |
+| `erp:income_statements:admin`      | Y     | --  | --       | --         | --      | --      | --         | --  | --      |
+| `erp:shipping_labels:read`         | Y     | --  | --       | Y          | Y       | --      | --         | --  | --      |
+| `erp:shipping_labels:write`        | Y     | --  | --       | Y          | --      | --      | --         | --  | --      |
+| `erp:shipping_labels:admin`        | Y     | --  | --       | --         | --      | --      | --         | --  | --      |
 
 **Notes:**
+
 - `admin` (Marcus) has full access to all ERP resources including delete and admin actions.
 - `operations` (Tavares, Ana Clara) can read and write orders, products, SKUs, inventory, NF-e, and shipping labels. They cannot access financial views (transactions, margin, DRE).
 - `finance` (Pedro) can read all operational data but can only **write** to financial-specific resources: financial_transactions, margin_calculations, income_statements. He cannot modify orders, products, or inventory.
@@ -1511,22 +1647,23 @@ From [AUTH.md](../../architecture/AUTH.md) section 3.4.4. Format: `{module}:{res
 
 Events emitted by the ERP module to the Flare notification system. See [NOTIFICATIONS.md](../../platform/NOTIFICATIONS.md).
 
-| Event Key | Trigger | Channels | Recipients | Priority |
-|-----------|---------|----------|------------|----------|
-| `order.separating` | Order transitions to separating | In-app | `operations` roles | Low |
-| `order.shipped` | Order transitions to shipped | WhatsApp, Email | Customer (contact) — includes tracking code | High |
-| `order.delivered` | Order transitions to delivered | WhatsApp | Customer (contact) — delivery confirmation | Medium |
-| `stock.low` | SKU available <= reorder_point | In-app, Discord `#alertas` | In-app: `operations`; Discord: channel broadcast | High |
-| `stock.critical` | SKU days_until_zero < 7 or quantity = 0 | In-app, Discord `#alertas` (with @mention) | In-app: `operations`; Discord: @operations role mention | Critical |
-| `nfe.authorized` | NF-e authorized by SEFAZ | In-app | `operations` roles | Low |
-| `nfe.rejected` | NF-e rejected or denied by SEFAZ | In-app, Discord `#alertas` | In-app: `operations`; Discord: channel broadcast | Critical |
-| `chargeback.received` | Mercado Pago chargeback webhook | In-app, Discord `#alertas` | In-app: `admin`, `finance`; Discord: @marcus @pedro mention | Critical |
-| `dre.generated` | Monthly DRE auto-generated (draft) | In-app | `finance` role | Medium |
-| `reconciliation.discrepancy` | MP vs ERP discrepancy detected | In-app, Discord `#alertas` | `finance`, `admin` | High |
-| `inventory.coverage_critical` | Gold-tier SKU has `days_to_zero < 7` | In-app, Discord `#alertas` | In-app: `operations`; Discord: @operations role mention | Critical |
-| `cost_review.generated` | Monthly cost review report generated on 1st of month | In-app | `finance` (Pedro), `admin` (Marcus) | Medium |
+| Event Key                     | Trigger                                              | Channels                                   | Recipients                                                  | Priority |
+| ----------------------------- | ---------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------- | -------- |
+| `order.separating`            | Order transitions to separating                      | In-app                                     | `operations` roles                                          | Low      |
+| `order.shipped`               | Order transitions to shipped                         | WhatsApp, Email                            | Customer (contact) — includes tracking code                 | High     |
+| `order.delivered`             | Order transitions to delivered                       | WhatsApp                                   | Customer (contact) — delivery confirmation                  | Medium   |
+| `stock.low`                   | SKU available <= reorder_point                       | In-app, Discord `#alertas`                 | In-app: `operations`; Discord: channel broadcast            | High     |
+| `stock.critical`              | SKU days_until_zero < 7 or quantity = 0              | In-app, Discord `#alertas` (with @mention) | In-app: `operations`; Discord: @operations role mention     | Critical |
+| `nfe.authorized`              | NF-e authorized by SEFAZ                             | In-app                                     | `operations` roles                                          | Low      |
+| `nfe.rejected`                | NF-e rejected or denied by SEFAZ                     | In-app, Discord `#alertas`                 | In-app: `operations`; Discord: channel broadcast            | Critical |
+| `chargeback.received`         | Mercado Pago chargeback webhook                      | In-app, Discord `#alertas`                 | In-app: `admin`, `finance`; Discord: @marcus @pedro mention | Critical |
+| `dre.generated`               | Monthly DRE auto-generated (draft)                   | In-app                                     | `finance` role                                              | Medium   |
+| `reconciliation.discrepancy`  | MP vs ERP discrepancy detected                       | In-app, Discord `#alertas`                 | `finance`, `admin`                                          | High     |
+| `inventory.coverage_critical` | Gold-tier SKU has `days_to_zero < 7`                 | In-app, Discord `#alertas`                 | In-app: `operations`; Discord: @operations role mention     | Critical |
+| `cost_review.generated`       | Monthly cost review report generated on 1st of month | In-app                                     | `finance` (Pedro), `admin` (Marcus)                         | Medium   |
 
 **`inventory.coverage_critical` payload:**
+
 ```json
 {
   "event": "inventory.coverage_critical",
@@ -1552,27 +1689,27 @@ Events emitted by the ERP module to the Flare notification system. See [NOTIFICA
 
 All errors follow the standard envelope from [API.md](../../architecture/API.md) and error codes from [ERROR-HANDLING.md](../../platform/ERROR-HANDLING.md).
 
-| Error Code | HTTP | When | User-facing Message |
-|-----------|------|------|-------------------|
-| `ERP_ORDER_NOT_FOUND` | 404 | Order ID does not exist | "Pedido nao encontrado." |
-| `ERP_INVALID_TRANSITION` | 422 | Order state transition not allowed | "Transicao de status invalida: {from} -> {to}." |
-| `ERP_ORDER_ALREADY_DELIVERED` | 409 | Attempting to modify a delivered order | "Pedido ja entregue. Use o modulo de Trocas para devolucoes." |
-| `ERP_PRODUCT_NOT_FOUND` | 404 | Product ID does not exist or is deleted | "Produto nao encontrado." |
-| `ERP_SKU_NOT_FOUND` | 404 | SKU ID does not exist | "SKU nao encontrado." |
-| `ERP_SKU_CODE_DUPLICATE` | 409 | SKU code already exists | "Ja existe um SKU com este codigo." |
-| `ERP_INSUFFICIENT_STOCK` | 422 | Order paid but not enough stock to reserve | "Estoque insuficiente para SKU {sku_code}. Disponivel: {available}, Necessario: {required}." |
-| `ERP_NFE_EMISSION_FAILED` | 502 | Focus NFe API returned error | "Falha na emissao da NF-e: {error_message}. Tentativa {retry_count}/3." |
-| `ERP_NFE_CANCEL_EXPIRED` | 422 | Attempting to cancel NF-e after 24h | "NF-e so pode ser cancelada em ate 24 horas apos autorizacao." |
-| `ERP_NFE_NOT_AUTHORIZED` | 422 | Attempting to cancel NF-e that is not authorized | "Apenas NF-e autorizadas podem ser canceladas." |
-| `ERP_LABEL_GENERATION_FAILED` | 502 | Melhor Envio API returned error | "Falha na geracao da etiqueta: {error_message}." |
-| `ERP_SHIPPING_REQUIRED` | 422 | Attempting to ship without label | "Gere a etiqueta de envio antes de marcar como enviado." |
-| `ERP_NFE_REQUIRED` | 422 | Attempting to ship without authorized NF-e | "Emita a NF-e antes de marcar como enviado." |
-| `ERP_DRE_ALREADY_APPROVED` | 409 | Attempting to edit an approved DRE | "DRE ja aprovado. Nao pode ser editado." |
-| `ERP_DRE_PERIOD_EXISTS` | 409 | DRE for this month/year already exists | "Ja existe um DRE para {month}/{year}." |
-| `ERP_MARGIN_NO_COST_DATA` | 422 | SKU has no cost_price set | "SKU nao possui custo de producao definido." |
-| `ERP_MOVEMENT_NOTES_REQUIRED` | 422 | Adjustment/loss movement without notes | "Nota obrigatoria para movimentacoes de ajuste ou perda." |
-| `ERP_MP_WEBHOOK_INVALID_SIGNATURE` | 401 | Mercado Pago webhook signature mismatch | _(not user-facing — logged and rejected)_ |
-| `ERP_MP_WEBHOOK_DUPLICATE` | 200 | Duplicate webhook event (idempotency) | _(returns 200 OK, no action — idempotent)_ |
+| Error Code                         | HTTP | When                                             | User-facing Message                                                                          |
+| ---------------------------------- | ---- | ------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| `ERP_ORDER_NOT_FOUND`              | 404  | Order ID does not exist                          | "Pedido nao encontrado."                                                                     |
+| `ERP_INVALID_TRANSITION`           | 422  | Order state transition not allowed               | "Transicao de status invalida: {from} -> {to}."                                              |
+| `ERP_ORDER_ALREADY_DELIVERED`      | 409  | Attempting to modify a delivered order           | "Pedido ja entregue. Use o modulo de Trocas para devolucoes."                                |
+| `ERP_PRODUCT_NOT_FOUND`            | 404  | Product ID does not exist or is deleted          | "Produto nao encontrado."                                                                    |
+| `ERP_SKU_NOT_FOUND`                | 404  | SKU ID does not exist                            | "SKU nao encontrado."                                                                        |
+| `ERP_SKU_CODE_DUPLICATE`           | 409  | SKU code already exists                          | "Ja existe um SKU com este codigo."                                                          |
+| `ERP_INSUFFICIENT_STOCK`           | 422  | Order paid but not enough stock to reserve       | "Estoque insuficiente para SKU {sku_code}. Disponivel: {available}, Necessario: {required}." |
+| `ERP_NFE_EMISSION_FAILED`          | 502  | Focus NFe API returned error                     | "Falha na emissao da NF-e: {error_message}. Tentativa {retry_count}/3."                      |
+| `ERP_NFE_CANCEL_EXPIRED`           | 422  | Attempting to cancel NF-e after 24h              | "NF-e so pode ser cancelada em ate 24 horas apos autorizacao."                               |
+| `ERP_NFE_NOT_AUTHORIZED`           | 422  | Attempting to cancel NF-e that is not authorized | "Apenas NF-e autorizadas podem ser canceladas."                                              |
+| `ERP_LABEL_GENERATION_FAILED`      | 502  | Melhor Envio API returned error                  | "Falha na geracao da etiqueta: {error_message}."                                             |
+| `ERP_SHIPPING_REQUIRED`            | 422  | Attempting to ship without label                 | "Gere a etiqueta de envio antes de marcar como enviado."                                     |
+| `ERP_NFE_REQUIRED`                 | 422  | Attempting to ship without authorized NF-e       | "Emita a NF-e antes de marcar como enviado."                                                 |
+| `ERP_DRE_ALREADY_APPROVED`         | 409  | Attempting to edit an approved DRE               | "DRE ja aprovado. Nao pode ser editado."                                                     |
+| `ERP_DRE_PERIOD_EXISTS`            | 409  | DRE for this month/year already exists           | "Ja existe um DRE para {month}/{year}."                                                      |
+| `ERP_MARGIN_NO_COST_DATA`          | 422  | SKU has no cost_price set                        | "SKU nao possui custo de producao definido."                                                 |
+| `ERP_MOVEMENT_NOTES_REQUIRED`      | 422  | Adjustment/loss movement without notes           | "Nota obrigatoria para movimentacoes de ajuste ou perda."                                    |
+| `ERP_MP_WEBHOOK_INVALID_SIGNATURE` | 401  | Mercado Pago webhook signature mismatch          | _(not user-facing — logged and rejected)_                                                    |
+| `ERP_MP_WEBHOOK_DUPLICATE`         | 200  | Duplicate webhook event (idempotency)            | _(returns 200 OK, no action — idempotent)_                                                   |
 
 ---
 
@@ -1596,7 +1733,7 @@ Following the testing strategy from [TESTING.md](../../platform/TESTING.md).
 - [ ] Margin: edge cases (zero cost, 100% margin, negative margin)
 - [ ] DRE: gross_revenue from settled sale transactions only
 - [ ] DRE: net_revenue = gross - discounts - returns
-- [ ] DRE: COGS calculation from order items * cost_price
+- [ ] DRE: COGS calculation from order items \* cost_price
 - [ ] DRE: net_income = gross_margin - SUM(operational_expenses)
 - [ ] Financial: webhook signature verification (valid, invalid, missing)
 - [ ] Financial: idempotent webhook handling (duplicate event_id)
@@ -1662,17 +1799,20 @@ Following the testing strategy from [TESTING.md](../../platform/TESTING.md).
 > Referência: `DS.md` seções 4 (ICP & Filosofia), 6 (Formulários), 10 (Responsividade), 11 (Onboarding)
 
 ### Desktop-first + Mobile Funcional
+
 - **90% desktop (DS.md 10):** ERP é módulo desktop-only na v1 para fluxos complexos (DRE, margem, bulk actions). Mobile funcional apenas para ações de expedição.
 - **Ação sticky em mobile (DS.md 10):** botão "Marcar como enviado" sempre visível (sticky bottom) nas telas de expedição mobile. Não enterrar em menus.
 - **Touch targets (DS.md 10):** mínimo 44px, espaçamento mínimo 8px entre targets em todas as ações mobile.
 - **Complexidade proporcional ao device (DS.md 10):** desktop mostra pipeline completo + detalhes, mobile mostra lista de pedidos + ação principal.
 
 ### Formulários Mínimos
+
 - **Pergunte menos (DS.md 6.1):** mínimo de campos por step. Entrada de estoque: SKU + quantidade + motivo. NF-e: dados preenchidos automaticamente a partir do pedido.
 - **Evite digitação (DS.md 6.2):** auto-complete para SKU (busca por nome/código), seleção de fornecedor por dropdown, scan de código de barras quando possível.
 - **Feedback inline (DS.md 6.4):** validação em tempo real. Estoque negativo = alerta `--danger` imediato. Margem abaixo do mínimo = alerta `--warning`.
 
 ### Empty States
+
 - **Estoque (DS.md 11.3):** "Nenhum produto cadastrado. Importe do Shopify ou crie manualmente." CTA duplo: "Importar do Shopify" (primário) + "Criar produto" (secundário).
 - **Pedidos (DS.md 11.3):** "Nenhum pedido registrado. Quando o primeiro entrar via checkout, aparece aqui."
 - **NF-e (DS.md 11.3):** "Nenhuma NF-e emitida. A emissão acontece quando a expedição marca o envio."
@@ -1680,17 +1820,50 @@ Following the testing strategy from [TESTING.md](../../platform/TESTING.md).
 
 ---
 
+## Feature Roadmap
+
+### v1 (Launch)
+
+- Order pipeline (Shopify DTC + manual orders + payment links)
+- Inventory management with depletion velocity
+- NF-e emission (sale + return + bonificação)
+- Shipping labels (Melhor Envio)
+- Financial reconciliation (Mercado Pago auto + banking OFX/API)
+- Margin calculator (live auto-recalculation + simulator)
+- DRE (monthly + per collection + forecast)
+- Cloud Estoque (pre-sale with configurable delivery estimate)
+- Shopify ↔ ERP sync and reconciliation panel
+- Tracking sync to Shopify fulfillment
+- SKU tier classification (Pandora96)
+- Revenue leak estimation
+
+### v2
+
+- Split delivery for mixed orders (physical + cloud)
+- CC-e (Carta de Correção Eletrônica)
+- Barcode scanning via camera
+- Stock allocation per channel
+- DRE real-time MTD
+- Open Finance API integration (Itaú, Conta Simples)
+- Multi-warehouse (if needed)
+
+### v2+ (post-Astro)
+
+- AI-assisted pricing (Astro intelligence layer)
+
+---
+
 ## Appendix A: Migration from Bling
 
 ### A.1 Data Export from Bling
 
-| Bling Entity | ERP Target Table | Migration Strategy |
-|-------------|-----------------|-------------------|
-| Products | `erp.products` + `erp.skus` | Export via Bling API. Map Bling product to product + SKU variants. |
-| Orders (historical) | Not migrated to ERP | Historical orders remain in Bling archive. ERP starts with a clean pipeline. Historical financial data imported for DRE baseline. |
-| NF-e (historical) | Not migrated | Historical NF-e remain in SEFAZ records. Only new NF-e go through ERP. |
-| Inventory | `erp.inventory` | Full physical inventory count at cutover. Manual entry into ERP. No automated transfer. |
-| Financial | DRE baseline | Export monthly revenue/cost summaries from Bling. Use as DRE comparison baseline for first 3 months. |
+| Bling Entity        | ERP Target Table            | Migration Strategy                                                                                                                |
+| ------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Products            | `erp.products` + `erp.skus` | Export via Bling API. Map Bling product to product + SKU variants.                                                                |
+| Orders (historical) | Not migrated to ERP         | Historical orders remain in Bling archive. ERP starts with a clean pipeline. Historical financial data imported for DRE baseline. |
+| NF-e (historical)   | Not migrated                | Historical NF-e remain in SEFAZ records. Only new NF-e go through ERP.                                                            |
+| Inventory           | `erp.inventory`             | Full physical inventory count at cutover. Manual entry into ERP. No automated transfer.                                           |
+| Financial           | DRE baseline                | Export monthly revenue/cost summaries from Bling. Use as DRE comparison baseline for first 3 months.                              |
 
 ### A.2 Cutover Plan
 
@@ -1704,19 +1877,85 @@ Following the testing strategy from [TESTING.md](../../platform/TESTING.md).
 
 ## Appendix B: Open Questions
 
-| # | Question | Owner | Status |
-|---|----------|-------|--------|
-| OQ-1 | Should we support multiple NF-e series (for different product categories)? | Marcus | Open |
-| OQ-2 | Do we need CC-e (Carta de Correcao Eletronica) support at launch, or is 24h cancellation window sufficient? | Pedro | Open |
-| OQ-3 | Should the margin calculator support batch recalculation for all SKUs at once, or only per-SKU? | Pedro | Open — leaning toward batch for ranking table |
-| OQ-4 | What is the exact Simples Nacional tax bracket for Ciena's current revenue? This affects `tax_rate` default. | Pedro | Open |
-| OQ-5 | Should we auto-cancel pending orders after 48h without payment (boleto expiry)? | Marcus | Open |
-| OQ-6 | Do we need multi-warehouse support in V1, or is a single warehouse assumption safe? | Tavares | Open — single warehouse for V1 |
-| OQ-7 | Should Melhor Envio carrier selection be automatic (cheapest) or manual (Ana Clara picks)? | Ana Clara | Open — leaning toward auto with override |
-| OQ-8 | How should we handle partial shipments (order with 3 items, only 2 in stock)? | Marcus | Open — defer to V2 |
-| OQ-9 | Do we need a physical barcode scanner integration for stock entry, or is manual SKU selection sufficient for V1? | Ana Clara | Open — manual for V1, scanner V2 |
-| OQ-10 | Should the DRE include tax breakdown (ICMS, PIS, COFINS) or just the aggregate tax rate? | Pedro | Open — aggregate for V1 |
+| #     | Question                              | Owner     | Status     | Decision                                                                                            |
+| ----- | ------------------------------------- | --------- | ---------- | --------------------------------------------------------------------------------------------------- |
+| OQ-1  | Multiple NF-e series?                 | Marcus    | **CLOSED** | Single series v1.                                                                                   |
+| OQ-2  | CC-e support at launch?               | Pedro     | **CLOSED** | Out of v1. Accountant handles manually. CC-e in v2.                                                 |
+| OQ-3  | Margin batch or per-SKU?              | Pedro     | **CLOSED** | Live auto-recalculation + on-demand simulator.                                                      |
+| OQ-4  | Simples Nacional tax bracket?         | Pedro     | **CLOSED** | Pedro informs rate manually. No auto-calculation.                                                   |
+| OQ-5  | Auto-cancel pending orders after 48h? | Marcus    | **CLOSED** | Not applicable. DTC only accepts card/PIX (no boleto). B2B has long-term invoicing, no auto-cancel. |
+| OQ-6  | Multi-warehouse?                      | Tavares   | **CLOSED** | Single warehouse confirmed. No multi-location planned.                                              |
+| OQ-7  | Carrier selection?                    | Ana Clara | **CLOSED** | Customer chooses at DTC checkout. Internal/manual: best cost-time ratio, case by case.              |
+| OQ-8  | Partial shipments?                    | Marcus    | **CLOSED** | 3 options available (hold, partial ship, cancel item). Implemented with Cloud Estoque in v1.        |
+| OQ-9  | Barcode scanner?                      | Ana Clara | **CLOSED** | No barcodes on products yet. Manual SKU selection v1. Barcode + camera scanner v2.                  |
+| OQ-10 | DRE tax breakdown?                    | Pedro     | **CLOSED** | Aggregate in v1 (Simples Nacional = single rate). Breakdown when changing tax regime.               |
 
 ---
 
-*This module spec is the source of truth for ERP implementation. All development, review, and QA should reference this document. Changes require review from Marcus (admin) or Tavares (operations lead).*
+_This module spec is the source of truth for ERP implementation. All development, review, and QA should reference this document. Changes require review from Marcus (admin) or Tavares (operations lead)._
+
+---
+
+## Financial Planning & Cost Management
+
+### DRE Planejado vs Real
+
+Pedro cria projeções financeiras mensais e compara com valores reais calculados pelo sistema (Shopify/MP). Tela DRE ganha toggle "Projetado | Real | Comparativo" com delta (%) em cada linha. Nova tabela `erp.dre_projections` com receita, custos, impostos e status draft/final.
+
+**User Stories:**
+
+| #       | As a... | I want to...                                                     | Acceptance Criteria                                                                                                                                                |
+| ------- | ------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| US-AX01 | Pedro   | Create monthly financial projections and compare with actual DRE | Projection form with 8-12 fields. Side-by-side view: Projected vs Actual with delta %. Color-coded: green if actual revenue ≥ projected, red if costs > projected. |
+| US-AX02 | Pedro   | Lock a DRE projection as "final" after review                    | "Aprovar" button changes status from draft to final. Final projections cannot be edited. Records approved_by.                                                      |
+
+### Cashflow Tracking
+
+Track revenue and expenses month by month with payment status (planned/actual/paid). New sub-route `(admin)/erp/financeiro/cashflow` with monthly table showing 3 columns per line: Planejado | Real | Pago. Cards: Saldo Projetado, Saldo Real, A Receber, A Pagar. New table `erp.cashflow_entries`.
+
+**User Stories:**
+
+| #       | As a... | I want to...                                                | Acceptance Criteria                                                                                                                            |
+| ------- | ------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-AX03 | Pedro   | See monthly cashflow with planned vs actual vs paid amounts | Table with revenue (by source) and expenses (by category). Three columns per line. Revenue auto-filled from Shopify/MP. Expenses manual entry. |
+| US-AX04 | Pedro   | See summary cards: Saldo Projetado, A Receber, A Pagar      | Cards at top of cashflow view. A Receber = sum(actual - paid) for revenue. A Pagar = sum(actual - paid) for expenses.                          |
+
+### Team Cost Management
+
+Register monthly cost per team member (salary + benefits + commission). Auto-feeds "Pessoal" line in DRE and Cashflow. Alert if payroll > 30% of revenue. New table `erp.team_costs`. Sub-route: `(admin)/erp/financeiro/team-costs`.
+
+**User Stories:**
+
+| #       | As a... | I want to...                                      | Acceptance Criteria                                                                                 |
+| ------- | ------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| US-AX05 | Pedro   | Register monthly cost per team member             | Form: name, role, salary, benefits, commission %. List view with total.                             |
+| US-AX06 | Pedro   | See team cost auto-feed into DRE "Pessoal" line   | DRE shows sum(team_costs) as "Despesas com Pessoal". Commission calculated as % of monthly revenue. |
+| US-AX07 | Marcus  | Receive alert when payroll exceeds 30% of revenue | Flare alert when sum(team_costs) / revenue > 0.30. Shown in Dashboard and Discord #alertas.         |
+
+### Cloud Estoque / Split Delivery (v1)
+
+Pre-sell products not yet in physical stock when a replenishment production order exists. Product page shows a badge ("Reposição em andamento" or configurable copy) with estimated delivery date that counts down daily. Optional discount (e.g., 10% off while in production) as incentive.
+
+**Delivery estimate source:** configurable per SKU — manual date, PLM production timeline, or custom.
+
+**Frete policy per cloud product:** configurable — brand absorbs second shipping cost, customer pays proportional, or free shipping on cloud shipment.
+
+**Mixed orders (physical + cloud):** create separate shipments. Each shipment has independent NF-e and shipping label. Cloud shipment enters `awaiting_production` status until stock arrives.
+
+**Shopify integration:** Push metafields (cloud_enabled, delivery_estimate, discount_percent) to Shopify. Theme displays badge on product page. Background job updates delivery estimate daily.
+
+**Dependencies:** Cloud stock quantity derived from PLM production orders (`quantity_in_production`) with configurable safety margin (default: release 80% for cloud sale, hold 20% for QC rejects).
+
+### Alocação de Estoque por Canal (v2+)
+
+Reserve stock by channel: X% DTC, Y% VIP, Z% B2B, W% influencers. Deferred — single shared stock pool in v1. All channels consume from the same inventory. Seeding/bonification handled via `is_bonification` flag on orders with NF-e de bonificação.
+
+### Tracking de Pedido (v1)
+
+Primary approach: ERP syncs fulfillment data (tracking code, carrier, status) to Shopify via Fulfillment API. Shopify's native order status page shows updated tracking.
+
+Fallback: If Shopify integration is insufficient (known issue with current Bling/Loggi/ME integrations), build custom `/rastreio` page — public, no login required, customer enters order number or CPF.
+
+### Precificação Assistida por IA
+
+Based on production cost, desired margin, competitor prices (from Marketing Competitor Watch), historical performance. Output: "At R$229 your margin is 78% (very high). At R$199, drops to 62% (fair) but historical volume increases 40%." Important for Tavares (costs), Pedro (finance) and Marcus (strategy). Requires 2-3 months of real ERP data. Intelligence layer in Astro, price simulation UI in ERP.

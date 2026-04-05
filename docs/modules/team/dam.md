@@ -9,7 +9,7 @@
 > **Status:** Approved
 > **Priority:** HIGH — centralizes all brand assets currently scattered across Google Drive folders
 > **Replaces:** Google Drive (informal folder structure with no versioning, no tagging, no approval workflow, no UGC pipeline)
-> **References:** [DATABASE.md](../../architecture/DATABASE.md), [API.md](../../architecture/API.md), [AUTH.md](../../architecture/AUTH.md), [INFRA.md](../../architecture/INFRA.md), [NOTIFICATIONS.md](../../platform/NOTIFICATIONS.md), [GLOSSARY.md](../../dev/GLOSSARY.md), [Marketing Intel spec](../growth/marketing-intel.md), [PCP spec](../operations/pcp.md), [Tarefas spec](./tarefas.md)
+> **References:** [DATABASE.md](../../architecture/DATABASE.md), [API.md](../../architecture/API.md), [AUTH.md](../../architecture/AUTH.md), [INFRA.md](../../architecture/INFRA.md), [NOTIFICATIONS.md](../../platform/NOTIFICATIONS.md), [GLOSSARY.md](../../dev/GLOSSARY.md), [Marketing Intel spec](../growth/marketing.md), [PCP spec](../operations/plm.md), [Tarefas spec](./tarefas.md)
 
 ---
 
@@ -17,30 +17,30 @@
 
 The Digital Asset Management (DAM) module is the **centralized brand asset library** of Ambaril. It replaces the current Google Drive chaos — where product photos, key visuals, mockups, videos, and UGC are scattered across dozens of folders with inconsistent naming, no versioning, no approval workflow, and no search — with a structured, searchable, version-controlled repository backed by Cloudflare R2 storage.
 
-Every visual asset that represents the CIENA brand lives here: product photography for the e-commerce catalog, key visuals (KVs) for marketing campaigns, design mockups and source files, video content for social media, and approved user-generated content (UGC) imported from the Marketing Intelligence module. The DAM provides a single source of truth for "what is the latest approved version of this asset?"
+Every visual asset that represents the CIENA brand lives here: product photography for the e-commerce catalog, key visuals (KVs) for marketing campaigns, design mockups and source files, video content for social media, and approved user-generated content (UGC) imported from the Marketing module. The DAM provides a single source of truth for "what is the latest approved version of this asset?"
 
 **Core responsibilities:**
 
-| Capability | Description |
-|-----------|-------------|
-| **Asset Library** | Grid/list view of all assets with rich filtering by collection, type, format, status, tags, uploader, and date. Full-text search across filenames, tags, and descriptions using PostgreSQL `tsvector`. |
-| **Upload & Storage** | Direct upload to Cloudflare R2 via presigned URLs. Bulk upload support. Auto-thumbnail generation (Sharp for images, first-frame extraction for video). Supports images, videos, design files, and documents. |
-| **Versioning** | Upload new versions of existing assets. Version history timeline with change notes. Side-by-side comparison for images. Sick uploads v1, Yuri comments, Sick uploads v2 — all tracked. |
-| **Approval Workflow** | Status pipeline: `draft` -> `review` -> `approved` -> `published` -> `archived`. Only PM and admin can approve/publish. Creative can upload, tag, and version freely but cannot approve. |
-| **UGC Pipeline** | Approved UGC posts from Marketing Intelligence auto-import into DAM with `type = ugc`, source link, and auto-populated tags. Provides a "UGC Inbox" view for review. |
-| **Folder Organization** | Hierarchical folder tree for organizing assets. Assets can belong to multiple folders (many-to-many). Drag-and-drop to organize. |
-| **Collection Linking** | Assets can be linked to PCP collections for organization by season/drop. |
-| **Download Options** | Download original resolution file or a web-optimized version (auto-compressed for web use). |
-| **Tags & Search** | Free-form text tags with autocomplete from existing tags. PostgreSQL full-text search across filename, tags, and description. |
+| Capability              | Description                                                                                                                                                                                                   |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Asset Library**       | Grid/list view of all assets with rich filtering by collection, type, format, status, tags, uploader, and date. Full-text search across filenames, tags, and descriptions using PostgreSQL `tsvector`.        |
+| **Upload & Storage**    | Direct upload to Cloudflare R2 via presigned URLs. Bulk upload support. Auto-thumbnail generation (Sharp for images, first-frame extraction for video). Supports images, videos, design files, and documents. |
+| **Versioning**          | Upload new versions of existing assets. Version history timeline with change notes. Side-by-side comparison for images. Sick uploads v1, Yuri comments, Sick uploads v2 — all tracked.                        |
+| **Approval Workflow**   | Status pipeline: `draft` -> `review` -> `approved` -> `published` -> `archived`. Only PM and admin can approve/publish. Creative can upload, tag, and version freely but cannot approve.                      |
+| **UGC Pipeline**        | Approved UGC posts from Marketing Intelligence auto-import into DAM with `type = ugc`, source link, and auto-populated tags. Provides a "UGC Inbox" view for review.                                          |
+| **Folder Organization** | Hierarchical folder tree for organizing assets. Assets can belong to multiple folders (many-to-many). Drag-and-drop to organize.                                                                              |
+| **Collection Linking**  | Assets can be linked to PCP collections for organization by season/drop.                                                                                                                                      |
+| **Download Options**    | Download original resolution file or a web-optimized version (auto-compressed for web use).                                                                                                                   |
+| **Tags & Search**       | Free-form text tags with autocomplete from existing tags. PostgreSQL full-text search across filename, tags, and description.                                                                                 |
 
 **Primary users:**
 
-| User | Role | Device | Primary actions |
-|------|------|--------|----------------|
-| **Sick** | Creative (Designer) | Desktop | Upload product photos, KVs, mockups, design source files. Create new versions after feedback. Tag and organize assets. Primary uploader. |
-| **Yuri** | Creative (Content) | Desktop + Mobile | Search for approved assets for social media posts. Browse UGC. Comment on assets with feedback. Download web-optimized versions. |
-| **Caio** | PM | Desktop | Approve assets for publication. Review UGC inbox. Manage folder structure. Monitor asset pipeline. |
-| **Marcus** | Admin | Desktop | Full access. Approve/publish assets. Delete assets if needed. |
+| User       | Role                | Device           | Primary actions                                                                                                                          |
+| ---------- | ------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| **Sick**   | Creative (Designer) | Desktop          | Upload product photos, KVs, mockups, design source files. Create new versions after feedback. Tag and organize assets. Primary uploader. |
+| **Yuri**   | Creative (Content)  | Desktop + Mobile | Search for approved assets for social media posts. Browse UGC. Comment on assets with feedback. Download web-optimized versions.         |
+| **Caio**   | PM                  | Desktop          | Approve assets for publication. Review UGC inbox. Manage folder structure. Monitor asset pipeline.                                       |
+| **Marcus** | Admin               | Desktop          | Full access. Approve/publish assets. Delete assets if needed.                                                                            |
 
 **Out of scope:** This module does NOT manage the actual social media posting (that is content execution, not asset management). It does NOT manage task attachments (those are stored in R2 but tracked by the Tarefas module, not DAM). It does NOT manage the UGC detection pipeline (that is Marketing Intelligence — DAM receives already-approved UGC). It does NOT manage product catalog images on the e-commerce frontend (the Checkout module references asset URLs but DAM does not push to the storefront).
 
@@ -50,46 +50,46 @@ Every visual asset that represents the CIENA brand lives here: product photograp
 
 ### 2.1 Upload & Organization (Sick / Creative)
 
-| # | As a... | I want to... | So that... | Acceptance Criteria |
-|---|---------|-------------|-----------|-------------------|
-| US-01 | Creative (Sick) | Upload product photos for a new collection with collection tag and type | The assets are organized and findable from day one | Drag-and-drop upload zone or file picker; select collection from dropdown; set `asset_type = product_photo`; add tags during upload; bulk upload multiple files; auto-thumbnail generated; assets appear in library immediately with `status = draft` |
-| US-02 | Creative (Sick) | Upload a new version of a KV after incorporating feedback | Version history is preserved and the team always sees the latest version | On asset detail, "Nova versao" button; upload new file; add change notes (e.g., "Ajustei cores conforme feedback do Caio"); `current_version` incremented; previous version preserved in `asset_versions`; thumbnail updated to new version |
-| US-03 | Creative (Sick) | Tag assets with descriptive labels during or after upload | Assets are discoverable via search and filtering | Tag input with autocomplete suggesting existing tags (type-ahead); free-form creation of new tags; tags saved as `TEXT[]`; tags displayed as chips on asset cards; filterable in library view |
-| US-04 | Creative (Sick) | Organize assets into folders by collection, drop, and content type | I can browse assets in a structured hierarchy when search is not enough | Folder tree in sidebar; create nested folders (e.g., "Inverno 2026 > Drop 13 > Fotos Produto"); drag assets into folders; assets can exist in multiple folders (many-to-many); click folder to filter library to that folder's contents |
-| US-05 | Creative (Sick) | Upload design source files (PSD, AI) alongside exported versions | Both the editable source and the final output are stored together | PSD and AI files accepted (mime_type validation); stored in R2; thumbnail generated from embedded preview if available (else generic file icon); displayed in library alongside image exports |
+| #     | As a...         | I want to...                                                            | So that...                                                               | Acceptance Criteria                                                                                                                                                                                                                                   |
+| ----- | --------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-01 | Creative (Sick) | Upload product photos for a new collection with collection tag and type | The assets are organized and findable from day one                       | Drag-and-drop upload zone or file picker; select collection from dropdown; set `asset_type = product_photo`; add tags during upload; bulk upload multiple files; auto-thumbnail generated; assets appear in library immediately with `status = draft` |
+| US-02 | Creative (Sick) | Upload a new version of a KV after incorporating feedback               | Version history is preserved and the team always sees the latest version | On asset detail, "Nova versao" button; upload new file; add change notes (e.g., "Ajustei cores conforme feedback do Caio"); `current_version` incremented; previous version preserved in `asset_versions`; thumbnail updated to new version           |
+| US-03 | Creative (Sick) | Tag assets with descriptive labels during or after upload               | Assets are discoverable via search and filtering                         | Tag input with autocomplete suggesting existing tags (type-ahead); free-form creation of new tags; tags saved as `TEXT[]`; tags displayed as chips on asset cards; filterable in library view                                                         |
+| US-04 | Creative (Sick) | Organize assets into folders by collection, drop, and content type      | I can browse assets in a structured hierarchy when search is not enough  | Folder tree in sidebar; create nested folders (e.g., "Inverno 2026 > Drop 13 > Fotos Produto"); drag assets into folders; assets can exist in multiple folders (many-to-many); click folder to filter library to that folder's contents               |
+| US-05 | Creative (Sick) | Upload design source files (PSD, AI) alongside exported versions        | Both the editable source and the final output are stored together        | PSD and AI files accepted (mime_type validation); stored in R2; thumbnail generated from embedded preview if available (else generic file icon); displayed in library alongside image exports                                                         |
 
 ### 2.2 Search & Discovery (Yuri / Creative)
 
-| # | As a... | I want to... | So that... | Acceptance Criteria |
-|---|---------|-------------|-----------|-------------------|
-| US-06 | Creative (Yuri) | Search for assets by keyword across filename, tags, and description | I can find the specific asset I need for a social media post in seconds | Search bar at top of library; queries PostgreSQL full-text search index; results ranked by relevance; search terms highlighted in results; search works across filename, tags[], and description |
-| US-07 | Creative (Yuri) | Filter the asset library by collection, type, format, status, and uploader | I can narrow down to exactly the category of assets I need | Filter bar with multi-select dropdowns: Collection (from pcp.collections), Type (product_photo, key_visual, mockup, video, ugc, etc.), Format (jpg, png, webp, mp4, etc.), Status (draft, review, approved, published, archived), Uploaded by (team member); filters applied in real-time; combinable |
-| US-08 | Creative (Yuri) | Browse approved UGC in a dedicated gallery | I can find user-generated content for reposting or campaign inspiration | "UGC" filter preset in library view; shows only assets with `asset_type = ugc AND status = approved`; sorted by newest; shows original author username, engagement metrics (from linked ugc_post), and source link |
-| US-09 | Creative (Yuri) | Download an asset in original resolution or web-optimized format | I can get the right format for my use case (print vs. social media) | Asset detail page: two download buttons — "Original" (full resolution, original format) and "Web" (compressed to max 1920px wide, WebP format, quality 80). Download via signed R2 URL (expires in 1 hour). |
+| #     | As a...         | I want to...                                                               | So that...                                                              | Acceptance Criteria                                                                                                                                                                                                                                                                                   |
+| ----- | --------------- | -------------------------------------------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-06 | Creative (Yuri) | Search for assets by keyword across filename, tags, and description        | I can find the specific asset I need for a social media post in seconds | Search bar at top of library; queries PostgreSQL full-text search index; results ranked by relevance; search terms highlighted in results; search works across filename, tags[], and description                                                                                                      |
+| US-07 | Creative (Yuri) | Filter the asset library by collection, type, format, status, and uploader | I can narrow down to exactly the category of assets I need              | Filter bar with multi-select dropdowns: Collection (from pcp.collections), Type (product_photo, key_visual, mockup, video, ugc, etc.), Format (jpg, png, webp, mp4, etc.), Status (draft, review, approved, published, archived), Uploaded by (team member); filters applied in real-time; combinable |
+| US-08 | Creative (Yuri) | Browse approved UGC in a dedicated gallery                                 | I can find user-generated content for reposting or campaign inspiration | "UGC" filter preset in library view; shows only assets with `asset_type = ugc AND status = approved`; sorted by newest; shows original author username, engagement metrics (from linked ugc_post), and source link                                                                                    |
+| US-09 | Creative (Yuri) | Download an asset in original resolution or web-optimized format           | I can get the right format for my use case (print vs. social media)     | Asset detail page: two download buttons — "Original" (full resolution, original format) and "Web" (compressed to max 1920px wide, WebP format, quality 80). Download via signed R2 URL (expires in 1 hour).                                                                                           |
 
 ### 2.3 Review & Approval (Caio / PM)
 
-| # | As a... | I want to... | So that... | Acceptance Criteria |
-|---|---------|-------------|-----------|-------------------|
-| US-10 | PM (Caio) | Approve an asset and change its status to "approved" | The team knows this asset is cleared for use in campaigns and publications | "Aprovar" button on asset detail; sets `status = approved`, `approved_by = user.id`, `approved_at = NOW()`; asset badge changes to green "Aprovado"; emits `asset.approved` Flare event |
-| US-11 | PM (Caio) | Publish an approved asset | The asset is marked as actively in use / published externally | "Publicar" button on approved assets only; sets `status = published`; asset badge changes to blue "Publicado"; reversible (can archive later) |
-| US-12 | PM (Caio) | Archive an asset that is no longer current | Old assets are hidden from default views but not deleted | "Arquivar" button; sets `status = archived`; asset hidden from default library view (filter `status != archived`); still searchable with explicit archived filter; reversible |
-| US-13 | PM (Caio) | Review the UGC inbox with assets auto-imported from Marketing Intelligence | I can approve or reject UGC assets for the DAM library | "UGC Inbox" tab in DAM; shows assets with `asset_type = ugc AND status = draft`; each card shows thumbnail, original post link, author username, engagement stats; "Aprovar" or "Rejeitar" actions; approved assets enter the main library |
-| US-14 | PM (Caio) | Add feedback comments on a specific version of an asset | Sick knows exactly what to change on which version | Comment input on asset detail with optional `version_number` selector; comments tagged to specific version displayed in version timeline; Sick sees "Caio commented on v1: 'Cores estao escuras, clarear 10%'" |
+| #     | As a...   | I want to...                                                               | So that...                                                                 | Acceptance Criteria                                                                                                                                                                                                                        |
+| ----- | --------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| US-10 | PM (Caio) | Approve an asset and change its status to "approved"                       | The team knows this asset is cleared for use in campaigns and publications | "Aprovar" button on asset detail; sets `status = approved`, `approved_by = user.id`, `approved_at = NOW()`; asset badge changes to green "Aprovado"; emits `asset.approved` Flare event                                                    |
+| US-11 | PM (Caio) | Publish an approved asset                                                  | The asset is marked as actively in use / published externally              | "Publicar" button on approved assets only; sets `status = published`; asset badge changes to blue "Publicado"; reversible (can archive later)                                                                                              |
+| US-12 | PM (Caio) | Archive an asset that is no longer current                                 | Old assets are hidden from default views but not deleted                   | "Arquivar" button; sets `status = archived`; asset hidden from default library view (filter `status != archived`); still searchable with explicit archived filter; reversible                                                              |
+| US-13 | PM (Caio) | Review the UGC inbox with assets auto-imported from Marketing Intelligence | I can approve or reject UGC assets for the DAM library                     | "UGC Inbox" tab in DAM; shows assets with `asset_type = ugc AND status = draft`; each card shows thumbnail, original post link, author username, engagement stats; "Aprovar" or "Rejeitar" actions; approved assets enter the main library |
+| US-14 | PM (Caio) | Add feedback comments on a specific version of an asset                    | Sick knows exactly what to change on which version                         | Comment input on asset detail with optional `version_number` selector; comments tagged to specific version displayed in version timeline; Sick sees "Caio commented on v1: 'Cores estao escuras, clarear 10%'"                             |
 
 ### 2.4 Version Comparison (Sick + Caio)
 
-| # | As a... | I want to... | So that... | Acceptance Criteria |
-|---|---------|-------------|-----------|-------------------|
-| US-15 | Creative (Sick) | Compare two versions of an asset side by side | I can visually confirm the changes I made between versions | "Comparar" button on asset detail with version >= 2; opens side-by-side view with v(N-1) on left and v(N) on right; image zoom synchronized; version numbers and change notes displayed above each side |
-| US-16 | PM (Caio) | View the full version history of an asset | I can track the evolution of a design from initial upload to final approved version | Version timeline on asset detail: vertical list of versions with version number, thumbnail, change notes, uploaded_by, created_at; click any version to view full detail; current version highlighted |
+| #     | As a...         | I want to...                                  | So that...                                                                          | Acceptance Criteria                                                                                                                                                                                     |
+| ----- | --------------- | --------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-15 | Creative (Sick) | Compare two versions of an asset side by side | I can visually confirm the changes I made between versions                          | "Comparar" button on asset detail with version >= 2; opens side-by-side view with v(N-1) on left and v(N) on right; image zoom synchronized; version numbers and change notes displayed above each side |
+| US-16 | PM (Caio)       | View the full version history of an asset     | I can track the evolution of a design from initial upload to final approved version | Version timeline on asset detail: vertical list of versions with version number, thumbnail, change notes, uploaded_by, created_at; click any version to view full detail; current version highlighted   |
 
 ### 2.5 Team Member Downloads
 
-| # | As a... | I want to... | So that... | Acceptance Criteria |
-|---|---------|-------------|-----------|-------------------|
-| US-17 | Team member | Download an original resolution asset for print or external use | I can use the highest quality version available | "Baixar original" button generates signed R2 URL with `Content-Disposition: attachment`; download starts immediately; URL expires after 1 hour for security |
-| US-18 | Team member | Download a web-optimized version for social media or email | I don't have to manually resize/compress assets for web use | "Baixar web" button serves auto-generated web version (WebP, max 1920px, quality 80); generated on first request and cached in R2 alongside original |
+| #     | As a...     | I want to...                                                    | So that...                                                  | Acceptance Criteria                                                                                                                                         |
+| ----- | ----------- | --------------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-17 | Team member | Download an original resolution asset for print or external use | I can use the highest quality version available             | "Baixar original" button generates signed R2 URL with `Content-Disposition: attachment`; download starts immediately; URL expires after 1 hour for security |
+| US-18 | Team member | Download a web-optimized version for social media or email      | I don't have to manually resize/compress assets for web use | "Baixar web" button serves auto-generated web version (WebP, max 1920px, quality 80); generated on first request and cached in R2 alongside original        |
 
 ---
 
@@ -202,32 +202,32 @@ CREATE TYPE dam.asset_status AS ENUM (
 
 #### 3.3.1 dam.assets
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| filename | VARCHAR(255) | NOT NULL | System filename (sanitized, unique slug): e.g., `camiseta-preta-basic-kv-v3.png`. Generated on upload: slugified original name + collision suffix if needed. |
-| original_filename | VARCHAR(255) | NOT NULL | Original filename as uploaded by the user: e.g., "Camiseta Preta Basic KV Final FINAL v3.png". Preserved for display and download. |
-| file_url | TEXT | NOT NULL | R2 storage URL: `https://assets.ambaril.app/dam/{collection_or_folder}/{filename}`. Points to the current version. Updated on new version upload. |
-| thumbnail_url | TEXT | NULL | R2 URL for auto-generated thumbnail (400x400 max, WebP). NULL if thumbnail generation failed or is pending. For video: first frame extracted. |
-| file_size | INTEGER | NOT NULL, CHECK (file_size > 0) | File size in bytes of the current version |
-| mime_type | VARCHAR(100) | NOT NULL | MIME type of the current version (e.g., "image/png", "video/mp4", "application/pdf") |
-| width | INTEGER | NULL | Image/video width in pixels. NULL for non-visual files (PDF, PSD without embedded preview). |
-| height | INTEGER | NULL | Image/video height in pixels. NULL for non-visual files. |
-| duration_seconds | INTEGER | NULL | Video duration in seconds. NULL for non-video assets. |
-| collection_id | UUID | NULL, FK pcp.collections(id) | Linked PCP collection for organizational context. NULL if not collection-specific. |
-| asset_type | dam.asset_type | NOT NULL | product_photo, key_visual, mockup, video, ugc, raw_file, document, other |
-| format | dam.asset_format | NOT NULL | jpg, png, webp, mp4, mov, psd, ai, pdf, svg, other |
-| status | dam.asset_status | NOT NULL DEFAULT 'draft' | draft, review, approved, published, archived |
-| current_version | INTEGER | NOT NULL DEFAULT 1 | Current version number. Incremented on each new version upload. |
-| tags | TEXT[] | NOT NULL DEFAULT '{}' | Free-form tags (e.g., `{'drop-13', 'camiseta', 'kv', 'instagram'}`). Searchable via GIN index. |
-| description | TEXT | NULL | Asset description, notes, usage instructions. Searchable via full-text index. |
-| uploaded_by | UUID | NOT NULL, FK global.users(id) | Original uploader |
-| approved_by | UUID | NULL, FK global.users(id) | Who approved the asset. NULL if not yet approved. |
-| approved_at | TIMESTAMPTZ | NULL | When the asset was approved. NULL if not yet approved. |
-| source_ugc_id | UUID | NULL, FK marketing.ugc_posts(id) | Link to the Marketing Intelligence UGC post that was the source for this asset. NULL if not UGC-sourced. |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| deleted_at | TIMESTAMPTZ | NULL | Soft delete. Deleted assets are hidden from all views but retained in R2 for recovery. |
+| Column            | Type             | Constraints                      | Description                                                                                                                                                  |
+| ----------------- | ---------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| id                | UUID             | PK, DEFAULT gen_random_uuid()    | UUID v7                                                                                                                                                      |
+| filename          | VARCHAR(255)     | NOT NULL                         | System filename (sanitized, unique slug): e.g., `camiseta-preta-basic-kv-v3.png`. Generated on upload: slugified original name + collision suffix if needed. |
+| original_filename | VARCHAR(255)     | NOT NULL                         | Original filename as uploaded by the user: e.g., "Camiseta Preta Basic KV Final FINAL v3.png". Preserved for display and download.                           |
+| file_url          | TEXT             | NOT NULL                         | R2 storage URL: `https://assets.ambaril.app/dam/{collection_or_folder}/{filename}`. Points to the current version. Updated on new version upload.            |
+| thumbnail_url     | TEXT             | NULL                             | R2 URL for auto-generated thumbnail (400x400 max, WebP). NULL if thumbnail generation failed or is pending. For video: first frame extracted.                |
+| file_size         | INTEGER          | NOT NULL, CHECK (file_size > 0)  | File size in bytes of the current version                                                                                                                    |
+| mime_type         | VARCHAR(100)     | NOT NULL                         | MIME type of the current version (e.g., "image/png", "video/mp4", "application/pdf")                                                                         |
+| width             | INTEGER          | NULL                             | Image/video width in pixels. NULL for non-visual files (PDF, PSD without embedded preview).                                                                  |
+| height            | INTEGER          | NULL                             | Image/video height in pixels. NULL for non-visual files.                                                                                                     |
+| duration_seconds  | INTEGER          | NULL                             | Video duration in seconds. NULL for non-video assets.                                                                                                        |
+| collection_id     | UUID             | NULL, FK pcp.collections(id)     | Linked PCP collection for organizational context. NULL if not collection-specific.                                                                           |
+| asset_type        | dam.asset_type   | NOT NULL                         | product_photo, key_visual, mockup, video, ugc, raw_file, document, other                                                                                     |
+| format            | dam.asset_format | NOT NULL                         | jpg, png, webp, mp4, mov, psd, ai, pdf, svg, other                                                                                                           |
+| status            | dam.asset_status | NOT NULL DEFAULT 'draft'         | draft, review, approved, published, archived                                                                                                                 |
+| current_version   | INTEGER          | NOT NULL DEFAULT 1               | Current version number. Incremented on each new version upload.                                                                                              |
+| tags              | TEXT[]           | NOT NULL DEFAULT '{}'            | Free-form tags (e.g., `{'drop-13', 'camiseta', 'kv', 'instagram'}`). Searchable via GIN index.                                                               |
+| description       | TEXT             | NULL                             | Asset description, notes, usage instructions. Searchable via full-text index.                                                                                |
+| uploaded_by       | UUID             | NOT NULL, FK global.users(id)    | Original uploader                                                                                                                                            |
+| approved_by       | UUID             | NULL, FK global.users(id)        | Who approved the asset. NULL if not yet approved.                                                                                                            |
+| approved_at       | TIMESTAMPTZ      | NULL                             | When the asset was approved. NULL if not yet approved.                                                                                                       |
+| source_ugc_id     | UUID             | NULL, FK marketing.ugc_posts(id) | Link to the Marketing Intelligence UGC post that was the source for this asset. NULL if not UGC-sourced.                                                     |
+| created_at        | TIMESTAMPTZ      | NOT NULL DEFAULT NOW()           |                                                                                                                                                              |
+| updated_at        | TIMESTAMPTZ      | NOT NULL DEFAULT NOW()           |                                                                                                                                                              |
+| deleted_at        | TIMESTAMPTZ      | NULL                             | Soft delete. Deleted assets are hidden from all views but retained in R2 for recovery.                                                                       |
 
 **Indexes:**
 
@@ -249,17 +249,17 @@ CREATE INDEX idx_dam_assets_library ON dam.assets (status, asset_type, created_a
 
 #### 3.3.2 dam.asset_versions
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| asset_id | UUID | NOT NULL, FK dam.assets(id) ON DELETE CASCADE | Parent asset |
-| version_number | INTEGER | NOT NULL, CHECK (version_number >= 1) | Sequential version number (1, 2, 3...) |
-| file_url | TEXT | NOT NULL | R2 storage URL for this specific version: `https://assets.ambaril.app/dam/versions/{asset_id}/v{version_number}/{filename}` |
-| thumbnail_url | TEXT | NULL | Version-specific thumbnail URL. NULL if not yet generated. |
-| file_size | INTEGER | NOT NULL, CHECK (file_size > 0) | File size in bytes for this version |
-| change_notes | TEXT | NULL | Description of changes in this version (e.g., "Ajustei saturacao e cortei fundo"). NULL for v1 (initial upload). |
-| uploaded_by | UUID | NOT NULL, FK global.users(id) | Who uploaded this version |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| Column         | Type        | Constraints                                   | Description                                                                                                                 |
+| -------------- | ----------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| id             | UUID        | PK, DEFAULT gen_random_uuid()                 | UUID v7                                                                                                                     |
+| asset_id       | UUID        | NOT NULL, FK dam.assets(id) ON DELETE CASCADE | Parent asset                                                                                                                |
+| version_number | INTEGER     | NOT NULL, CHECK (version_number >= 1)         | Sequential version number (1, 2, 3...)                                                                                      |
+| file_url       | TEXT        | NOT NULL                                      | R2 storage URL for this specific version: `https://assets.ambaril.app/dam/versions/{asset_id}/v{version_number}/{filename}` |
+| thumbnail_url  | TEXT        | NULL                                          | Version-specific thumbnail URL. NULL if not yet generated.                                                                  |
+| file_size      | INTEGER     | NOT NULL, CHECK (file_size > 0)               | File size in bytes for this version                                                                                         |
+| change_notes   | TEXT        | NULL                                          | Description of changes in this version (e.g., "Ajustei saturacao e cortei fundo"). NULL for v1 (initial upload).            |
+| uploaded_by    | UUID        | NOT NULL, FK global.users(id)                 | Who uploaded this version                                                                                                   |
+| created_at     | TIMESTAMPTZ | NOT NULL DEFAULT NOW()                        |                                                                                                                             |
 
 **Indexes:**
 
@@ -271,15 +271,15 @@ CREATE INDEX idx_dam_av_uploaded_by ON dam.asset_versions (uploaded_by);
 
 #### 3.3.3 dam.asset_comments
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| asset_id | UUID | NOT NULL, FK dam.assets(id) ON DELETE CASCADE | Parent asset |
-| user_id | UUID | NOT NULL, FK global.users(id) | Comment author |
-| content | TEXT | NOT NULL | Comment text. Max 4096 chars. |
-| version_number | INTEGER | NULL | If the comment is about a specific version, references that version number. NULL = general comment about the asset (not version-specific). |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| Column         | Type        | Constraints                                   | Description                                                                                                                                |
+| -------------- | ----------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| id             | UUID        | PK, DEFAULT gen_random_uuid()                 | UUID v7                                                                                                                                    |
+| asset_id       | UUID        | NOT NULL, FK dam.assets(id) ON DELETE CASCADE | Parent asset                                                                                                                               |
+| user_id        | UUID        | NOT NULL, FK global.users(id)                 | Comment author                                                                                                                             |
+| content        | TEXT        | NOT NULL                                      | Comment text. Max 4096 chars.                                                                                                              |
+| version_number | INTEGER     | NULL                                          | If the comment is about a specific version, references that version number. NULL = general comment about the asset (not version-specific). |
+| created_at     | TIMESTAMPTZ | NOT NULL DEFAULT NOW()                        |                                                                                                                                            |
+| updated_at     | TIMESTAMPTZ | NOT NULL DEFAULT NOW()                        |                                                                                                                                            |
 
 **Indexes:**
 
@@ -291,14 +291,14 @@ CREATE INDEX idx_dam_ac_version ON dam.asset_comments (asset_id, version_number)
 
 #### 3.3.4 dam.folders
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| name | VARCHAR(255) | NOT NULL | Folder name (e.g., "Inverno 2026", "Drop 13", "Fotos Produto") |
-| parent_folder_id | UUID | NULL, FK dam.folders(id) ON DELETE CASCADE | Parent folder for nesting. NULL = root-level folder. |
-| created_by | UUID | NOT NULL, FK global.users(id) | Who created this folder |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| Column           | Type         | Constraints                                | Description                                                    |
+| ---------------- | ------------ | ------------------------------------------ | -------------------------------------------------------------- |
+| id               | UUID         | PK, DEFAULT gen_random_uuid()              | UUID v7                                                        |
+| name             | VARCHAR(255) | NOT NULL                                   | Folder name (e.g., "Inverno 2026", "Drop 13", "Fotos Produto") |
+| parent_folder_id | UUID         | NULL, FK dam.folders(id) ON DELETE CASCADE | Parent folder for nesting. NULL = root-level folder.           |
+| created_by       | UUID         | NOT NULL, FK global.users(id)              | Who created this folder                                        |
+| created_at       | TIMESTAMPTZ  | NOT NULL DEFAULT NOW()                     |                                                                |
+| updated_at       | TIMESTAMPTZ  | NOT NULL DEFAULT NOW()                     |                                                                |
 
 **Indexes:**
 
@@ -311,11 +311,11 @@ CREATE UNIQUE INDEX idx_dam_folders_unique_root ON dam.folders (name) WHERE pare
 
 #### 3.3.5 dam.asset_folders (Junction Table)
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| asset_id | UUID | NOT NULL, FK dam.assets(id) ON DELETE CASCADE | Asset |
-| folder_id | UUID | NOT NULL, FK dam.folders(id) ON DELETE CASCADE | Folder |
-| | | PRIMARY KEY (asset_id, folder_id) | Composite PK prevents duplicates |
+| Column    | Type | Constraints                                    | Description                      |
+| --------- | ---- | ---------------------------------------------- | -------------------------------- |
+| asset_id  | UUID | NOT NULL, FK dam.assets(id) ON DELETE CASCADE  | Asset                            |
+| folder_id | UUID | NOT NULL, FK dam.folders(id) ON DELETE CASCADE | Folder                           |
+|           |      | PRIMARY KEY (asset_id, folder_id)              | Composite PK prevents duplicates |
 
 **Indexes:**
 
@@ -633,88 +633,88 @@ Route prefix: `/api/v1/dam`
 
 #### 5.1.1 Assets
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/assets` | Internal | List assets (paginated, filterable, searchable) | `?cursor=&limit=24&search=&collection_id=&asset_type=&format=&status=&uploaded_by=&tags=&folder_id=&dateFrom=&dateTo=&sort=created_at_desc` | `{ data: Asset[], meta: Pagination }` |
-| GET | `/assets/:id` | Internal | Get asset detail with versions, comments, folders | `?include=versions,comments,folders` | `{ data: Asset }` |
-| POST | `/assets` | Internal | Create asset record (after file upload to R2) | `{ filename, original_filename, file_url, file_size, mime_type, width?, height?, duration_seconds?, collection_id?, asset_type, format, tags?, description? }` | `201 { data: Asset }` |
-| PATCH | `/assets/:id` | Internal | Update asset metadata | `{ description?, tags?, collection_id?, asset_type?, status? }` | `{ data: Asset }` |
-| DELETE | `/assets/:id` | Internal | Soft-delete asset (sets deleted_at) | -- | `204` |
-| POST | `/assets/:id/actions/approve` | Internal | Approve asset (status -> approved) | -- | `{ data: Asset }` (approved_by, approved_at set) |
-| POST | `/assets/:id/actions/publish` | Internal | Publish asset (status -> published) | -- | `{ data: Asset }` |
-| POST | `/assets/:id/actions/archive` | Internal | Archive asset (status -> archived) | -- | `{ data: Asset }` |
-| POST | `/assets/:id/actions/restore` | Internal | Restore archived asset (status -> approved) | -- | `{ data: Asset }` |
-| GET | `/assets/search` | Internal | Full-text search across assets | `?q=&cursor=&limit=24` | `{ data: Asset[], meta: Pagination }` |
+| Method | Path                          | Auth     | Description                                       | Request Body / Query                                                                                                                                           | Response                                         |
+| ------ | ----------------------------- | -------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| GET    | `/assets`                     | Internal | List assets (paginated, filterable, searchable)   | `?cursor=&limit=24&search=&collection_id=&asset_type=&format=&status=&uploaded_by=&tags=&folder_id=&dateFrom=&dateTo=&sort=created_at_desc`                    | `{ data: Asset[], meta: Pagination }`            |
+| GET    | `/assets/:id`                 | Internal | Get asset detail with versions, comments, folders | `?include=versions,comments,folders`                                                                                                                           | `{ data: Asset }`                                |
+| POST   | `/assets`                     | Internal | Create asset record (after file upload to R2)     | `{ filename, original_filename, file_url, file_size, mime_type, width?, height?, duration_seconds?, collection_id?, asset_type, format, tags?, description? }` | `201 { data: Asset }`                            |
+| PATCH  | `/assets/:id`                 | Internal | Update asset metadata                             | `{ description?, tags?, collection_id?, asset_type?, status? }`                                                                                                | `{ data: Asset }`                                |
+| DELETE | `/assets/:id`                 | Internal | Soft-delete asset (sets deleted_at)               | --                                                                                                                                                             | `204`                                            |
+| POST   | `/assets/:id/actions/approve` | Internal | Approve asset (status -> approved)                | --                                                                                                                                                             | `{ data: Asset }` (approved_by, approved_at set) |
+| POST   | `/assets/:id/actions/publish` | Internal | Publish asset (status -> published)               | --                                                                                                                                                             | `{ data: Asset }`                                |
+| POST   | `/assets/:id/actions/archive` | Internal | Archive asset (status -> archived)                | --                                                                                                                                                             | `{ data: Asset }`                                |
+| POST   | `/assets/:id/actions/restore` | Internal | Restore archived asset (status -> approved)       | --                                                                                                                                                             | `{ data: Asset }`                                |
+| GET    | `/assets/search`              | Internal | Full-text search across assets                    | `?q=&cursor=&limit=24`                                                                                                                                         | `{ data: Asset[], meta: Pagination }`            |
 
 #### 5.1.2 Upload
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| POST | `/upload/presign` | Internal | Get presigned R2 upload URL | `{ filename, mime_type, file_size }` | `{ upload_url, file_url, thumbnail_path }` |
-| POST | `/upload/confirm` | Internal | Confirm upload and create asset record | `{ file_url, original_filename, file_size, mime_type, width?, height?, duration_seconds?, collection_id?, asset_type, format, tags?, description? }` | `201 { data: Asset }` |
-| POST | `/upload/bulk-presign` | Internal | Get presigned URLs for bulk upload | `{ files: [{ filename, mime_type, file_size }] }` | `{ uploads: [{ upload_url, file_url }] }` |
+| Method | Path                   | Auth     | Description                            | Request Body / Query                                                                                                                                 | Response                                   |
+| ------ | ---------------------- | -------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| POST   | `/upload/presign`      | Internal | Get presigned R2 upload URL            | `{ filename, mime_type, file_size }`                                                                                                                 | `{ upload_url, file_url, thumbnail_path }` |
+| POST   | `/upload/confirm`      | Internal | Confirm upload and create asset record | `{ file_url, original_filename, file_size, mime_type, width?, height?, duration_seconds?, collection_id?, asset_type, format, tags?, description? }` | `201 { data: Asset }`                      |
+| POST   | `/upload/bulk-presign` | Internal | Get presigned URLs for bulk upload     | `{ files: [{ filename, mime_type, file_size }] }`                                                                                                    | `{ uploads: [{ upload_url, file_url }] }`  |
 
 #### 5.1.3 Versions
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/assets/:id/versions` | Internal | List all versions of an asset | -- | `{ data: AssetVersion[] }` |
-| POST | `/assets/:id/versions/presign` | Internal | Get presigned URL for new version upload | `{ filename, mime_type, file_size }` | `{ upload_url, file_url }` |
-| POST | `/assets/:id/versions` | Internal | Confirm new version upload | `{ file_url, file_size, change_notes? }` | `201 { data: AssetVersion }` (asset.current_version incremented, asset.file_url updated) |
-| GET | `/assets/:id/versions/:version` | Internal | Get specific version detail | -- | `{ data: AssetVersion }` |
+| Method | Path                            | Auth     | Description                              | Request Body / Query                     | Response                                                                                 |
+| ------ | ------------------------------- | -------- | ---------------------------------------- | ---------------------------------------- | ---------------------------------------------------------------------------------------- |
+| GET    | `/assets/:id/versions`          | Internal | List all versions of an asset            | --                                       | `{ data: AssetVersion[] }`                                                               |
+| POST   | `/assets/:id/versions/presign`  | Internal | Get presigned URL for new version upload | `{ filename, mime_type, file_size }`     | `{ upload_url, file_url }`                                                               |
+| POST   | `/assets/:id/versions`          | Internal | Confirm new version upload               | `{ file_url, file_size, change_notes? }` | `201 { data: AssetVersion }` (asset.current_version incremented, asset.file_url updated) |
+| GET    | `/assets/:id/versions/:version` | Internal | Get specific version detail              | --                                       | `{ data: AssetVersion }`                                                                 |
 
 #### 5.1.4 Comments
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/assets/:id/comments` | Internal | List comments for an asset (chronological) | `?version_number=` | `{ data: Comment[] }` |
-| POST | `/assets/:id/comments` | Internal | Add a comment | `{ content, version_number? }` | `201 { data: Comment }` |
-| PATCH | `/comments/:id` | Internal | Edit own comment | `{ content }` | `{ data: Comment }` |
-| DELETE | `/comments/:id` | Internal | Delete own comment | -- | `204` |
+| Method | Path                   | Auth     | Description                                | Request Body / Query           | Response                |
+| ------ | ---------------------- | -------- | ------------------------------------------ | ------------------------------ | ----------------------- |
+| GET    | `/assets/:id/comments` | Internal | List comments for an asset (chronological) | `?version_number=`             | `{ data: Comment[] }`   |
+| POST   | `/assets/:id/comments` | Internal | Add a comment                              | `{ content, version_number? }` | `201 { data: Comment }` |
+| PATCH  | `/comments/:id`        | Internal | Edit own comment                           | `{ content }`                  | `{ data: Comment }`     |
+| DELETE | `/comments/:id`        | Internal | Delete own comment                         | --                             | `204`                   |
 
 #### 5.1.5 Folders
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/folders` | Internal | Get folder tree | `?flat=false` (default: hierarchical tree) | `{ data: Folder[] }` (nested structure) |
-| POST | `/folders` | Internal | Create a folder | `{ name, parent_folder_id? }` | `201 { data: Folder }` |
-| PATCH | `/folders/:id` | Internal | Rename folder | `{ name }` | `{ data: Folder }` |
-| DELETE | `/folders/:id` | Internal | Delete folder (removes folder, not assets) | -- | `204` |
-| POST | `/folders/:id/assets` | Internal | Add asset to folder | `{ asset_id }` | `201` |
-| DELETE | `/folders/:id/assets/:asset_id` | Internal | Remove asset from folder | -- | `204` |
+| Method | Path                            | Auth     | Description                                | Request Body / Query                       | Response                                |
+| ------ | ------------------------------- | -------- | ------------------------------------------ | ------------------------------------------ | --------------------------------------- |
+| GET    | `/folders`                      | Internal | Get folder tree                            | `?flat=false` (default: hierarchical tree) | `{ data: Folder[] }` (nested structure) |
+| POST   | `/folders`                      | Internal | Create a folder                            | `{ name, parent_folder_id? }`              | `201 { data: Folder }`                  |
+| PATCH  | `/folders/:id`                  | Internal | Rename folder                              | `{ name }`                                 | `{ data: Folder }`                      |
+| DELETE | `/folders/:id`                  | Internal | Delete folder (removes folder, not assets) | --                                         | `204`                                   |
+| POST   | `/folders/:id/assets`           | Internal | Add asset to folder                        | `{ asset_id }`                             | `201`                                   |
+| DELETE | `/folders/:id/assets/:asset_id` | Internal | Remove asset from folder                   | --                                         | `204`                                   |
 
 #### 5.1.6 Tags
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/tags/autocomplete` | Internal | Autocomplete tags from existing usage | `?q=&limit=10` | `{ data: string[] }` |
-| GET | `/tags/popular` | Internal | Get most-used tags | `?limit=20` | `{ data: [{ tag: string, count: number }] }` |
+| Method | Path                 | Auth     | Description                           | Request Body / Query | Response                                     |
+| ------ | -------------------- | -------- | ------------------------------------- | -------------------- | -------------------------------------------- |
+| GET    | `/tags/autocomplete` | Internal | Autocomplete tags from existing usage | `?q=&limit=10`       | `{ data: string[] }`                         |
+| GET    | `/tags/popular`      | Internal | Get most-used tags                    | `?limit=20`          | `{ data: [{ tag: string, count: number }] }` |
 
 #### 5.1.7 Bulk Operations
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| POST | `/assets/bulk/move` | Internal | Move multiple assets to a folder | `{ asset_ids: UUID[], folder_id }` | `{ data: { moved: number } }` |
-| POST | `/assets/bulk/tag` | Internal | Add tags to multiple assets | `{ asset_ids: UUID[], tags: string[] }` | `{ data: { tagged: number } }` |
-| POST | `/assets/bulk/delete` | Internal | Soft-delete multiple assets | `{ asset_ids: UUID[] }` | `{ data: { deleted: number } }` |
-| POST | `/assets/bulk/approve` | Internal | Approve multiple assets | `{ asset_ids: UUID[] }` | `{ data: { approved: number } }` |
+| Method | Path                   | Auth     | Description                      | Request Body / Query                    | Response                         |
+| ------ | ---------------------- | -------- | -------------------------------- | --------------------------------------- | -------------------------------- |
+| POST   | `/assets/bulk/move`    | Internal | Move multiple assets to a folder | `{ asset_ids: UUID[], folder_id }`      | `{ data: { moved: number } }`    |
+| POST   | `/assets/bulk/tag`     | Internal | Add tags to multiple assets      | `{ asset_ids: UUID[], tags: string[] }` | `{ data: { tagged: number } }`   |
+| POST   | `/assets/bulk/delete`  | Internal | Soft-delete multiple assets      | `{ asset_ids: UUID[] }`                 | `{ data: { deleted: number } }`  |
+| POST   | `/assets/bulk/approve` | Internal | Approve multiple assets          | `{ asset_ids: UUID[] }`                 | `{ data: { approved: number } }` |
 
 #### 5.1.8 Download
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/assets/:id/download/original` | Internal | Get signed download URL for original file | -- | `{ url: string, expires_in: 3600 }` |
-| GET | `/assets/:id/download/web` | Internal | Get signed download URL for web-optimized version | -- | `{ url: string, expires_in: 3600 }` |
+| Method | Path                            | Auth     | Description                                       | Request Body / Query | Response                            |
+| ------ | ------------------------------- | -------- | ------------------------------------------------- | -------------------- | ----------------------------------- |
+| GET    | `/assets/:id/download/original` | Internal | Get signed download URL for original file         | --                   | `{ url: string, expires_in: 3600 }` |
+| GET    | `/assets/:id/download/web`      | Internal | Get signed download URL for web-optimized version | --                   | `{ url: string, expires_in: 3600 }` |
 
 ### 5.2 Internal Endpoints (Module-to-Module)
 
 Route prefix: `/api/v1/dam/internal`
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| POST | `/assets/from-ugc` | Service | Create asset from approved UGC post (called by Marketing Intel) | `{ source_ugc_id, file_url, thumbnail_url?, original_filename, file_size, mime_type, width?, height?, tags?, collection_id?, author_username }` | `201 { data: Asset }` (asset_type=ugc, status=draft, source_ugc_id set) |
-| GET | `/assets/by-collection/:collection_id` | Service | Get assets for a collection (used by PCP, Dashboard) | `?asset_type=&status=&limit=` | `{ data: Asset[] }` |
-| GET | `/assets/stats` | Service | Get asset statistics (used by Dashboard) | -- | `{ data: { total_assets, by_status, by_type, total_storage_bytes } }` |
+| Method | Path                                   | Auth    | Description                                                     | Request Body / Query                                                                                                                            | Response                                                                |
+| ------ | -------------------------------------- | ------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| POST   | `/assets/from-ugc`                     | Service | Create asset from approved UGC post (called by Marketing Intel) | `{ source_ugc_id, file_url, thumbnail_url?, original_filename, file_size, mime_type, width?, height?, tags?, collection_id?, author_username }` | `201 { data: Asset }` (asset_type=ugc, status=draft, source_ugc_id set) |
+| GET    | `/assets/by-collection/:collection_id` | Service | Get assets for a collection (used by PCP, Dashboard)            | `?asset_type=&status=&limit=`                                                                                                                   | `{ data: Asset[] }`                                                     |
+| GET    | `/assets/stats`                        | Service | Get asset statistics (used by Dashboard)                        | --                                                                                                                                              | `{ data: { total_assets, by_status, by_type, total_storage_bytes } }`   |
 
 ---
 
@@ -722,53 +722,53 @@ Route prefix: `/api/v1/dam/internal`
 
 ### 6.1 Upload & Storage Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R1 | **Upload flow via presigned URL** | Client requests a presigned upload URL from the API (`POST /upload/presign`). Server generates a Cloudflare R2 presigned PUT URL (expires in 15 minutes) with the target path `dam/{year}/{month}/{sanitized_filename}`. Client uploads the file directly to R2 (no file data passes through the API server). Client then calls `POST /upload/confirm` to create the `dam.assets` record with the file_url and metadata. This two-step flow keeps the API server lightweight and avoids large file transfer bottlenecks. |
-| R2 | **Thumbnail auto-generation** | After upload confirmation, a background job (`dam:generate-thumbnail`) is enqueued. For images: Sharp resizes to max 400x400 (preserving aspect ratio), converts to WebP quality 80, saves to R2 at `dam/thumbnails/{asset_id}.webp`. For video: ffmpeg extracts the first frame, resizes and converts to WebP. Thumbnail URL stored in `dam.assets.thumbnail_url`. If generation fails, `thumbnail_url` remains NULL and a generic file-type icon is shown in the UI. |
-| R3 | **File size limits** | Images (jpg, png, webp, svg): max 100MB. Video (mp4, mov): max 500MB. Documents (pdf, psd, ai): max 50MB. Enforced at presigned URL generation: server checks `file_size` against limits before issuing the URL. Oversized requests return 413 Payload Too Large. |
-| R4 | **Supported formats** | Accepted MIME types: `image/jpeg`, `image/png`, `image/webp`, `image/svg+xml`, `video/mp4`, `video/quicktime`, `application/pdf`, `image/vnd.adobe.photoshop` (PSD), `application/postscript` (AI). Files with unsupported MIME types are rejected at presigned URL request with 415 Unsupported Media Type. |
-| R5 | **Filename sanitization** | The `filename` stored in the database is a sanitized version of the original: lowercase, spaces replaced with hyphens, special characters removed, max 200 chars. `original_filename` preserves the user's original filename for display. If a filename collision occurs in the same R2 path, a UUID suffix is appended. |
+| #   | Rule                              | Detail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| --- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| R1  | **Upload flow via presigned URL** | Client requests a presigned upload URL from the API (`POST /upload/presign`). Server generates a Cloudflare R2 presigned PUT URL (expires in 15 minutes) with the target path `dam/{year}/{month}/{sanitized_filename}`. Client uploads the file directly to R2 (no file data passes through the API server). Client then calls `POST /upload/confirm` to create the `dam.assets` record with the file_url and metadata. This two-step flow keeps the API server lightweight and avoids large file transfer bottlenecks. |
+| R2  | **Thumbnail auto-generation**     | After upload confirmation, a background job (`dam:generate-thumbnail`) is enqueued. For images: Sharp resizes to max 400x400 (preserving aspect ratio), converts to WebP quality 80, saves to R2 at `dam/thumbnails/{asset_id}.webp`. For video: ffmpeg extracts the first frame, resizes and converts to WebP. Thumbnail URL stored in `dam.assets.thumbnail_url`. If generation fails, `thumbnail_url` remains NULL and a generic file-type icon is shown in the UI.                                                   |
+| R3  | **File size limits**              | Images (jpg, png, webp, svg): max 100MB. Video (mp4, mov): max 500MB. Documents (pdf, psd, ai): max 50MB. Enforced at presigned URL generation: server checks `file_size` against limits before issuing the URL. Oversized requests return 413 Payload Too Large.                                                                                                                                                                                                                                                        |
+| R4  | **Supported formats**             | Accepted MIME types: `image/jpeg`, `image/png`, `image/webp`, `image/svg+xml`, `video/mp4`, `video/quicktime`, `application/pdf`, `image/vnd.adobe.photoshop` (PSD), `application/postscript` (AI). Files with unsupported MIME types are rejected at presigned URL request with 415 Unsupported Media Type.                                                                                                                                                                                                             |
+| R5  | **Filename sanitization**         | The `filename` stored in the database is a sanitized version of the original: lowercase, spaces replaced with hyphens, special characters removed, max 200 chars. `original_filename` preserves the user's original filename for display. If a filename collision occurs in the same R2 path, a UUID suffix is appended.                                                                                                                                                                                                 |
 
 ### 6.2 Versioning Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R6 | **Version creation** | Uploading a new file to an existing asset creates an `asset_versions` record with the next sequential `version_number`. The parent `dam.assets` record is updated: `current_version` incremented, `file_url` updated to the new file, `thumbnail_url` updated to the new thumbnail, `file_size` updated. Previous version file remains in R2 (never deleted on version update). |
-| R7 | **Version immutability** | Once an `asset_versions` record is created, it cannot be deleted or modified (except by admin for emergency cleanup). This ensures a complete audit trail of all versions. The `change_notes` can be edited within 24 hours of creation. |
-| R8 | **Version 1 auto-creation** | When a new asset is created (`POST /upload/confirm`), a v1 `asset_versions` record is simultaneously created with the same `file_url`, `file_size`, and `uploaded_by`. This ensures every asset has at least one version record for consistent history display. |
+| #   | Rule                        | Detail                                                                                                                                                                                                                                                                                                                                                                          |
+| --- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R6  | **Version creation**        | Uploading a new file to an existing asset creates an `asset_versions` record with the next sequential `version_number`. The parent `dam.assets` record is updated: `current_version` incremented, `file_url` updated to the new file, `thumbnail_url` updated to the new thumbnail, `file_size` updated. Previous version file remains in R2 (never deleted on version update). |
+| R7  | **Version immutability**    | Once an `asset_versions` record is created, it cannot be deleted or modified (except by admin for emergency cleanup). This ensures a complete audit trail of all versions. The `change_notes` can be edited within 24 hours of creation.                                                                                                                                        |
+| R8  | **Version 1 auto-creation** | When a new asset is created (`POST /upload/confirm`), a v1 `asset_versions` record is simultaneously created with the same `file_url`, `file_size`, and `uploaded_by`. This ensures every asset has at least one version record for consistent history display.                                                                                                                 |
 
 ### 6.3 Status & Approval Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R9 | **Asset status flow** | Valid transitions: `draft` -> `review` -> `approved` -> `published` -> `archived`. Also allowed: `draft` -> `approved` (skip review), `approved` -> `draft` (revoke approval), `published` -> `archived`, `archived` -> `approved` (restore). Invalid transitions return 409 Conflict. |
-| R10 | **Approval restricted to PM and Admin** | Only users with `pm` or `admin` role can change status to `approved` or `published`. `POST /assets/:id/actions/approve` and `/actions/publish` check role and return 403 Forbidden for other roles. On approval: `approved_by = user.id`, `approved_at = NOW()`. |
+| #   | Rule                                      | Detail                                                                                                                                                                                                                                                                                                                                             |
+| --- | ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R9  | **Asset status flow**                     | Valid transitions: `draft` -> `review` -> `approved` -> `published` -> `archived`. Also allowed: `draft` -> `approved` (skip review), `approved` -> `draft` (revoke approval), `published` -> `archived`, `archived` -> `approved` (restore). Invalid transitions return 409 Conflict.                                                             |
+| R10 | **Approval restricted to PM and Admin**   | Only users with `pm` or `admin` role can change status to `approved` or `published`. `POST /assets/:id/actions/approve` and `/actions/publish` check role and return 403 Forbidden for other roles. On approval: `approved_by = user.id`, `approved_at = NOW()`.                                                                                   |
 | R11 | **Creative role: full upload, no delete** | Users with `creative` role (Sick, Yuri) can: upload new assets, add tags, edit descriptions, create new versions, add comments, organize into folders. They CANNOT: delete assets (even soft-delete), approve/publish assets, or archive assets. This protects brand assets from accidental deletion while giving creatives full creative freedom. |
-| R12 | **Status reset on new version** | When a new version is uploaded to an approved or published asset, the status is NOT automatically reset. The asset remains in its current status. Rationale: minor version updates (e.g., fixing a typo in a KV) should not invalidate approval. If a major revision requires re-approval, the PM manually changes status back to `review`. |
+| R12 | **Status reset on new version**           | When a new version is uploaded to an approved or published asset, the status is NOT automatically reset. The asset remains in its current status. Rationale: minor version updates (e.g., fixing a typo in a KV) should not invalidate approval. If a major revision requires re-approval, the PM manually changes status back to `review`.        |
 
 ### 6.4 UGC Pipeline Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R13 | **UGC auto-import from Marketing Intelligence** | When a UGC post in Marketing Intelligence is approved with the "Enviar ao DAM" action, Marketing Intel calls `POST /internal/assets/from-ugc` to create a `dam.assets` record with: `asset_type = 'ugc'`, `source_ugc_id = ugc_post.id`, `status = 'draft'` (requires DAM-level approval before use), `tags` auto-populated from UGC metadata (author username, platform, detected collection). The media file is downloaded from the social platform URL and re-uploaded to R2 (to avoid external URL dependency). |
-| R14 | **UGC Inbox** | DAM provides a "UGC Inbox" view that filters to `asset_type = 'ugc' AND status = 'draft'`. This gives Caio a dedicated review queue for imported UGC. Approving moves the UGC asset into the main library. Rejecting sets `status = 'archived'`. |
-| R15 | **UGC source linking** | UGC assets maintain a bidirectional link: `dam.assets.source_ugc_id` -> `marketing.ugc_posts(id)`, and `marketing.ugc_posts.linked_dam_asset_id` -> `dam.assets(id)`. This prevents duplicate imports (if `linked_dam_asset_id` is already set, skip re-import) and allows tracing from the DAM back to the original social media post. |
-| R15b | **UGC source type: ambassador** | UGC assets support a `source` classification alongside the existing pipeline. When a UGC post is detected from an Instagram account matching a `creators.creators` record with `tier = 'ambassador'`, the system auto-tags the asset with `source = 'ambassador'`. This enables filtering UGC by three source types: **organic** (random customers posting about CIENA), **creator** (program members with commission — matched by `creators.creators` with active status), **ambassador** (tier 0, discount-only representatives — matched by `tier = 'ambassador'`). The source type is stored as a tag on the `dam.assets.tags` array (e.g., `ugc-source:ambassador`). Analytics: track UGC volume and engagement rate by source type to measure the ambassador program's content impact vs. organic and paid creator content. |
+| #    | Rule                                            | Detail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ---- | ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R13  | **UGC auto-import from Marketing Intelligence** | When a UGC post in Marketing Intelligence is approved with the "Enviar ao DAM" action, Marketing Intel calls `POST /internal/assets/from-ugc` to create a `dam.assets` record with: `asset_type = 'ugc'`, `source_ugc_id = ugc_post.id`, `status = 'draft'` (requires DAM-level approval before use), `tags` auto-populated from UGC metadata (author username, platform, detected collection). The media file is downloaded from the social platform URL and re-uploaded to R2 (to avoid external URL dependency).                                                                                                                                                                                                                                                                                                               |
+| R14  | **UGC Inbox**                                   | DAM provides a "UGC Inbox" view that filters to `asset_type = 'ugc' AND status = 'draft'`. This gives Caio a dedicated review queue for imported UGC. Approving moves the UGC asset into the main library. Rejecting sets `status = 'archived'`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| R15  | **UGC source linking**                          | UGC assets maintain a bidirectional link: `dam.assets.source_ugc_id` -> `marketing.ugc_posts(id)`, and `marketing.ugc_posts.linked_dam_asset_id` -> `dam.assets(id)`. This prevents duplicate imports (if `linked_dam_asset_id` is already set, skip re-import) and allows tracing from the DAM back to the original social media post.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| R15b | **UGC source type: ambassador**                 | UGC assets support a `source` classification alongside the existing pipeline. When a UGC post is detected from an Instagram account matching a `creators.creators` record with `tier = 'ambassador'`, the system auto-tags the asset with `source = 'ambassador'`. This enables filtering UGC by three source types: **organic** (random customers posting about CIENA), **creator** (program members with commission — matched by `creators.creators` with active status), **ambassador** (tier 0, discount-only representatives — matched by `tier = 'ambassador'`). The source type is stored as a tag on the `dam.assets.tags` array (e.g., `ugc-source:ambassador`). Analytics: track UGC volume and engagement rate by source type to measure the ambassador program's content impact vs. organic and paid creator content. |
 
 ### 6.5 Search & Tag Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R16 | **Full-text search** | Search queries use PostgreSQL `to_tsvector('portuguese', ...)` across: `filename`, `original_filename`, `description`, and `array_to_string(tags, ' ')`. Results are ranked by `ts_rank`. The Portuguese text search configuration handles Portuguese stemming and stop words. Search is case-insensitive and accent-insensitive. |
-| R17 | **Tag autocomplete** | Tags are free-form `TEXT[]`. The autocomplete endpoint queries `SELECT DISTINCT unnest(tags) FROM dam.assets WHERE deleted_at IS NULL` filtered by prefix match. Results sorted by frequency (most-used first). Maximum 10 suggestions returned. |
-| R18 | **Tag normalization** | Tags are normalized on save: lowercase, trimmed, hyphens replace spaces, max 50 chars per tag. Duplicate tags within the same asset are removed. |
+| #   | Rule                  | Detail                                                                                                                                                                                                                                                                                                                            |
+| --- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R16 | **Full-text search**  | Search queries use PostgreSQL `to_tsvector('portuguese', ...)` across: `filename`, `original_filename`, `description`, and `array_to_string(tags, ' ')`. Results are ranked by `ts_rank`. The Portuguese text search configuration handles Portuguese stemming and stop words. Search is case-insensitive and accent-insensitive. |
+| R17 | **Tag autocomplete**  | Tags are free-form `TEXT[]`. The autocomplete endpoint queries `SELECT DISTINCT unnest(tags) FROM dam.assets WHERE deleted_at IS NULL` filtered by prefix match. Results sorted by frequency (most-used first). Maximum 10 suggestions returned.                                                                                  |
+| R18 | **Tag normalization** | Tags are normalized on save: lowercase, trimmed, hyphens replace spaces, max 50 chars per tag. Duplicate tags within the same asset are removed.                                                                                                                                                                                  |
 
 ### 6.6 Download Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R19 | **Signed download URLs** | Download URLs are Cloudflare R2 signed URLs with 1-hour expiry. Generated on-demand when the user clicks "Download". The URL includes `Content-Disposition: attachment; filename="{original_filename}"` so the browser downloads with the original filename. |
+| #   | Rule                      | Detail                                                                                                                                                                                                                                                                                                                                                                                          |
+| --- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R19 | **Signed download URLs**  | Download URLs are Cloudflare R2 signed URLs with 1-hour expiry. Generated on-demand when the user clicks "Download". The URL includes `Content-Disposition: attachment; filename="{original_filename}"` so the browser downloads with the original filename.                                                                                                                                    |
 | R20 | **Web-optimized version** | The web-optimized download serves a compressed version of the asset: images are resized to max 1920px on the longest side, converted to WebP, quality 80. This version is generated on first request and cached in R2 at `dam/web/{asset_id}.webp`. Subsequent requests serve the cached version. Video and document assets do not have web-optimized versions (download returns the original). |
 
 ---
@@ -777,59 +777,62 @@ Route prefix: `/api/v1/dam/internal`
 
 ### 7.1 Marketing Intelligence (UGC Auto-Import)
 
-| Property | Value |
-|----------|-------|
-| **Purpose** | Import approved UGC posts from Marketing Intelligence into DAM for brand asset use |
-| **Integration pattern** | Internal API call. Marketing Intel -> DAM `/internal/assets/from-ugc`. |
-| **Trigger** | Caio clicks "Enviar ao DAM" on an approved UGC post in Marketing Intelligence |
-| **Data flow** | Marketing Intel downloads UGC media, uploads to R2, then calls DAM internal API with file_url and metadata. DAM creates asset record with `asset_type=ugc`, `status=draft`, `source_ugc_id` linked. |
-| **Deduplication** | Before creating, check if `source_ugc_id` already exists in `dam.assets`. If found, return existing asset (no duplicate). |
+| Property                | Value                                                                                                                                                                                               |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Purpose**             | Import approved UGC posts from Marketing Intelligence into DAM for brand asset use                                                                                                                  |
+| **Integration pattern** | Internal API call. Marketing Intel -> DAM `/internal/assets/from-ugc`.                                                                                                                              |
+| **Trigger**             | Caio clicks "Enviar ao DAM" on an approved UGC post in Marketing Intelligence                                                                                                                       |
+| **Data flow**           | Marketing Intel downloads UGC media, uploads to R2, then calls DAM internal API with file_url and metadata. DAM creates asset record with `asset_type=ugc`, `status=draft`, `source_ugc_id` linked. |
+| **Deduplication**       | Before creating, check if `source_ugc_id` already exists in `dam.assets`. If found, return existing asset (no duplicate).                                                                           |
 
 ### 7.2 Cloudflare R2 (File Storage)
 
-| Property | Value |
-|----------|-------|
-| **Purpose** | Store all asset files (originals, versions, thumbnails, web-optimized) |
-| **Bucket** | `ciena-dam` (single bucket, prefixed paths) |
+| Property           | Value                                                                                                                                                                                               |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Purpose**        | Store all asset files (originals, versions, thumbnails, web-optimized)                                                                                                                              |
+| **Bucket**         | `ciena-dam` (single bucket, prefixed paths)                                                                                                                                                         |
 | **Path structure** | `dam/{year}/{month}/{filename}` for originals, `dam/versions/{asset_id}/v{N}/{filename}` for versions, `dam/thumbnails/{asset_id}.webp` for thumbnails, `dam/web/{asset_id}.webp` for web-optimized |
-| **Access** | Presigned URLs for upload (PUT, 15-min expiry), signed URLs for download (GET, 1-hour expiry). No public access. |
-| **CDN** | `assets.ambaril.app` custom domain via Cloudflare DNS for cached delivery |
-| **Shared with** | Tarefas module (task attachments at `tarefas/attachments/` prefix in same bucket) and Inbox module (message attachments at `inbox/attachments/` prefix) |
+| **Access**         | Presigned URLs for upload (PUT, 15-min expiry), signed URLs for download (GET, 1-hour expiry). No public access.                                                                                    |
+| **CDN**            | `assets.ambaril.app` custom domain via Cloudflare DNS for cached delivery                                                                                                                           |
+| **Shared with**    | Tarefas module (task attachments at `tarefas/attachments/` prefix in same bucket) and Inbox module (message attachments at `inbox/attachments/` prefix)                                             |
 
 ### 7.3 PCP Module (Collection Linking)
 
-| Interaction | Direction | Mechanism | Description |
-|------------|-----------|-----------|-------------|
-| Collection list | DAM -> PCP | DB query on `pcp.collections` | Populate collection filter dropdown in DAM library |
-| Asset by collection | PCP -> DAM | Internal API `/internal/assets/by-collection/:id` | PCP can display linked assets for a collection |
+| Interaction         | Direction  | Mechanism                                         | Description                                        |
+| ------------------- | ---------- | ------------------------------------------------- | -------------------------------------------------- |
+| Collection list     | DAM -> PCP | DB query on `pcp.collections`                     | Populate collection filter dropdown in DAM library |
+| Asset by collection | PCP -> DAM | Internal API `/internal/assets/by-collection/:id` | PCP can display linked assets for a collection     |
 
 ### 7.4 Tarefas Module (Shared R2 Infrastructure)
 
-| Property | Value |
-|----------|-------|
-| **Relationship** | Tarefas task attachments use the same R2 bucket with different path prefix (`tarefas/attachments/`). No data-model link between DAM assets and task attachments. They share storage infrastructure only. |
-| **No cross-reference** | A task attachment is NOT a DAM asset. If an asset needs to be both, it must be uploaded to both independently. |
+| Property               | Value                                                                                                                                                                                                    |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Relationship**       | Tarefas task attachments use the same R2 bucket with different path prefix (`tarefas/attachments/`). No data-model link between DAM assets and task attachments. They share storage infrastructure only. |
+| **No cross-reference** | A task attachment is NOT a DAM asset. If an asset needs to be both, it must be uploaded to both independently.                                                                                           |
 
 ### 7.5 Creators Module (Creator Kit)
 
-| Property | Value |
-|----------|-------|
-| **Purpose** | Provide a curated collection of brand assets for creators via the Creator portal "Materiais" page |
-| **Integration pattern** | DAM -> Creators module. Assets in the `creator_kit` collection are auto-synced to the Creator portal. |
+| Property                   | Value                                                                                                                                                                                                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Purpose**                | Provide a curated collection of brand assets for creators via the Creator portal "Materiais" page                                                                                                                                                      |
+| **Integration pattern**    | DAM -> Creators module. Assets in the `creator_kit` collection are auto-synced to the Creator portal.                                                                                                                                                  |
 | **Creator Kit collection** | A special folder/collection in DAM tagged `creator_kit` serves as the source of brand assets available to creators. Assets in this collection with `status = 'approved'` or `status = 'published'` are visible in the Creator portal "Materiais" page. |
-| **Asset types** | CIENA logos (horizontal, vertical, white, dark), approved product photos (high-res + web-optimized), brand guidelines PDF, content dos and don'ts document, campaign-specific assets |
+| **Asset types**            | CIENA logos (horizontal, vertical, white, dark), approved product photos (high-res + web-optimized), brand guidelines PDF, content dos and don'ts document, campaign-specific assets                                                                   |
 
 **Workflow:**
+
 1. Creative team (Sick/Yuri) uploads assets to DAM as usual
 2. PM (Caio) approves the asset and adds it to the `creator_kit` folder
 3. Asset automatically appears in the Creator portal "Materiais" page
 4. Creators can browse and download assets for their content
 
 **Download tracking:**
+
 - Downloads by creators are tracked in `creators.creator_kit_downloads` (creator_id UUID FK, asset_id UUID FK, downloaded_at TIMESTAMPTZ).
 - Analytics: total downloads per asset, downloads per creator, most-downloaded assets. Available in the Creators module dashboard.
 
 **Sync rules:**
+
 - Only assets in the `creator_kit` folder with `status IN ('approved', 'published')` are visible to creators.
 - Removing an asset from the `creator_kit` folder or archiving it immediately hides it from the Creator portal.
 - Updating an asset version (new version upload) automatically updates what creators see — they always get the latest approved version.
@@ -838,13 +841,13 @@ Route prefix: `/api/v1/dam/internal`
 
 Events emitted by the DAM module to the Flare notification system. See [NOTIFICATIONS.md](../../platform/NOTIFICATIONS.md).
 
-| Event Key | Trigger | Channels | Recipients | Priority |
-|-----------|---------|----------|------------|----------|
-| `asset.uploaded` | New asset uploaded (v1 created) | In-app | `pm` | Low |
-| `asset.new_version` | New version uploaded to existing asset | In-app | `pm`, asset `approved_by` (if approved) | Medium |
-| `asset.approved` | Asset approved by PM/admin | In-app | Asset `uploaded_by` (creative who uploaded) | Medium |
-| `asset.comment` | New comment on asset | In-app | Asset `uploaded_by` + previous commenters | Medium |
-| `asset.ugc_imported` | UGC asset auto-imported from Marketing Intel | In-app | `pm` | Low |
+| Event Key            | Trigger                                      | Channels | Recipients                                  | Priority |
+| -------------------- | -------------------------------------------- | -------- | ------------------------------------------- | -------- |
+| `asset.uploaded`     | New asset uploaded (v1 created)              | In-app   | `pm`                                        | Low      |
+| `asset.new_version`  | New version uploaded to existing asset       | In-app   | `pm`, asset `approved_by` (if approved)     | Medium   |
+| `asset.approved`     | Asset approved by PM/admin                   | In-app   | Asset `uploaded_by` (creative who uploaded) | Medium   |
+| `asset.comment`      | New comment on asset                         | In-app   | Asset `uploaded_by` + previous commenters   | Medium   |
+| `asset.ugc_imported` | UGC asset auto-imported from Marketing Intel | In-app   | `pm`                                        | Low      |
 
 ---
 
@@ -852,13 +855,13 @@ Events emitted by the DAM module to the Flare notification system. See [NOTIFICA
 
 All jobs run via PostgreSQL job queue (`FOR UPDATE SKIP LOCKED`) + Vercel Cron. No Redis/BullMQ.
 
-| Job Name | Queue | Schedule / Trigger | Priority | Description |
-|----------|-------|--------------------|----------|-------------|
-| `dam:generate-thumbnail` | `dam` | On asset upload / new version (event-driven) | High | Generate thumbnail for newly uploaded asset or version. Images: Sharp resize to max 400x400, WebP quality 80. Video: ffmpeg extract first frame, resize, convert to WebP. Save to R2 at `dam/thumbnails/{asset_id}.webp`. Update `dam.assets.thumbnail_url`. If processing fails, retry 3 times with exponential backoff. On final failure, leave `thumbnail_url` as NULL. |
-| `dam:generate-web-optimized` | `dam` | On first web download request (lazy generation) | Medium | Generate web-optimized version for download. Images: Sharp resize to max 1920px longest side, WebP quality 80. Save to R2 at `dam/web/{asset_id}.webp`. Cache indefinitely (regenerated only if new version uploaded). Not applicable to video/document assets. |
-| `dam:orphan-cleanup` | `dam` | Weekly (Sunday 03:00 BRT) | Low | Find files in R2 `dam/` prefix that have no corresponding `dam.assets` or `dam.asset_versions` record (orphaned from failed uploads or deleted assets). Log orphaned files. After 30 days of being orphaned, delete from R2. This prevents unbounded storage growth from incomplete uploads. |
-| `dam:ugc-media-download` | `dam` | On UGC import trigger (event-driven) | Medium | Download UGC media from external social platform URL, upload to R2, and update the DAM asset record with the R2 file_url. This ensures we have a local copy and don't depend on external URLs that may break. Retry 3 times with exponential backoff. |
-| `dam:storage-metrics` | `dam` | Daily 00:30 BRT | Low | Calculate total storage usage by summing `file_size` from `dam.assets` and `dam.asset_versions`. Store metrics for Dashboard/Beacon. Alert if total storage exceeds 80% of R2 budget allocation. |
+| Job Name                     | Queue | Schedule / Trigger                              | Priority | Description                                                                                                                                                                                                                                                                                                                                                                |
+| ---------------------------- | ----- | ----------------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dam:generate-thumbnail`     | `dam` | On asset upload / new version (event-driven)    | High     | Generate thumbnail for newly uploaded asset or version. Images: Sharp resize to max 400x400, WebP quality 80. Video: ffmpeg extract first frame, resize, convert to WebP. Save to R2 at `dam/thumbnails/{asset_id}.webp`. Update `dam.assets.thumbnail_url`. If processing fails, retry 3 times with exponential backoff. On final failure, leave `thumbnail_url` as NULL. |
+| `dam:generate-web-optimized` | `dam` | On first web download request (lazy generation) | Medium   | Generate web-optimized version for download. Images: Sharp resize to max 1920px longest side, WebP quality 80. Save to R2 at `dam/web/{asset_id}.webp`. Cache indefinitely (regenerated only if new version uploaded). Not applicable to video/document assets.                                                                                                            |
+| `dam:orphan-cleanup`         | `dam` | Weekly (Sunday 03:00 BRT)                       | Low      | Find files in R2 `dam/` prefix that have no corresponding `dam.assets` or `dam.asset_versions` record (orphaned from failed uploads or deleted assets). Log orphaned files. After 30 days of being orphaned, delete from R2. This prevents unbounded storage growth from incomplete uploads.                                                                               |
+| `dam:ugc-media-download`     | `dam` | On UGC import trigger (event-driven)            | Medium   | Download UGC media from external social platform URL, upload to R2, and update the DAM asset record with the R2 file_url. This ensures we have a local copy and don't depend on external URLs that may break. Retry 3 times with exponential backoff.                                                                                                                      |
+| `dam:storage-metrics`        | `dam` | Daily 00:30 BRT                                 | Low      | Calculate total storage usage by summing `file_size` from `dam.assets` and `dam.asset_versions`. Store metrics for Dashboard/Beacon. Alert if total storage exceeds 80% of R2 budget allocation.                                                                                                                                                                           |
 
 ---
 
@@ -868,24 +871,25 @@ From [AUTH.md](../../architecture/AUTH.md).
 
 Format: `{module}:{resource}:{action}`
 
-| Permission | admin | pm | creative | operations | support | finance | commercial |
-|-----------|-------|-----|----------|-----------|---------|---------|-----------|
-| `dam:assets:read` | Y | Y | Y | -- | -- | -- | -- |
-| `dam:assets:write` | Y | Y | Y | -- | -- | -- | -- |
-| `dam:assets:delete` | Y | Y | -- | -- | -- | -- | -- |
-| `dam:assets:approve` | Y | Y | -- | -- | -- | -- | -- |
-| `dam:assets:publish` | Y | Y | -- | -- | -- | -- | -- |
-| `dam:versions:read` | Y | Y | Y | -- | -- | -- | -- |
-| `dam:versions:write` | Y | Y | Y | -- | -- | -- | -- |
-| `dam:comments:read` | Y | Y | Y | -- | -- | -- | -- |
-| `dam:comments:write` | Y | Y | Y | -- | -- | -- | -- |
-| `dam:folders:read` | Y | Y | Y | -- | -- | -- | -- |
-| `dam:folders:write` | Y | Y | -- | -- | -- | -- | -- |
-| `dam:download:original` | Y | Y | Y | -- | -- | -- | -- |
-| `dam:download:web` | Y | Y | Y | -- | -- | -- | -- |
-| `dam:bulk:operations` | Y | Y | -- | -- | -- | -- | -- |
+| Permission              | admin | pm  | creative | operations | support | finance | commercial |
+| ----------------------- | ----- | --- | -------- | ---------- | ------- | ------- | ---------- |
+| `dam:assets:read`       | Y     | Y   | Y        | --         | --      | --      | --         |
+| `dam:assets:write`      | Y     | Y   | Y        | --         | --      | --      | --         |
+| `dam:assets:delete`     | Y     | Y   | --       | --         | --      | --      | --         |
+| `dam:assets:approve`    | Y     | Y   | --       | --         | --      | --      | --         |
+| `dam:assets:publish`    | Y     | Y   | --       | --         | --      | --      | --         |
+| `dam:versions:read`     | Y     | Y   | Y        | --         | --      | --      | --         |
+| `dam:versions:write`    | Y     | Y   | Y        | --         | --      | --      | --         |
+| `dam:comments:read`     | Y     | Y   | Y        | --         | --      | --      | --         |
+| `dam:comments:write`    | Y     | Y   | Y        | --         | --      | --      | --         |
+| `dam:folders:read`      | Y     | Y   | Y        | --         | --      | --      | --         |
+| `dam:folders:write`     | Y     | Y   | --       | --         | --      | --      | --         |
+| `dam:download:original` | Y     | Y   | Y        | --         | --      | --      | --         |
+| `dam:download:web`      | Y     | Y   | Y        | --         | --      | --      | --         |
+| `dam:bulk:operations`   | Y     | Y   | --       | --         | --      | --      | --         |
 
 **Notes:**
+
 - `admin` (Marcus) has full unrestricted access including delete.
 - `pm` (Caio) has full access including approval, publishing, deletion, and folder management.
 - `creative` (Sick, Yuri) can read all assets, upload new assets, create versions, add comments, download (original and web), and organize into existing folders. They CANNOT delete, approve, publish, archive, create/manage folders, or perform bulk operations. This gives them creative freedom while protecting the asset library from accidental damage.
@@ -972,24 +976,24 @@ CIENA currently stores all brand assets in Google Drive across multiple folders 
 
 ### 11.2 Migration Plan
 
-| Phase | Action | Timeline | Risk |
-|-------|--------|----------|------|
-| 1. Build | Develop DAM module with R2 integration, upload, versioning, folders, search | Weeks 1-3 | None (parallel to Google Drive) |
-| 2. Folder structure | Create the target folder hierarchy in DAM (by collection > drop > type) | Week 3 | Low — Caio/Sick define structure |
-| 3. Asset migration | Bulk upload current Google Drive assets into DAM. Tag by collection/type. Set initial status based on usage. | Week 3-4 | Medium — large volume (~500-1000 files), requires tagging effort |
-| 4. UGC pipeline | Connect Marketing Intel -> DAM auto-import. Migrate existing saved UGC from Google Drive folder. | Week 4 | Low |
-| 5. Cutover | Team starts using DAM for all new assets. Google Drive marked read-only (archive). | Week 5 | Low — Google Drive preserved as historical backup |
+| Phase               | Action                                                                                                       | Timeline  | Risk                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ | --------- | ---------------------------------------------------------------- |
+| 1. Build            | Develop DAM module with R2 integration, upload, versioning, folders, search                                  | Weeks 1-3 | None (parallel to Google Drive)                                  |
+| 2. Folder structure | Create the target folder hierarchy in DAM (by collection > drop > type)                                      | Week 3    | Low — Caio/Sick define structure                                 |
+| 3. Asset migration  | Bulk upload current Google Drive assets into DAM. Tag by collection/type. Set initial status based on usage. | Week 3-4  | Medium — large volume (~500-1000 files), requires tagging effort |
+| 4. UGC pipeline     | Connect Marketing Intel -> DAM auto-import. Migrate existing saved UGC from Google Drive folder.             | Week 4    | Low                                                              |
+| 5. Cutover          | Team starts using DAM for all new assets. Google Drive marked read-only (archive).                           | Week 5    | Low — Google Drive preserved as historical backup                |
 
 ### 11.3 Data Migration
 
-| Source | Data | Target | Notes |
-|--------|------|--------|-------|
-| Google Drive | Product photos (~200 files) | `dam.assets` with `asset_type=product_photo` | Organize by collection. Bulk upload via script. |
-| Google Drive | KVs and marketing materials (~100 files) | `dam.assets` with `asset_type=key_visual` | Latest versions become the current asset. Previous versions (if identifiable from filenames) become `asset_versions`. |
-| Google Drive | Mockups and design files (~50 PSD/AI files) | `dam.assets` with `asset_type=mockup` or `raw_file` | Include source files (PSD) alongside exports. |
-| Google Drive | Videos (~30 files) | `dam.assets` with `asset_type=video` | Large files may take time to upload. Schedule during off-hours. |
-| Google Drive | Saved UGC folder (~50 images) | `dam.assets` with `asset_type=ugc` | No source_ugc_id (not from Marketing Intel). Tag with "ugc-legacy". |
-| Google Drive | Folder structure | `dam.folders` | Recreate meaningful folder hierarchy. Discard inconsistent nested structures. |
+| Source       | Data                                        | Target                                              | Notes                                                                                                                 |
+| ------------ | ------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Google Drive | Product photos (~200 files)                 | `dam.assets` with `asset_type=product_photo`        | Organize by collection. Bulk upload via script.                                                                       |
+| Google Drive | KVs and marketing materials (~100 files)    | `dam.assets` with `asset_type=key_visual`           | Latest versions become the current asset. Previous versions (if identifiable from filenames) become `asset_versions`. |
+| Google Drive | Mockups and design files (~50 PSD/AI files) | `dam.assets` with `asset_type=mockup` or `raw_file` | Include source files (PSD) alongside exports.                                                                         |
+| Google Drive | Videos (~30 files)                          | `dam.assets` with `asset_type=video`                | Large files may take time to upload. Schedule during off-hours.                                                       |
+| Google Drive | Saved UGC folder (~50 images)               | `dam.assets` with `asset_type=ugc`                  | No source_ugc_id (not from Marketing Intel). Tag with "ugc-legacy".                                                   |
+| Google Drive | Folder structure                            | `dam.folders`                                       | Recreate meaningful folder hierarchy. Discard inconsistent nested structures.                                         |
 
 ### 11.4 Migration Script
 
@@ -1008,6 +1012,7 @@ CIENA currently stores all brand assets in Google Drive across multiple folders 
 ### 11.5 Rollback Plan
 
 If the DAM module has critical issues:
+
 1. Google Drive remains accessible (marked read-only, not deleted)
 2. New assets uploaded to DAM during the transition can be exported via R2 direct access
 3. Team reverts to Google Drive workflow
@@ -1017,16 +1022,69 @@ If the DAM module has critical issues:
 
 ## 12. Open Questions
 
-| # | Question | Owner | Status | Notes |
-|---|----------|-------|--------|-------|
-| OQ-1 | Should we support AI-powered auto-tagging (e.g., image recognition to auto-suggest tags like "camiseta", "preta", "modelo masculino")? | Caio | Open | Would significantly reduce manual tagging effort. Requires image classification API (Claude Vision, Google Cloud Vision, or similar). Adds cost per image. Could be Phase 2. |
-| OQ-2 | Should we implement image annotation (draw on image to mark feedback areas)? | Sick / Caio | Open | Currently comments are text-only. Visual annotation (like Figma comments) would improve feedback precision. Adds significant UI complexity. Could use a library like Annotorious. |
-| OQ-3 | Should we generate multiple thumbnail sizes (small 100x100 for lists, medium 400x400 for grid, large 800x800 for preview)? | Caio | Open | Current spec: single 400x400 thumbnail. Multiple sizes would improve loading performance at the cost of storage and generation time. |
-| OQ-4 | Should we implement an asset expiration/review date (e.g., "review this asset in 6 months")? | Caio | Open | Would help keep the library current. Old assets that are never reviewed accumulate silently. Could add `review_date DATE` column with a background job to flag assets needing review. |
-| OQ-5 | Should we support Figma/Canva integration for direct asset import? | Sick | Open | Sick uses Figma for design. Direct export from Figma to DAM would save the download-then-upload step. Requires Figma API integration. |
-| OQ-6 | Should non-creative roles (operations, commercial) have read-only access to browse approved/published assets? | Marcus | Open | Current spec: DAM access restricted to admin, pm, creative. Other roles may need product photos for presentations, supplier communications, or B2B catalogs. Read-only access for `published` assets could be useful without compromising the creative workflow. |
-| OQ-7 | Should we track download analytics (who downloaded what, when, how many times)? | Caio | Open | Would provide insight into which assets are most used. Simple implementation: `dam.download_logs` table recording each signed URL generation. Adds minor overhead. |
+| #    | Question                                                                                                                               | Owner       | Status | Notes                                                                                                                                                                                                                                                            |
+| ---- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| OQ-1 | Should we support AI-powered auto-tagging (e.g., image recognition to auto-suggest tags like "camiseta", "preta", "modelo masculino")? | Caio        | Open   | Would significantly reduce manual tagging effort. Requires image classification API (Claude Vision, Google Cloud Vision, or similar). Adds cost per image. Could be Phase 2.                                                                                     |
+| OQ-2 | Should we implement image annotation (draw on image to mark feedback areas)?                                                           | Sick / Caio | Open   | Currently comments are text-only. Visual annotation (like Figma comments) would improve feedback precision. Adds significant UI complexity. Could use a library like Annotorious.                                                                                |
+| OQ-3 | Should we generate multiple thumbnail sizes (small 100x100 for lists, medium 400x400 for grid, large 800x800 for preview)?             | Caio        | Open   | Current spec: single 400x400 thumbnail. Multiple sizes would improve loading performance at the cost of storage and generation time.                                                                                                                             |
+| OQ-4 | Should we implement an asset expiration/review date (e.g., "review this asset in 6 months")?                                           | Caio        | Open   | Would help keep the library current. Old assets that are never reviewed accumulate silently. Could add `review_date DATE` column with a background job to flag assets needing review.                                                                            |
+| OQ-5 | Should we support Figma/Canva integration for direct asset import?                                                                     | Sick        | Open   | Sick uses Figma for design. Direct export from Figma to DAM would save the download-then-upload step. Requires Figma API integration.                                                                                                                            |
+| OQ-6 | Should non-creative roles (operations, commercial) have read-only access to browse approved/published assets?                          | Marcus      | Open   | Current spec: DAM access restricted to admin, pm, creative. Other roles may need product photos for presentations, supplier communications, or B2B catalogs. Read-only access for `published` assets could be useful without compromising the creative workflow. |
+| OQ-7 | Should we track download analytics (who downloaded what, when, how many times)?                                                        | Caio        | Open   | Would provide insight into which assets are most used. Simple implementation: `dam.download_logs` table recording each signed URL generation. Adds minor overhead.                                                                                               |
 
 ---
 
-*This module spec is the source of truth for Digital Asset Management (DAM) implementation. All development, review, and QA should reference this document. Changes require review from Caio (PM), Sick (creative lead), or Marcus (admin).*
+_This module spec is the source of truth for Digital Asset Management (DAM) implementation. All development, review, and QA should reference this document. Changes require review from Caio (PM), Sick (creative lead), or Marcus (admin)._
+
+---
+
+## AI Generation (Moved to Astro)
+
+> Source: Competitive analysis (Axoly, April 2026)
+
+### AI Image Generation (AI Studio)
+
+Generate photorealistic product images from text briefings. Useful for campaign KVs, product mockups, and ad creatives without photo shoots. New sub-route: `(admin)/dam/studio`. New table `dam.ai_generations`. Provider: OpenAI DALL-E or Stability AI (via provider abstraction).
+
+**User Stories:**
+
+| #       | As a... | I want to...                                                   | Acceptance Criteria                                                                                                                             |
+| ------- | ------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-AX38 | Yuri    | Generate a product image from a text briefing                  | Form: briefing text, aspect ratio (1:1, 4:5, 16:9, 9:16). Submit triggers generation. Loading state with progress. Result displayed for review. |
+| US-AX39 | Yuri    | Edit/refine a generated image with a follow-up prompt          | "Editar" button on generated image. Text field for edit instruction ("trocar fundo para estúdio branco"). New image generated based on edit.    |
+| US-AX40 | Yuri    | Save an approved generated image to the DAM as a regular asset | "Salvar no DAM" button. Image uploaded to R2, creates `dam.assets` record. Tagged as ai_generated.                                              |
+
+Brand Brain context auto-injected into prompts. Rate limit: 20 generations/day per tenant. Cost tracked per generation.
+
+### AI Video Generation
+
+Generate short videos (5-10s) from prompt + product image. For reels, stories, and ads. Integration with Luma AI (Ray 2). New table `dam.video_generations`. Sub-route: `(admin)/dam/studio/video`.
+
+**User Stories:**
+
+| #       | As a... | I want to...                                                | Acceptance Criteria                                                                                                                                |
+| ------- | ------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-AX41 | Yuri    | Generate a short video from a product image + motion prompt | Form: select image (from DAM or upload), prompt, model (flash/quality), ratio. Submit triggers Luma API. Polling every 10s. Preview on completion. |
+| US-AX42 | Yuri    | Save generated video to DAM                                 | "Salvar" button. Video uploaded to R2 as DAM asset. Thumbnail auto-generated.                                                                      |
+
+Rate limit: 5 videos/day per tenant (high cost). Flash model: ~30s generation, Quality model: ~120s.
+
+### Creative Script Generation
+
+AI generates creative briefs/scripts for video and image content from Brand Brain + Buyer Personas. Saves hours of briefing work for creative team. New table `dam.creative_scripts`. Pages: `(admin)/dam/scripts` (list) + `(admin)/dam/scripts/generate` (form).
+
+**User Stories:**
+
+| #       | As a... | I want to...                                           | Acceptance Criteria                                                                                                                                                                                                     |
+| ------- | ------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-43   | Yuri    | Generate creative scripts from brand context + persona | Form: type (video/image), persona (from CRM Buyer Personas), pillar (pain point/solution/social proof/urgency), product. AI generates 3-5 scripts with headline, body, CTA, visual description. Streaming output (SSE). |
+| US-AX44 | Yuri    | Select and approve a generated script                  | Click on preferred script. "Aprovar" button sets selected_index. Approved script available as brief for image/video generation.                                                                                         |
+| US-AX45 | Sick    | View approved scripts as briefing documents            | List of approved scripts with visual description, headline, copy. Filterable by product, type, pillar.                                                                                                                  |
+
+Brand Brain required. Buyer Personas optional but improve quality significantly. AI model: Claude Sonnet (requires creativity).
+
+---
+
+## Nota: AI Generation movida para Astro
+
+As features de geração de conteúdo com IA (AI Image Generation, AI Video Generation, Creative Script Generation) foram movidas para o módulo **Astro** (AI Brain). O conteúdo gerado é depositado no DAM como output. DAM permanece como ferramenta de storage, organização, versionamento e aprovação de assets.

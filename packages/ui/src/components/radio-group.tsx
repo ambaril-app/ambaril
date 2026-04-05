@@ -40,7 +40,10 @@ export interface RadioGroupItemProps {
 }
 
 const RadioGroupItem = React.forwardRef<HTMLButtonElement, RadioGroupItemProps>(
-  ({ value, label, description, disabled, className, id, children, ...props }, ref) => {
+  (
+    { value, label, description, disabled, className, id, children, ...props },
+    ref,
+  ) => {
     const itemId = id || React.useId();
     return (
       <div className="flex items-start gap-2">
@@ -54,7 +57,7 @@ const RadioGroupItem = React.forwardRef<HTMLButtonElement, RadioGroupItemProps>(
             "border-border-default",
             "data-[state=checked]:border-btn-primary-bg",
             "disabled:cursor-not-allowed disabled:opacity-50",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-input-focus",
+            "focus-visible:outline-none focus-visible:border-input-focus",
             className,
           )}
           {...props}

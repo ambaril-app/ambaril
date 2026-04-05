@@ -56,7 +56,8 @@ const FormSelect = React.forwardRef<HTMLButtonElement, FormSelectProps>(
     const selectId = React.useId();
 
     const internalValue = value !== undefined ? toInternal(value) : undefined;
-    const internalDefault = defaultValue !== undefined ? toInternal(defaultValue) : undefined;
+    const internalDefault =
+      defaultValue !== undefined ? toInternal(defaultValue) : undefined;
 
     function handleChange(v: string) {
       onChange?.(toExternal(v));
@@ -89,7 +90,7 @@ const FormSelect = React.forwardRef<HTMLButtonElement, FormSelectProps>(
               "flex h-9 w-full items-center justify-between gap-2 rounded-md border border-input-border bg-input-bg px-3 text-sm",
               "appearance-none text-text-primary",
               "hover:border-border-strong",
-              "focus:outline-none focus:ring-2 focus:ring-input-focus",
+              "focus:outline-none focus:border-input-focus",
               "disabled:cursor-not-allowed disabled:opacity-50",
               "data-[placeholder]:text-text-ghost",
               errorMessage && "border-danger",
@@ -137,7 +138,7 @@ const FormSelect = React.forwardRef<HTMLButtonElement, FormSelectProps>(
                   >
                     <span className="absolute left-2 flex h-4 w-4 items-center justify-center">
                       <Select.ItemIndicator>
-                        <Check className="h-3.5 w-3.5 text-accent" />
+                        <Check className="h-3.5 w-3.5 text-text-primary" />
                       </Select.ItemIndicator>
                     </span>
                     <Select.ItemText>{option.label}</Select.ItemText>
@@ -152,9 +153,7 @@ const FormSelect = React.forwardRef<HTMLButtonElement, FormSelectProps>(
           </Select.Portal>
         </Select.Root>
 
-        {errorMessage && (
-          <p className="text-xs text-danger">{errorMessage}</p>
-        )}
+        {errorMessage && <p className="text-xs text-danger">{errorMessage}</p>}
       </div>
     );
   },

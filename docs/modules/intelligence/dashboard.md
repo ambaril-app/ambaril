@@ -9,7 +9,7 @@
 > **Date:** March 2026
 > **Status:** Approved
 > **Replaces:** None (new capability; previously spreadsheets and manual Bling/Yever dashboards)
-> **References:** [DATABASE.md](../../architecture/DATABASE.md), [API.md](../../architecture/API.md), [AUTH.md](../../architecture/AUTH.md), [NOTIFICATIONS.md](../../platform/NOTIFICATIONS.md), [GLOSSARY.md](../../dev/GLOSSARY.md), [ClawdBot spec](../communication/clawdbot.md)
+> **References:** [DATABASE.md](../../architecture/DATABASE.md), [API.md](../../architecture/API.md), [AUTH.md](../../architecture/AUTH.md), [NOTIFICATIONS.md](../../platform/NOTIFICATIONS.md), [GLOSSARY.md](../../dev/GLOSSARY.md), [Pulse spec](../communication/pulse.md)
 
 ---
 
@@ -19,25 +19,25 @@ The Dashboard Executivo + Drop War Room module (codename **Beacon**) is the **ce
 
 **Core responsibilities:**
 
-| Capability | Description |
-|-----------|-------------|
-| **9 Dashboard Panels** | Vendas, Retencao (CRM), Estoque, Financeiro, Marketing, PCP, Trocas, Checkout, Creators. Each panel has summary cards + detail view with charts and tables. |
-| **Drop War Room** | Real-time monitoring view activated during drop launches. Sales per minute, inventory per SKU, conversion rate, comparison with previous drops. SSE-powered data refresh (5s for sales, 10s for inventory, 30s for conversion). |
-| **DRE Visual** | Waterfall chart visualization of the monthly income statement from `erp.income_statements`. Gross revenue -> discounts -> returns -> net revenue -> COGS -> gross margin -> expenses -> net income. |
-| **Configurable Alerts** | Rule-based metric alerts: when a metric crosses a threshold (above/below), emit a Flare event for notification via configured channels (in-app, Discord). |
-| **Layout Customization** | Users can reorder, resize, and toggle panel visibility. Layout persisted per user. |
+| Capability               | Description                                                                                                                                                                                                                     |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **9 Dashboard Panels**   | Vendas, Retencao (CRM), Estoque, Financeiro, Marketing, PLM, Trocas, Checkout, Creators. Each panel has summary cards + detail view with charts and tables.                                                                     |
+| **Drop War Room**        | Real-time monitoring view activated during drop launches. Sales per minute, inventory per SKU, conversion rate, comparison with previous drops. SSE-powered data refresh (5s for sales, 10s for inventory, 30s for conversion). |
+| **DRE Visual**           | Waterfall chart visualization of the monthly income statement from `erp.income_statements`. Gross revenue -> discounts -> returns -> net revenue -> COGS -> gross margin -> expenses -> net income.                             |
+| **Configurable Alerts**  | Rule-based metric alerts: when a metric crosses a threshold (above/below), emit a Flare event for notification via configured channels (in-app, Discord).                                                                       |
+| **Layout Customization** | Users can reorder, resize, and toggle panel visibility. Layout persisted per user.                                                                                                                                              |
 
 **Primary users:**
 
-| User | Role | Usage Pattern |
-|------|------|---------------|
-| **Marcus** | `admin` | Morning dashboard review. Drills into sales and financial panels. Monitors War Room during drops. Full access to all 9 panels. |
-| **Caio** | `pm` | Activates War Room for drops. Reviews marketing and creator panels. Configures alert rules. Full access to all panels. |
-| **Tavares** | `operations` | Checks PCP and Estoque panels daily. Monitors inventory health. |
-| **Pedro** | `finance` | Reviews Financeiro panel and DRE visual. Monitors margin trends. |
-| **Creative team** | `creative` | Views Marketing panel only (Instagram, UGC, campaign performance). All other panels hidden. |
+| User              | Role         | Usage Pattern                                                                                                                  |
+| ----------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Marcus**        | `admin`      | Morning dashboard review. Drills into sales and financial panels. Monitors War Room during drops. Full access to all 9 panels. |
+| **Caio**          | `pm`         | Activates War Room for drops. Reviews marketing and creator panels. Configures alert rules. Full access to all panels.         |
+| **Tavares**       | `operations` | Checks PLM and Estoque panels daily. Monitors inventory health.                                                                |
+| **Pedro**         | `finance`    | Reviews Financeiro panel and DRE visual. Monitors margin trends.                                                               |
+| **Creative team** | `creative`   | Views Marketing panel only (Instagram, UGC, campaign performance). All other panels hidden.                                    |
 
-**Out of scope:** This module does NOT modify data in any source module — it is strictly read-only aggregation. It does NOT generate PDF reports (future enhancement). It does NOT handle Discord reporting (owned by ClawdBot / Pulse). The dashboard shares data patterns with ClawdBot, and both modules can reference the same SQL queries for consistency.
+**Out of scope:** This module does NOT modify data in any source module — it is strictly read-only aggregation. It does NOT generate PDF reports (future enhancement). It does NOT handle Discord reporting (owned by Pulse). The dashboard shares data patterns with Pulse, and both modules can reference the same SQL queries for consistency.
 
 ---
 
@@ -45,50 +45,50 @@ The Dashboard Executivo + Drop War Room module (codename **Beacon**) is the **ce
 
 ### 2.1 Dashboard Consumer Stories
 
-| # | As a... | I want to... | So that... | Acceptance Criteria |
-|---|---------|-------------|-----------|-------------------|
-| US-01 | Marcus | See a high-level overview of all CIENA metrics on a single page when I open the dashboard | I can assess the health of the business in 30 seconds | Main dashboard loads with summary metric cards (faturamento, pedidos, ticket medio, conversao) + panel grid below. All data loads within 2 seconds. Cards show period-over-period delta with color-coded arrows. |
-| US-02 | Marcus | Drill into the Vendas panel to see detailed revenue charts, top products, and payment method breakdown | I can identify sales trends and product performance | Click "Vendas" card/panel expands to full detail view: revenue line chart (daily/weekly/monthly toggle), orders bar chart, top products table (sortable), top SKUs table, payment method pie chart, period comparison table. |
-| US-03 | Pedro | View the Financeiro panel with DRE waterfall chart, margin rankings, and chargeback trends | I can assess financial health and identify problem areas | Financeiro panel shows: DRE waterfall (gross -> net -> margin -> expenses -> income), MP balance card, approval rate trend, chargeback trend line, margin ranking table (by SKU, color-coded). |
-| US-04 | Pedro | View the DRE Visual as a waterfall chart and toggle between months | I can quickly see how revenue flows through to net income each month | Waterfall chart with labeled bars: Receita Bruta (green), (-) Descontos (red), (-) Devolucoes (red), = Receita Liquida (blue), (-) CMV (red), = Margem Bruta (blue), (-) Despesas (red), = Lucro Liquido (green/red based on positive/negative). Month selector dropdown. Values in R$ on each bar. |
-| US-05 | Tavares | View the Estoque panel with inventory levels, depletion velocity, and days-to-zero alerts | I can proactively manage stock before problems occur | Estoque panel shows: inventory table with SKU, product, size, color, available, reserved, in_prod, velocity, days_to_zero, status badge (OK/Alerta/Critico). Sortable columns. Filter by status. Depletion velocity chart (top 10 fastest depleting). Days-to-zero alerts section. |
-| US-06 | Tavares | View the PCP panel with a simplified production timeline and overdue stages | I can track production progress without opening the full PCP module | PCP panel shows: simplified Gantt-style timeline of active production orders with stage progress bars. Overdue stages count (highlighted red). Supplier reliability score. Upcoming deadlines list (next 7 days). |
-| US-07 | Caio | View the Marketing panel with ad spend, ROAS, UGC counts, and creator KPIs | I can assess marketing performance across all channels in one view | Marketing panel shows: ad spend vs revenue dual-axis chart, ROAS trend line, UGC count card + top posts list, creator program KPIs (active creators, total GMV, avg commission), Instagram analytics (followers, engagement rate trend). |
-| US-08 | Caio | View the Creators panel with GMV, top performers, tier distribution, and commission trends | I can manage the creator program effectively with data | Creators panel shows: total GMV through creators card, top 10 performers table (name, coupon, sales, commission, tier), tier distribution pie chart, commission payout trend (monthly bar chart). |
-| US-09 | Marcus | View the Checkout panel with conversion funnel, abandoned cart rate, and A/B test results | I can identify checkout optimization opportunities | Checkout panel shows: conversion funnel visualization (page_view -> add_to_cart -> start_checkout -> payment -> confirmed with drop-off %), abandoned cart rate trend, payment method distribution, active A/B test results card. |
-| US-10 | Support lead | View the Trocas panel with exchange volume, reasons breakdown, and processing time | I can monitor exchange operations and customer pain points | Trocas panel shows: exchange volume trend (line chart), reasons breakdown pie chart, avg processing time card (with trend), exchange impact on revenue card (total exchange value as % of revenue). |
-| US-10a | Marcus | See a "Perda de Receita Estimada" card in the Estoque panel showing how much revenue is being lost to out-of-stock SKUs | I can quantify the cost of stockouts and prioritize replenishment | Card shows total estimated R$ revenue leak, top 10 OOS SKUs table (SKU, produto, dias sem estoque, perda R$), weekly trend sparkline (last 4 weeks). Data from `erp.revenue_leak_daily`. |
-| US-10b | Tavares | See SKU tier classification (Ouro/Prata/Bronze) in the Estoque panel with tier distribution and sortable table | I can focus inventory management efforts on the highest-value SKUs | Heatmap or table showing tier distribution summary (pie/bar with count per tier) + detailed table with columns: SKU, Produto, Tier (badge), Vendas 90d, Cobertura (dias), Tendencia (sparkline). Filterable by tier, sortable by any column. |
-| US-10c | Caio | See CAC per channel, LTV medio, and LTV/CAC ratio in the Retencao panel | I can evaluate marketing efficiency per acquisition channel and overall customer value | Cards: CAC Medio (R$), LTV Medio (R$), LTV/CAC Ratio (color-coded: green > 3, yellow 1-3, red < 1). Bar chart: CAC by channel (trafego pago, creators, organico, WA, marketplace). Monthly evolution line chart (12 months): CAC trend + LTV/CAC ratio trend. |
-| US-10d | Pedro | See a "Composicao de Custos" chart in the Financeiro panel breaking down where money is being spent | I can identify which cost categories are growing and need attention | Stacked bar or donut showing % and R$ per category: Produto (COGS), Marketing, Pessoal, Infraestrutura. Monthly comparison: current vs previous month side-by-side bars with variation percentage per category. |
-| US-10e | Tavares | See a "Cobertura de Estoque" horizontal bar chart showing days-to-zero for Gold-tier SKUs | I can immediately see which high-value SKUs are about to run out | Horizontal bars for Gold-tier SKUs only, color-coded: verde (> 14 dias), amarelo (7-14 dias), vermelho (< 7 dias). Alert icon on red items. Sorted by days-to-zero ascending (most critical first). |
+| #      | As a...      | I want to...                                                                                                            | So that...                                                                             | Acceptance Criteria                                                                                                                                                                                                                                                                                 |
+| ------ | ------------ | ----------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-01  | Marcus       | See a high-level overview of all CIENA metrics on a single page when I open the dashboard                               | I can assess the health of the business in 30 seconds                                  | Main dashboard loads with summary metric cards (faturamento, pedidos, ticket medio, conversao) + panel grid below. All data loads within 2 seconds. Cards show period-over-period delta with color-coded arrows.                                                                                    |
+| US-02  | Marcus       | Drill into the Vendas panel to see detailed revenue charts, top products, and payment method breakdown                  | I can identify sales trends and product performance                                    | Click "Vendas" card/panel expands to full detail view: revenue line chart (daily/weekly/monthly toggle), orders bar chart, top products table (sortable), top SKUs table, payment method pie chart, period comparison table.                                                                        |
+| US-03  | Pedro        | View the Financeiro panel with DRE waterfall chart, margin rankings, and chargeback trends                              | I can assess financial health and identify problem areas                               | Financeiro panel shows: DRE waterfall (gross -> net -> margin -> expenses -> income), MP balance card, approval rate trend, chargeback trend line, margin ranking table (by SKU, color-coded).                                                                                                      |
+| US-04  | Pedro        | View the DRE Visual as a waterfall chart and toggle between months                                                      | I can quickly see how revenue flows through to net income each month                   | Waterfall chart with labeled bars: Receita Bruta (green), (-) Descontos (red), (-) Devolucoes (red), = Receita Liquida (blue), (-) CMV (red), = Margem Bruta (blue), (-) Despesas (red), = Lucro Liquido (green/red based on positive/negative). Month selector dropdown. Values in R$ on each bar. |
+| US-05  | Tavares      | View the Estoque panel with inventory levels, depletion velocity, and days-to-zero alerts                               | I can proactively manage stock before problems occur                                   | Estoque panel shows: inventory table with SKU, product, size, color, available, reserved, in_prod, velocity, days_to_zero, status badge (OK/Alerta/Critico). Sortable columns. Filter by status. Depletion velocity chart (top 10 fastest depleting). Days-to-zero alerts section.                  |
+| US-06  | Tavares      | View the PLM panel with a simplified production timeline and overdue stages                                             | I can track production progress without opening the full PLM module                    | PLM panel shows: simplified Gantt-style timeline of active production orders with stage progress bars. Overdue stages count (highlighted red). Supplier reliability score. Upcoming deadlines list (next 7 days).                                                                                   |
+| US-07  | Caio         | View the Marketing panel with ad spend, ROAS, UGC counts, and creator KPIs                                              | I can assess marketing performance across all channels in one view                     | Marketing panel shows: ad spend vs revenue dual-axis chart, ROAS trend line, UGC count card + top posts list, creator program KPIs (active creators, total GMV, avg commission), Instagram analytics (followers, engagement rate trend).                                                            |
+| US-08  | Caio         | View the Creators panel with GMV, top performers, tier distribution, and commission trends                              | I can manage the creator program effectively with data                                 | Creators panel shows: total GMV through creators card, top 10 performers table (name, coupon, sales, commission, tier), tier distribution pie chart, commission payout trend (monthly bar chart).                                                                                                   |
+| US-09  | Marcus       | View the Checkout panel with conversion funnel, abandoned cart rate, and A/B test results                               | I can identify checkout optimization opportunities                                     | Checkout panel shows: conversion funnel visualization (page_view -> add_to_cart -> start_checkout -> payment -> confirmed with drop-off %), abandoned cart rate trend, payment method distribution, active A/B test results card.                                                                   |
+| US-10  | Support lead | View the Trocas panel with exchange volume, reasons breakdown, and processing time                                      | I can monitor exchange operations and customer pain points                             | Trocas panel shows: exchange volume trend (line chart), reasons breakdown pie chart, avg processing time card (with trend), exchange impact on revenue card (total exchange value as % of revenue).                                                                                                 |
+| US-10a | Marcus       | See a "Perda de Receita Estimada" card in the Estoque panel showing how much revenue is being lost to out-of-stock SKUs | I can quantify the cost of stockouts and prioritize replenishment                      | Card shows total estimated R$ revenue leak, top 10 OOS SKUs table (SKU, produto, dias sem estoque, perda R$), weekly trend sparkline (last 4 weeks). Data from `erp.revenue_leak_daily`.                                                                                                            |
+| US-10b | Tavares      | See SKU tier classification (Ouro/Prata/Bronze) in the Estoque panel with tier distribution and sortable table          | I can focus inventory management efforts on the highest-value SKUs                     | Heatmap or table showing tier distribution summary (pie/bar with count per tier) + detailed table with columns: SKU, Produto, Tier (badge), Vendas 90d, Cobertura (dias), Tendencia (sparkline). Filterable by tier, sortable by any column.                                                        |
+| US-10c | Caio         | See CAC per channel, LTV medio, and LTV/CAC ratio in the Retencao panel                                                 | I can evaluate marketing efficiency per acquisition channel and overall customer value | Cards: CAC Medio (R$), LTV Medio (R$), LTV/CAC Ratio (color-coded: green > 3, yellow 1-3, red < 1). Bar chart: CAC by channel (trafego pago, creators, organico, WA, marketplace). Monthly evolution line chart (12 months): CAC trend + LTV/CAC ratio trend.                                       |
+| US-10d | Pedro        | See a "Composicao de Custos" chart in the Financeiro panel breaking down where money is being spent                     | I can identify which cost categories are growing and need attention                    | Stacked bar or donut showing % and R$ per category: Produto (COGS), Marketing, Pessoal, Infraestrutura. Monthly comparison: current vs previous month side-by-side bars with variation percentage per category.                                                                                     |
+| US-10e | Tavares      | See a "Cobertura de Estoque" horizontal bar chart showing days-to-zero for Gold-tier SKUs                               | I can immediately see which high-value SKUs are about to run out                       | Horizontal bars for Gold-tier SKUs only, color-coded: verde (> 14 dias), amarelo (7-14 dias), vermelho (< 7 dias). Alert icon on red items. Sorted by days-to-zero ascending (most critical first).                                                                                                 |
 
 ### 2.2 Layout Customization Stories
 
-| # | As a... | I want to... | So that... | Acceptance Criteria |
-|---|---------|-------------|-----------|-------------------|
-| US-11 | Marcus | Reorder dashboard panels by dragging them to different positions | I can prioritize the panels I check most often at the top | Panels are drag-and-drop reorderable. New layout saved to `dashboard_configs.layout` on drop. Persists across sessions. |
-| US-12 | Marcus | Hide panels I don't need and show only the ones relevant to my role | I can reduce visual noise and focus on what matters | Each panel has a visibility toggle. Hidden panels don't render or fetch data. Layout config tracks `visible: true/false` per panel. |
-| US-13 | Any user | Have the dashboard remember my filters and date range between sessions | I don't have to reconfigure my view every time I visit | Saved filters stored in `dashboard.saved_filters`. User can save multiple named filter presets per panel. Default filter applied on load. |
+| #     | As a...  | I want to...                                                           | So that...                                                | Acceptance Criteria                                                                                                                       |
+| ----- | -------- | ---------------------------------------------------------------------- | --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| US-11 | Marcus   | Reorder dashboard panels by dragging them to different positions       | I can prioritize the panels I check most often at the top | Panels are drag-and-drop reorderable. New layout saved to `dashboard_configs.layout` on drop. Persists across sessions.                   |
+| US-12 | Marcus   | Hide panels I don't need and show only the ones relevant to my role    | I can reduce visual noise and focus on what matters       | Each panel has a visibility toggle. Hidden panels don't render or fetch data. Layout config tracks `visible: true/false` per panel.       |
+| US-13 | Any user | Have the dashboard remember my filters and date range between sessions | I don't have to reconfigure my view every time I visit    | Saved filters stored in `dashboard.saved_filters`. User can save multiple named filter presets per panel. Default filter applied on load. |
 
 ### 2.3 War Room Stories
 
-| # | As a... | I want to... | So that... | Acceptance Criteria |
-|---|---------|-------------|-----------|-------------------|
-| US-14 | Caio | Activate a Drop War Room before a launch and compare with a previous drop | I can monitor the drop in real-time and make decisions based on live data | "Ativar War Room" button on dashboard. Select drop (from pcp.drops), optionally select comparison drop. War Room enters active state. |
-| US-15 | Marcus | See live sales-per-minute, revenue, and conversion rate during an active War Room | I can gauge drop momentum in real-time | Summary cards update every 5 seconds: sales count (with per-minute rate), total revenue, avg ticket, conversion rate. All via SSE stream. |
-| US-16 | Tavares | See live inventory levels per SKU during the War Room with depletion progress bars | I can identify when specific sizes are running out during a drop | Inventory section shows each SKU in the drop with: progress bar (current/initial), unit count, warning indicator when below 25%. Updates every 10 seconds via SSE. |
-| US-17 | Marcus | Compare current drop performance with a previous drop at the same elapsed time | I can tell if this drop is performing better or worse than the last one | Comparison section shows: current vs comparison drop at same elapsed time (e.g., 30 min after launch). Metrics: sales count, revenue, avg ticket, conversion. % change with directional arrows. |
-| US-18 | Caio | End the War Room session when the drop stabilizes | The dashboard returns to normal mode and the War Room data is preserved for post-analysis | "Encerrar War Room" button. Sets `war_room_sessions.status = 'ended'`, `ended_at = NOW()`. Dashboard returns to normal panel view. SSE stream disconnected. |
-| US-19 | Caio | Review a completed War Room session with historical data | I can analyze drop performance post-event and compare across drops | Past War Room sessions listed in dashboard settings. Click to view: final metrics, sales timeline chart, inventory depletion timeline, comparison results. Read-only view of the historical data. |
+| #     | As a... | I want to...                                                                       | So that...                                                                                | Acceptance Criteria                                                                                                                                                                               |
+| ----- | ------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-14 | Caio    | Activate a Drop War Room before a launch and compare with a previous drop          | I can monitor the drop in real-time and make decisions based on live data                 | "Ativar War Room" button on dashboard. Select drop (from pcp.drops), optionally select comparison drop. War Room enters active state.                                                             |
+| US-15 | Marcus  | See live sales-per-minute, revenue, and conversion rate during an active War Room  | I can gauge drop momentum in real-time                                                    | Summary cards update every 5 seconds: sales count (with per-minute rate), total revenue, avg ticket, conversion rate. All via SSE stream.                                                         |
+| US-16 | Tavares | See live inventory levels per SKU during the War Room with depletion progress bars | I can identify when specific sizes are running out during a drop                          | Inventory section shows each SKU in the drop with: progress bar (current/initial), unit count, warning indicator when below 25%. Updates every 10 seconds via SSE.                                |
+| US-17 | Marcus  | Compare current drop performance with a previous drop at the same elapsed time     | I can tell if this drop is performing better or worse than the last one                   | Comparison section shows: current vs comparison drop at same elapsed time (e.g., 30 min after launch). Metrics: sales count, revenue, avg ticket, conversion. % change with directional arrows.   |
+| US-18 | Caio    | End the War Room session when the drop stabilizes                                  | The dashboard returns to normal mode and the War Room data is preserved for post-analysis | "Encerrar War Room" button. Sets `war_room_sessions.status = 'ended'`, `ended_at = NOW()`. Dashboard returns to normal panel view. SSE stream disconnected.                                       |
+| US-19 | Caio    | Review a completed War Room session with historical data                           | I can analyze drop performance post-event and compare across drops                        | Past War Room sessions listed in dashboard settings. Click to view: final metrics, sales timeline chart, inventory depletion timeline, comparison results. Read-only view of the historical data. |
 
 ### 2.4 Alert Configuration Stories
 
-| # | As a... | I want to... | So that... | Acceptance Criteria |
-|---|---------|-------------|-----------|-------------------|
-| US-20 | Marcus | Configure an alert rule that fires when conversion rate drops below 2% | I'm notified immediately when checkout performance degrades | Alert rule form: panel=checkout, metric=conversion_rate, condition=below, threshold=2.0, channels=[in-app, discord]. Rule saved. When condition triggers, Flare event emitted. |
-| US-21 | Caio | Configure an alert rule that fires when a War Room SKU drops below 10 units | I can take action during a drop before a size sells out completely | Alert rule: panel=war_room, metric=sku_stock, condition=below, threshold=10, channels=[in-app, discord]. Active only during War Room sessions. |
-| US-22 | Pedro | Configure an alert rule when daily chargeback count exceeds 3 | I can investigate potential fraud patterns immediately | Alert rule: panel=financeiro, metric=daily_chargeback_count, condition=above, threshold=3, channels=[in-app, discord]. Fires once per day maximum. |
+| #     | As a... | I want to...                                                                | So that...                                                         | Acceptance Criteria                                                                                                                                                            |
+| ----- | ------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| US-20 | Marcus  | Configure an alert rule that fires when conversion rate drops below 2%      | I'm notified immediately when checkout performance degrades        | Alert rule form: panel=checkout, metric=conversion_rate, condition=below, threshold=2.0, channels=[in-app, discord]. Rule saved. When condition triggers, Flare event emitted. |
+| US-21 | Caio    | Configure an alert rule that fires when a War Room SKU drops below 10 units | I can take action during a drop before a size sells out completely | Alert rule: panel=war_room, metric=sku_stock, condition=below, threshold=10, channels=[in-app, discord]. Active only during War Room sessions.                                 |
+| US-22 | Pedro   | Configure an alert rule when daily chargeback count exceeds 3               | I can investigate potential fraud patterns immediately             | Alert rule: panel=financeiro, metric=daily_chargeback_count, condition=above, threshold=3, channels=[in-app, discord]. Fires once per day maximum.                             |
 
 ---
 
@@ -169,8 +169,8 @@ dashboard reads from ALL schemas (read-only aggregation):
     erp.margin_calculations      -- financeiro panel (margin ranking)
     erp.income_statements        -- financeiro panel (DRE visual, cost composition chart)
     erp.shipping_labels          -- operational data
-    pcp.production_orders        -- PCP panel
-    pcp.production_stages        -- PCP panel (timeline, overdue)
+    pcp.production_orders        -- PLM panel
+    pcp.production_stages        -- PLM panel (timeline, overdue)
     pcp.drops                    -- war room (drop reference)
     crm.contacts                 -- retencao panel, retencao panel (LTV by contact)
     crm.rfm_scores               -- retencao panel (RFM distribution)
@@ -200,13 +200,13 @@ CREATE TYPE dashboard.alert_condition AS ENUM ('above', 'below', 'equals');
 
 ### 3.3 dashboard.dashboard_configs
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| user_id | UUID | NOT NULL, FK global.users(id), UNIQUE | One layout config per user |
-| layout | JSONB | NOT NULL DEFAULT '[...]' | Array of panel layout objects. See section 3.3.1 for schema. |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| Column     | Type        | Constraints                           | Description                                                  |
+| ---------- | ----------- | ------------------------------------- | ------------------------------------------------------------ |
+| id         | UUID        | PK, DEFAULT gen_random_uuid()         | UUID v7                                                      |
+| user_id    | UUID        | NOT NULL, FK global.users(id), UNIQUE | One layout config per user                                   |
+| layout     | JSONB       | NOT NULL DEFAULT '[...]'              | Array of panel layout objects. See section 3.3.1 for schema. |
+| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW()                |                                                              |
+| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW()                |                                                              |
 
 #### 3.3.1 Layout JSONB Structure
 
@@ -224,12 +224,12 @@ CREATE TYPE dashboard.alert_condition AS ENUM ('above', 'below', 'equals');
 ]
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `panel_id` | string | Unique panel identifier |
-| `position` | integer | Display order (0 = first) |
-| `size` | enum: `full`, `half`, `third` | Panel width in the grid. `full` = 100%, `half` = 50%, `third` = 33%. |
-| `visible` | boolean | Whether the panel is rendered. Hidden panels don't fetch data. |
+| Field      | Type                          | Description                                                          |
+| ---------- | ----------------------------- | -------------------------------------------------------------------- |
+| `panel_id` | string                        | Unique panel identifier                                              |
+| `position` | integer                       | Display order (0 = first)                                            |
+| `size`     | enum: `full`, `half`, `third` | Panel width in the grid. `full` = 100%, `half` = 50%, `third` = 33%. |
+| `visible`  | boolean                       | Whether the panel is rendered. Hidden panels don't fetch data.       |
 
 **Indexes:**
 
@@ -239,16 +239,16 @@ CREATE UNIQUE INDEX idx_dashboard_configs_user ON dashboard.dashboard_configs (u
 
 ### 3.4 dashboard.saved_filters
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| user_id | UUID | NOT NULL, FK global.users(id) | Owner of the saved filter |
-| panel_id | VARCHAR(50) | NOT NULL | Which panel this filter applies to (e.g., "vendas", "estoque") |
-| name | VARCHAR(100) | NOT NULL | User-friendly filter preset name (e.g., "Ultimos 7 dias", "So PIX") |
-| filters | JSONB | NOT NULL | Filter criteria. See section 3.4.1. |
-| is_default | BOOLEAN | NOT NULL DEFAULT FALSE | If TRUE, this filter is auto-applied when the panel loads |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| Column     | Type         | Constraints                   | Description                                                         |
+| ---------- | ------------ | ----------------------------- | ------------------------------------------------------------------- |
+| id         | UUID         | PK, DEFAULT gen_random_uuid() | UUID v7                                                             |
+| user_id    | UUID         | NOT NULL, FK global.users(id) | Owner of the saved filter                                           |
+| panel_id   | VARCHAR(50)  | NOT NULL                      | Which panel this filter applies to (e.g., "vendas", "estoque")      |
+| name       | VARCHAR(100) | NOT NULL                      | User-friendly filter preset name (e.g., "Ultimos 7 dias", "So PIX") |
+| filters    | JSONB        | NOT NULL                      | Filter criteria. See section 3.4.1.                                 |
+| is_default | BOOLEAN      | NOT NULL DEFAULT FALSE        | If TRUE, this filter is auto-applied when the panel loads           |
+| created_at | TIMESTAMPTZ  | NOT NULL DEFAULT NOW()        |                                                                     |
+| updated_at | TIMESTAMPTZ  | NOT NULL DEFAULT NOW()        |                                                                     |
 
 #### 3.4.1 Filters JSONB Structure
 
@@ -274,18 +274,18 @@ CREATE UNIQUE INDEX idx_saved_filters_default ON dashboard.saved_filters (user_i
 
 ### 3.5 dashboard.war_room_sessions
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| drop_id | UUID | NOT NULL, FK pcp.drops(id) | Which drop this War Room session monitors |
-| name | VARCHAR(255) | NOT NULL | Display name (e.g., "Drop 13 — Oversized Collection") |
-| status | dashboard.war_room_status | NOT NULL DEFAULT 'active' | active = currently running, ended = session closed |
-| activated_by | UUID | NOT NULL, FK global.users(id) | Who activated the War Room |
-| started_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | When the War Room was activated |
-| ended_at | TIMESTAMPTZ | NULL | When the War Room was ended. NULL while active. |
-| config | JSONB | NOT NULL DEFAULT '{}' | Session configuration. See section 3.5.1. |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| Column       | Type                      | Constraints                   | Description                                           |
+| ------------ | ------------------------- | ----------------------------- | ----------------------------------------------------- |
+| id           | UUID                      | PK, DEFAULT gen_random_uuid() | UUID v7                                               |
+| drop_id      | UUID                      | NOT NULL, FK pcp.drops(id)    | Which drop this War Room session monitors             |
+| name         | VARCHAR(255)              | NOT NULL                      | Display name (e.g., "Drop 13 — Oversized Collection") |
+| status       | dashboard.war_room_status | NOT NULL DEFAULT 'active'     | active = currently running, ended = session closed    |
+| activated_by | UUID                      | NOT NULL, FK global.users(id) | Who activated the War Room                            |
+| started_at   | TIMESTAMPTZ               | NOT NULL DEFAULT NOW()        | When the War Room was activated                       |
+| ended_at     | TIMESTAMPTZ               | NULL                          | When the War Room was ended. NULL while active.       |
+| config       | JSONB                     | NOT NULL DEFAULT '{}'         | Session configuration. See section 3.5.1.             |
+| created_at   | TIMESTAMPTZ               | NOT NULL DEFAULT NOW()        |                                                       |
+| updated_at   | TIMESTAMPTZ               | NOT NULL DEFAULT NOW()        |                                                       |
 
 #### 3.5.1 Config JSONB Structure
 
@@ -317,20 +317,20 @@ CREATE INDEX idx_war_room_started ON dashboard.war_room_sessions (started_at DES
 
 ### 3.6 dashboard.alert_rules
 
-| Column | Type | Constraints | Description |
-|--------|------|-------------|-------------|
-| id | UUID | PK, DEFAULT gen_random_uuid() | UUID v7 |
-| name | VARCHAR(255) | NOT NULL | Human-readable alert name (e.g., "Conversao abaixo de 2%") |
-| panel | VARCHAR(50) | NOT NULL | Which panel this alert monitors (e.g., "checkout", "financeiro", "war_room") |
-| metric | VARCHAR(100) | NOT NULL | Metric identifier (e.g., "conversion_rate", "daily_chargeback_count", "sku_stock") |
-| condition | dashboard.alert_condition | NOT NULL | Trigger condition: above, below, or equals the threshold |
-| threshold | NUMERIC(12,4) | NOT NULL | Threshold value. Type depends on metric (percentage, count, currency amount). |
-| is_active | BOOLEAN | NOT NULL DEFAULT TRUE | Toggle to enable/disable without deleting |
-| notification_channels | JSONB | NOT NULL DEFAULT '["in-app"]' | Array of delivery channels: `["in-app", "discord"]`. Maps to Flare notification channels. |
-| created_by | UUID | NOT NULL, FK global.users(id) | Who created the rule |
-| last_triggered_at | TIMESTAMPTZ | NULL | When this rule last fired. Used for cooldown logic. |
-| created_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
-| updated_at | TIMESTAMPTZ | NOT NULL DEFAULT NOW() | |
+| Column                | Type                      | Constraints                   | Description                                                                               |
+| --------------------- | ------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------- |
+| id                    | UUID                      | PK, DEFAULT gen_random_uuid() | UUID v7                                                                                   |
+| name                  | VARCHAR(255)              | NOT NULL                      | Human-readable alert name (e.g., "Conversao abaixo de 2%")                                |
+| panel                 | VARCHAR(50)               | NOT NULL                      | Which panel this alert monitors (e.g., "checkout", "financeiro", "war_room")              |
+| metric                | VARCHAR(100)              | NOT NULL                      | Metric identifier (e.g., "conversion_rate", "daily_chargeback_count", "sku_stock")        |
+| condition             | dashboard.alert_condition | NOT NULL                      | Trigger condition: above, below, or equals the threshold                                  |
+| threshold             | NUMERIC(12,4)             | NOT NULL                      | Threshold value. Type depends on metric (percentage, count, currency amount).             |
+| is_active             | BOOLEAN                   | NOT NULL DEFAULT TRUE         | Toggle to enable/disable without deleting                                                 |
+| notification_channels | JSONB                     | NOT NULL DEFAULT '["in-app"]' | Array of delivery channels: `["in-app", "discord"]`. Maps to Flare notification channels. |
+| created_by            | UUID                      | NOT NULL, FK global.users(id) | Who created the rule                                                                      |
+| last_triggered_at     | TIMESTAMPTZ               | NULL                          | When this rule last fired. Used for cooldown logic.                                       |
+| created_at            | TIMESTAMPTZ               | NOT NULL DEFAULT NOW()        |                                                                                           |
+| updated_at            | TIMESTAMPTZ               | NOT NULL DEFAULT NOW()        |                                                                                           |
 
 **Indexes:**
 
@@ -370,13 +370,13 @@ CREATE INDEX idx_alert_rules_created_by ON dashboard.alert_rules (created_by);
 |  |  | [Diario | Semanal | Mensal] toggle                        |    |      |
 |  |  +------------------------------------------------------------+    |      |
 |  |                                                                     |      |
-|  |  +--- Estoque [half] ---+  +--- PCP [half] -----------------+    |      |
+|  |  +--- Estoque [half] ---+  +--- PLM [half] -----------------+    |      |
 |  |  | Low Stock Alerts (3)  |  | Overdue Stages: 2              |    |      |
 |  |  | SKU-0412-P  5 un [!]  |  | PO-047 Corte: 2 dias atrasado|    |      |
 |  |  | SKU-0301-G  8 un [!]  |  | PO-048 Costura: 1 dia atrasa.|    |      |
 |  |  | SKU-0505-M 11 un [~]  |  |                                |    |      |
 |  |  | [Ver Estoque Completo]|  | Completando Hoje: 4 stages    |    |      |
-|  |  +-----------------------+  | [Ver PCP Completo]            |    |      |
+|  |  +-----------------------+  | [Ver PLM Completo]            |    |      |
 |  |                              +--------------------------------+    |      |
 |  |                                                                     |      |
 |  |  +--- Marketing [half] -+  +--- Creators [half] -----------+    |      |
@@ -627,7 +627,7 @@ CREATE INDEX idx_alert_rules_created_by ON dashboard.alert_rules (created_by);
 +-----------------------------------------------------------------------------+
 ```
 
-### 4.8 Estoque / PCP Panel — SKU Tier Visualization
+### 4.8 Estoque / PLM Panel — SKU Tier Visualization
 
 ```
 +-----------------------------------------------------------------------------+
@@ -788,80 +788,80 @@ All endpoints follow the patterns defined in [API.md](../../architecture/API.md)
 
 ### 5.1 Dashboard Configuration
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/config` | Internal | Get current user's dashboard layout | -- | `{ data: DashboardConfig }` |
-| PUT | `/config` | Internal | Update current user's dashboard layout | `{ layout: PanelLayout[] }` | `{ data: DashboardConfig }` |
+| Method | Path      | Auth     | Description                            | Request Body / Query        | Response                    |
+| ------ | --------- | -------- | -------------------------------------- | --------------------------- | --------------------------- |
+| GET    | `/config` | Internal | Get current user's dashboard layout    | --                          | `{ data: DashboardConfig }` |
+| PUT    | `/config` | Internal | Update current user's dashboard layout | `{ layout: PanelLayout[] }` | `{ data: DashboardConfig }` |
 
 ### 5.2 Saved Filters
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/filters` | Internal | List saved filters for current user | `?panelId=` | `{ data: SavedFilter[] }` |
-| POST | `/filters` | Internal | Create saved filter | `{ panel_id, name, filters, is_default? }` | `201 { data: SavedFilter }` |
-| PATCH | `/filters/:id` | Internal | Update saved filter | `{ name?, filters?, is_default? }` | `{ data: SavedFilter }` |
-| DELETE | `/filters/:id` | Internal | Delete saved filter | -- | `204` |
+| Method | Path           | Auth     | Description                         | Request Body / Query                       | Response                    |
+| ------ | -------------- | -------- | ----------------------------------- | ------------------------------------------ | --------------------------- |
+| GET    | `/filters`     | Internal | List saved filters for current user | `?panelId=`                                | `{ data: SavedFilter[] }`   |
+| POST   | `/filters`     | Internal | Create saved filter                 | `{ panel_id, name, filters, is_default? }` | `201 { data: SavedFilter }` |
+| PATCH  | `/filters/:id` | Internal | Update saved filter                 | `{ name?, filters?, is_default? }`         | `{ data: SavedFilter }`     |
+| DELETE | `/filters/:id` | Internal | Delete saved filter                 | --                                         | `204`                       |
 
 ### 5.3 Panel Data Endpoints
 
 Each panel has its own data endpoint with standardized parameters for date range and filters.
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/panels/vendas` | Internal | Sales panel data | `?dateFrom=&dateTo=&preset=30d&paymentMethod=` | `{ data: VendasPanel }` |
-| GET | `/panels/retencao` | Internal | CRM/retention panel data | `?dateFrom=&dateTo=&preset=90d` | `{ data: RetencaoPanel }` |
-| GET | `/panels/estoque` | Internal | Inventory panel data | `?sortBy=depletionVelocity&statusFilter=&search=` | `{ data: EstoquePanel }` |
-| GET | `/panels/estoque/revenue-leak` | Internal | Revenue leak card: OOS revenue loss summary, top 10 SKUs, weekly sparkline | `?weeks=4` | `{ data: RevenueLeak }` |
-| GET | `/panels/estoque/sku-tiers` | Internal | SKU tier visualization: tier distribution + tier table | `?tier=&sortBy=sales_90d&order=desc` | `{ data: SkuTiers }` |
-| GET | `/panels/estoque/days-to-zero` | Internal | Days-to-zero horizontal bar chart for Gold-tier SKUs | `?tierFilter=gold` | `{ data: DaysToZero }` |
-| GET | `/panels/financeiro` | Internal | Financial panel data | `?dateFrom=&dateTo=&preset=30d` | `{ data: FinanceiroPanel }` |
-| GET | `/panels/financeiro/cost-composition` | Internal | Cost composition chart: stacked breakdown + monthly comparison | `?month=&year=` | `{ data: CostComposition }` |
-| GET | `/panels/retencao/cac-ltv` | Internal | CAC per channel, LTV medio, LTV/CAC ratio, monthly evolution | `?dateFrom=&dateTo=&preset=12m` | `{ data: CacLtv }` |
-| GET | `/panels/marketing` | Internal | Marketing panel data | `?dateFrom=&dateTo=&preset=30d` | `{ data: MarketingPanel }` |
-| GET | `/panels/pcp` | Internal | Production panel data | -- | `{ data: PcpPanel }` |
-| GET | `/panels/trocas` | Internal | Exchanges panel data | `?dateFrom=&dateTo=&preset=30d` | `{ data: TrocasPanel }` |
-| GET | `/panels/checkout` | Internal | Checkout funnel panel data | `?dateFrom=&dateTo=&preset=30d` | `{ data: CheckoutPanel }` |
-| GET | `/panels/creators` | Internal | Creators panel data | `?dateFrom=&dateTo=&preset=30d` | `{ data: CreatorsPanel }` |
-| GET | `/panels/summary` | Internal | Top-level summary cards (faturamento, pedidos, ticket, conversao) | `?dateFrom=&dateTo=&preset=30d` | `{ data: SummaryCards }` |
+| Method | Path                                  | Auth     | Description                                                                | Request Body / Query                              | Response                    |
+| ------ | ------------------------------------- | -------- | -------------------------------------------------------------------------- | ------------------------------------------------- | --------------------------- |
+| GET    | `/panels/vendas`                      | Internal | Sales panel data                                                           | `?dateFrom=&dateTo=&preset=30d&paymentMethod=`    | `{ data: VendasPanel }`     |
+| GET    | `/panels/retencao`                    | Internal | CRM/retention panel data                                                   | `?dateFrom=&dateTo=&preset=90d`                   | `{ data: RetencaoPanel }`   |
+| GET    | `/panels/estoque`                     | Internal | Inventory panel data                                                       | `?sortBy=depletionVelocity&statusFilter=&search=` | `{ data: EstoquePanel }`    |
+| GET    | `/panels/estoque/revenue-leak`        | Internal | Revenue leak card: OOS revenue loss summary, top 10 SKUs, weekly sparkline | `?weeks=4`                                        | `{ data: RevenueLeak }`     |
+| GET    | `/panels/estoque/sku-tiers`           | Internal | SKU tier visualization: tier distribution + tier table                     | `?tier=&sortBy=sales_90d&order=desc`              | `{ data: SkuTiers }`        |
+| GET    | `/panels/estoque/days-to-zero`        | Internal | Days-to-zero horizontal bar chart for Gold-tier SKUs                       | `?tierFilter=gold`                                | `{ data: DaysToZero }`      |
+| GET    | `/panels/financeiro`                  | Internal | Financial panel data                                                       | `?dateFrom=&dateTo=&preset=30d`                   | `{ data: FinanceiroPanel }` |
+| GET    | `/panels/financeiro/cost-composition` | Internal | Cost composition chart: stacked breakdown + monthly comparison             | `?month=&year=`                                   | `{ data: CostComposition }` |
+| GET    | `/panels/retencao/cac-ltv`            | Internal | CAC per channel, LTV medio, LTV/CAC ratio, monthly evolution               | `?dateFrom=&dateTo=&preset=12m`                   | `{ data: CacLtv }`          |
+| GET    | `/panels/marketing`                   | Internal | Marketing panel data                                                       | `?dateFrom=&dateTo=&preset=30d`                   | `{ data: MarketingPanel }`  |
+| GET    | `/panels/pcp`                         | Internal | Production panel data                                                      | --                                                | `{ data: PcpPanel }`        |
+| GET    | `/panels/trocas`                      | Internal | Exchanges panel data                                                       | `?dateFrom=&dateTo=&preset=30d`                   | `{ data: TrocasPanel }`     |
+| GET    | `/panels/checkout`                    | Internal | Checkout funnel panel data                                                 | `?dateFrom=&dateTo=&preset=30d`                   | `{ data: CheckoutPanel }`   |
+| GET    | `/panels/creators`                    | Internal | Creators panel data                                                        | `?dateFrom=&dateTo=&preset=30d`                   | `{ data: CreatorsPanel }`   |
+| GET    | `/panels/summary`                     | Internal | Top-level summary cards (faturamento, pedidos, ticket, conversao)          | `?dateFrom=&dateTo=&preset=30d`                   | `{ data: SummaryCards }`    |
 
 ### 5.4 DRE Visual
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/dre` | Internal | Get DRE waterfall data for a period | `?month=&year=` | `{ data: DreVisual }` |
-| GET | `/dre/months` | Internal | List available DRE months | -- | `{ data: { months: [{ month, year, status }] } }` |
+| Method | Path          | Auth     | Description                         | Request Body / Query | Response                                          |
+| ------ | ------------- | -------- | ----------------------------------- | -------------------- | ------------------------------------------------- |
+| GET    | `/dre`        | Internal | Get DRE waterfall data for a period | `?month=&year=`      | `{ data: DreVisual }`                             |
+| GET    | `/dre/months` | Internal | List available DRE months           | --                   | `{ data: { months: [{ month, year, status }] } }` |
 
 ### 5.5 War Room
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/war-room` | Internal | List War Room sessions | `?status=&cursor=&limit=25` | `{ data: WarRoomSession[], meta: Pagination }` |
-| GET | `/war-room/:id` | Internal | Get War Room session detail | -- | `{ data: WarRoomSession }` |
-| POST | `/war-room` | Internal | Activate a new War Room | `{ drop_id, name?, compare_drop_ids?, alert_thresholds?, tracked_sku_ids? }` | `201 { data: WarRoomSession }` |
-| POST | `/war-room/:id/actions/end` | Internal | End an active War Room | -- | `{ data: WarRoomSession }` |
-| GET | `/war-room/:id/stream` | Internal | SSE stream for live War Room data | -- | `text/event-stream` (see section 5.5.1) |
-| GET | `/war-room/:id/snapshot` | Internal | Get current War Room snapshot (non-SSE) | -- | `{ data: WarRoomSnapshot }` |
-| GET | `/war-room/:id/history` | Internal | Get historical War Room data for post-analysis | `?metric=sales&granularity=1min` | `{ data: WarRoomHistory }` |
+| Method | Path                        | Auth     | Description                                    | Request Body / Query                                                         | Response                                       |
+| ------ | --------------------------- | -------- | ---------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------- |
+| GET    | `/war-room`                 | Internal | List War Room sessions                         | `?status=&cursor=&limit=25`                                                  | `{ data: WarRoomSession[], meta: Pagination }` |
+| GET    | `/war-room/:id`             | Internal | Get War Room session detail                    | --                                                                           | `{ data: WarRoomSession }`                     |
+| POST   | `/war-room`                 | Internal | Activate a new War Room                        | `{ drop_id, name?, compare_drop_ids?, alert_thresholds?, tracked_sku_ids? }` | `201 { data: WarRoomSession }`                 |
+| POST   | `/war-room/:id/actions/end` | Internal | End an active War Room                         | --                                                                           | `{ data: WarRoomSession }`                     |
+| GET    | `/war-room/:id/stream`      | Internal | SSE stream for live War Room data              | --                                                                           | `text/event-stream` (see section 5.5.1)        |
+| GET    | `/war-room/:id/snapshot`    | Internal | Get current War Room snapshot (non-SSE)        | --                                                                           | `{ data: WarRoomSnapshot }`                    |
+| GET    | `/war-room/:id/history`     | Internal | Get historical War Room data for post-analysis | `?metric=sales&granularity=1min`                                             | `{ data: WarRoomHistory }`                     |
 
 #### 5.5.1 War Room SSE Stream Events
 
-| Event Type | Frequency | Payload |
-|-----------|-----------|---------|
-| `sales_update` | Every 5 seconds | `{ total_sales: int, revenue: numeric, avg_ticket: numeric, sales_per_minute: numeric, last_5min_sales: int }` |
-| `inventory_update` | Every 10 seconds | `{ skus: [{ sku_id, sku_code, size, color, current_stock: int, initial_stock: int, percent_remaining: numeric }] }` |
-| `conversion_update` | Every 30 seconds | `{ conversion_rate: numeric, sessions: int, carts_created: int, checkouts_started: int, orders_confirmed: int }` |
+| Event Type          | Frequency        | Payload                                                                                                                                                                              |
+| ------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `sales_update`      | Every 5 seconds  | `{ total_sales: int, revenue: numeric, avg_ticket: numeric, sales_per_minute: numeric, last_5min_sales: int }`                                                                       |
+| `inventory_update`  | Every 10 seconds | `{ skus: [{ sku_id, sku_code, size, color, current_stock: int, initial_stock: int, percent_remaining: numeric }] }`                                                                  |
+| `conversion_update` | Every 30 seconds | `{ conversion_rate: numeric, sessions: int, carts_created: int, checkouts_started: int, orders_confirmed: int }`                                                                     |
 | `comparison_update` | Every 30 seconds | `{ comparison_drop_name: string, same_elapsed: { sales: int, revenue: numeric, conversion: numeric }, delta: { sales_pct: numeric, revenue_pct: numeric, conversion_pp: numeric } }` |
-| `alert` | On trigger | `{ alert_rule_id: uuid, metric: string, current_value: numeric, threshold: numeric, message: string }` |
+| `alert`             | On trigger       | `{ alert_rule_id: uuid, metric: string, current_value: numeric, threshold: numeric, message: string }`                                                                               |
 
 ### 5.6 Alert Rules
 
-| Method | Path | Auth | Description | Request Body / Query | Response |
-|--------|------|------|-------------|---------------------|----------|
-| GET | `/alert-rules` | Internal | List alert rules | `?panel=&isActive=&cursor=&limit=25` | `{ data: AlertRule[], meta: Pagination }` |
-| GET | `/alert-rules/:id` | Internal | Get alert rule detail | -- | `{ data: AlertRule }` |
-| POST | `/alert-rules` | Internal | Create alert rule | `{ name, panel, metric, condition, threshold, notification_channels?, is_active? }` | `201 { data: AlertRule }` |
-| PATCH | `/alert-rules/:id` | Internal | Update alert rule | `{ name?, metric?, condition?, threshold?, notification_channels?, is_active? }` | `{ data: AlertRule }` |
-| DELETE | `/alert-rules/:id` | Internal | Delete alert rule | -- | `204` |
+| Method | Path               | Auth     | Description           | Request Body / Query                                                                | Response                                  |
+| ------ | ------------------ | -------- | --------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------- |
+| GET    | `/alert-rules`     | Internal | List alert rules      | `?panel=&isActive=&cursor=&limit=25`                                                | `{ data: AlertRule[], meta: Pagination }` |
+| GET    | `/alert-rules/:id` | Internal | Get alert rule detail | --                                                                                  | `{ data: AlertRule }`                     |
+| POST   | `/alert-rules`     | Internal | Create alert rule     | `{ name, panel, metric, condition, threshold, notification_channels?, is_active? }` | `201 { data: AlertRule }`                 |
+| PATCH  | `/alert-rules/:id` | Internal | Update alert rule     | `{ name?, metric?, condition?, threshold?, notification_channels?, is_active? }`    | `{ data: AlertRule }`                     |
+| DELETE | `/alert-rules/:id` | Internal | Delete alert rule     | --                                                                                  | `204`                                     |
 
 ---
 
@@ -869,53 +869,53 @@ Each panel has its own data endpoint with standardized parameters for date range
 
 ### 6.1 Data Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R1 | **Dashboard data is read-only** | The dashboard module NEVER mutates data in any source module. All data is fetched via read-only SQL queries or API calls. No INSERT, UPDATE, or DELETE operations are performed on source schemas. |
-| R2 | **Panel data cached in PostgreSQL** | Standard panel data is cached in a PostgreSQL cache table with a 5-minute TTL. Cache key format: `dashboard:panel:{panel_id}:{filter_hash}`. Cache is invalidated on explicit refresh (user clicks refresh button) or TTL expiry. |
-| R3 | **Period selector** | All panels support a period selector with presets: Today, 7 days, 30 days, 90 days, Custom range. Default: 30 days. Custom range maximum: 365 days. Period selection applies to the entire dashboard (global) or per-panel if the user has a saved filter. |
-| R4 | **Metric card format (DS.md 8.5)** | Summary metric cards follow the fused block layout from DS.md section 8.5: value + delta in a single card. Delta arrows: green for positive trend, red for negative trend. Delta format: percentage for ratios, absolute value for counts, percentage points for rates (e.g., conversion). |
-| R5 | **Chart visual rules (DS.md section 10)** | All charts use Recharts components with DS.md section 10 visual rules: `--electric` (#00F0FF) as primary color, `--sky` as secondary color, `--text-tertiary` for axis labels, minimal grid lines, no chartjunk. Dark mode by default. |
-| R5a | **Revenue leak calculation** | Revenue leak per OOS SKU is estimated as: `avg_daily_revenue_when_in_stock * days_out_of_stock`. The aggregated value `erp.revenue_leak_daily` is computed by the ERP module and consumed read-only by the dashboard. The "Perda de Receita Estimada" card sums all active OOS SKUs. Weekly sparkline shows the last 4 weeks of total daily revenue leak aggregated per week. Top 10 table is sorted by `estimated_leak_amount DESC`. |
-| R5b | **SKU tier classification** | SKUs are classified into tiers based on the `erp.skus.tier` column (enum: `gold`, `silver`, `bronze`). Tier assignment is managed by the ERP module (typically based on 90-day sales velocity). The dashboard reads tier data read-only. Tier badges use brand-specific colors: Ouro (#FFD700), Prata (#C0C0C0), Bronze (#CD7F32). The tier distribution summary shows count + percentage of SKUs per tier. Table supports filtering by tier and sorting by any column (SKU, produto, tier, vendas_90d, cobertura, tendencia). |
-| R5c | **CAC per channel calculation** | CAC (Custo de Aquisicao de Cliente) is calculated per acquisition channel: `total_channel_spend / new_customers_acquired_via_channel`. Channels: trafego_pago, creators, organico, whatsapp, marketplace. Data sourced from `crm.acquisition_channels` + `crm.contact_ltv`. LTV/CAC ratio color coding: verde (> 3.0 = healthy), amarelo (1.0-3.0 = attention), vermelho (< 1.0 = unsustainable). Monthly evolution chart shows 12-month rolling window with dual axes: CAC trend (left, R$) and LTV/CAC ratio (right, multiplier). |
-| R5d | **Cost composition structure** | Cost composition chart reads from `erp.income_statements` and categorizes costs into 4 groups: Produto/COGS (CMV from DRE), Marketing (marketing spend line items), Pessoal (payroll/contractor costs), Infraestrutura (tools, hosting, logistics overhead). Monthly comparison shows current month vs previous month side-by-side with absolute values and percentage change per category. Total costs row included. |
-| R5e | **Days-to-zero visualization** | The "Cobertura de Estoque" chart displays ONLY Gold-tier SKUs (`erp.skus.tier = 'gold'`). Days-to-zero is calculated as `current_available_stock / avg_daily_depletion_velocity`. Bar color thresholds: verde (> 14 days), amarelo (7-14 days), vermelho (< 7 days). Bars sorted ascending by days-to-zero (most critical first). Red items display an alert icon ([!]). If a Gold-tier SKU has zero stock (days_to_zero = 0), it appears at the top with a solid red bar and "Sem estoque" label. |
+| #   | Rule                                      | Detail                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1  | **Dashboard data is read-only**           | The dashboard module NEVER mutates data in any source module. All data is fetched via read-only SQL queries or API calls. No INSERT, UPDATE, or DELETE operations are performed on source schemas.                                                                                                                                                                                                                                                                                                                                  |
+| R2  | **Panel data cached in PostgreSQL**       | Standard panel data is cached in a PostgreSQL cache table with a 5-minute TTL. Cache key format: `dashboard:panel:{panel_id}:{filter_hash}`. Cache is invalidated on explicit refresh (user clicks refresh button) or TTL expiry.                                                                                                                                                                                                                                                                                                   |
+| R3  | **Period selector**                       | All panels support a period selector with presets: Today, 7 days, 30 days, 90 days, Custom range. Default: 30 days. Custom range maximum: 365 days. Period selection applies to the entire dashboard (global) or per-panel if the user has a saved filter.                                                                                                                                                                                                                                                                          |
+| R4  | **Metric card format (DS.md 8.5)**        | Summary metric cards follow the fused block layout from DS.md section 8.5: value + delta in a single card. Delta arrows: green for positive trend, red for negative trend. Delta format: percentage for ratios, absolute value for counts, percentage points for rates (e.g., conversion).                                                                                                                                                                                                                                          |
+| R5  | **Chart visual rules (DS.md section 10)** | All charts use Recharts components with DS.md section 10 visual rules: `--electric` (#00F0FF) as primary color, `--sky` as secondary color, `--text-tertiary` for axis labels, minimal grid lines, no chartjunk. Dark mode by default.                                                                                                                                                                                                                                                                                              |
+| R5a | **Revenue leak calculation**              | Revenue leak per OOS SKU is estimated as: `avg_daily_revenue_when_in_stock * days_out_of_stock`. The aggregated value `erp.revenue_leak_daily` is computed by the ERP module and consumed read-only by the dashboard. The "Perda de Receita Estimada" card sums all active OOS SKUs. Weekly sparkline shows the last 4 weeks of total daily revenue leak aggregated per week. Top 10 table is sorted by `estimated_leak_amount DESC`.                                                                                               |
+| R5b | **SKU tier classification**               | SKUs are classified into tiers based on the `erp.skus.tier` column (enum: `gold`, `silver`, `bronze`). Tier assignment is managed by the ERP module (typically based on 90-day sales velocity). The dashboard reads tier data read-only. Tier badges use brand-specific colors: Ouro (#FFD700), Prata (#C0C0C0), Bronze (#CD7F32). The tier distribution summary shows count + percentage of SKUs per tier. Table supports filtering by tier and sorting by any column (SKU, produto, tier, vendas_90d, cobertura, tendencia).      |
+| R5c | **CAC per channel calculation**           | CAC (Custo de Aquisicao de Cliente) is calculated per acquisition channel: `total_channel_spend / new_customers_acquired_via_channel`. Channels: trafego_pago, creators, organico, whatsapp, marketplace. Data sourced from `crm.acquisition_channels` + `crm.contact_ltv`. LTV/CAC ratio color coding: verde (> 3.0 = healthy), amarelo (1.0-3.0 = attention), vermelho (< 1.0 = unsustainable). Monthly evolution chart shows 12-month rolling window with dual axes: CAC trend (left, R$) and LTV/CAC ratio (right, multiplier). |
+| R5d | **Cost composition structure**            | Cost composition chart reads from `erp.income_statements` and categorizes costs into 4 groups: Produto/COGS (CMV from DRE), Marketing (marketing spend line items), Pessoal (payroll/contractor costs), Infraestrutura (tools, hosting, logistics overhead). Monthly comparison shows current month vs previous month side-by-side with absolute values and percentage change per category. Total costs row included.                                                                                                               |
+| R5e | **Days-to-zero visualization**            | The "Cobertura de Estoque" chart displays ONLY Gold-tier SKUs (`erp.skus.tier = 'gold'`). Days-to-zero is calculated as `current_available_stock / avg_daily_depletion_velocity`. Bar color thresholds: verde (> 14 days), amarelo (7-14 days), vermelho (< 7 days). Bars sorted ascending by days-to-zero (most critical first). Red items display an alert icon ([!]). If a Gold-tier SKU has zero stock (days_to_zero = 0), it appears at the top with a solid red bar and "Sem estoque" label.                                  |
 
 ### 6.2 War Room Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R6 | **War Room activation** | Only `admin` and `pm` roles can activate a War Room. Activation creates a `war_room_sessions` row with `status=active`. At most one War Room can be active at a time. Attempting to start a second returns error: "Ja existe um War Room ativo. Encerre o atual antes de iniciar um novo." |
-| R7 | **War Room data refresh** | War Room data is NOT cached. It is fetched directly from the database on every SSE interval: sales_update every 5 seconds, inventory_update every 10 seconds, conversion_update every 30 seconds. This ensures real-time accuracy during the critical drop window. |
-| R8 | **War Room comparison** | When `compare_drop_ids` is configured, the War Room fetches data for the comparison drop filtered to the same elapsed time window. Example: if the current War Room has been active for 47 minutes, it compares with the comparison drop's first 47 minutes (from its `started_at`). The comparison drop's data is queried from historical `checkout.orders` filtered by the comparison drop's date range. |
-| R9 | **War Room auto-deactivation** | If a War Room has been active for more than 24 hours without manual deactivation, the system automatically ends it: sets `status=ended`, `ended_at=NOW()`. A meta-alert is sent: "War Room encerrado automaticamente apos 24 horas." |
-| R10 | **War Room inventory tracking** | During War Room, inventory for tracked SKUs is fetched directly from `erp.inventory`. The "initial stock" is the stock level at War Room activation (`started_at`), computed from `erp.inventory_movements` to reconstruct the point-in-time value. Progress bars show current/initial ratio. |
-| R11 | **War Room SKU alerts** | During an active War Room, if a tracked SKU's stock drops below the configured `sku_stock_warning` threshold (default 10), an alert event is pushed via the SSE stream AND emitted to Flare for Discord notification. Below `sku_stock_critical` (default 5) triggers a critical-level alert. |
+| #   | Rule                            | Detail                                                                                                                                                                                                                                                                                                                                                                                                     |
+| --- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R6  | **War Room activation**         | Only `admin` and `pm` roles can activate a War Room. Activation creates a `war_room_sessions` row with `status=active`. At most one War Room can be active at a time. Attempting to start a second returns error: "Ja existe um War Room ativo. Encerre o atual antes de iniciar um novo."                                                                                                                 |
+| R7  | **War Room data refresh**       | War Room data is NOT cached. It is fetched directly from the database on every SSE interval: sales_update every 5 seconds, inventory_update every 10 seconds, conversion_update every 30 seconds. This ensures real-time accuracy during the critical drop window.                                                                                                                                         |
+| R8  | **War Room comparison**         | When `compare_drop_ids` is configured, the War Room fetches data for the comparison drop filtered to the same elapsed time window. Example: if the current War Room has been active for 47 minutes, it compares with the comparison drop's first 47 minutes (from its `started_at`). The comparison drop's data is queried from historical `checkout.orders` filtered by the comparison drop's date range. |
+| R9  | **War Room auto-deactivation**  | If a War Room has been active for more than 24 hours without manual deactivation, the system automatically ends it: sets `status=ended`, `ended_at=NOW()`. A meta-alert is sent: "War Room encerrado automaticamente apos 24 horas."                                                                                                                                                                       |
+| R10 | **War Room inventory tracking** | During War Room, inventory for tracked SKUs is fetched directly from `erp.inventory`. The "initial stock" is the stock level at War Room activation (`started_at`), computed from `erp.inventory_movements` to reconstruct the point-in-time value. Progress bars show current/initial ratio.                                                                                                              |
+| R11 | **War Room SKU alerts**         | During an active War Room, if a tracked SKU's stock drops below the configured `sku_stock_warning` threshold (default 10), an alert event is pushed via the SSE stream AND emitted to Flare for Discord notification. Below `sku_stock_critical` (default 5) triggers a critical-level alert.                                                                                                              |
 
 ### 6.3 Alert Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R12 | **Alert evaluation** | Alert rules are evaluated by a background job (`dashboard:alert-evaluator`) that runs every minute. For each active rule, the job fetches the current metric value, compares it against the threshold and condition, and fires a Flare event if triggered. |
-| R13 | **Alert cooldown** | Each alert rule has a cooldown period of 1 hour. After firing, the rule will not fire again for the same metric until `last_triggered_at + 1 hour`. This prevents alert spam when a metric hovers around the threshold. |
-| R14 | **Alert channels** | Alert rules specify `notification_channels` (e.g., `["in-app", "discord"]`). The alert job emits a Flare event with the configured channels. Flare handles routing to the appropriate delivery systems (in-app notification, ClawdBot #alertas). |
-| R15 | **War Room alerts are session-scoped** | Alert rules with `panel = "war_room"` are only evaluated while a War Room session is active. When no War Room is active, these rules are skipped entirely. |
+| #   | Rule                                   | Detail                                                                                                                                                                                                                                                     |
+| --- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R12 | **Alert evaluation**                   | Alert rules are evaluated by a background job (`dashboard:alert-evaluator`) that runs every minute. For each active rule, the job fetches the current metric value, compares it against the threshold and condition, and fires a Flare event if triggered. |
+| R13 | **Alert cooldown**                     | Each alert rule has a cooldown period of 1 hour. After firing, the rule will not fire again for the same metric until `last_triggered_at + 1 hour`. This prevents alert spam when a metric hovers around the threshold.                                    |
+| R14 | **Alert channels**                     | Alert rules specify `notification_channels` (e.g., `["in-app", "discord"]`). The alert job emits a Flare event with the configured channels. Flare handles routing to the appropriate delivery systems (in-app notification, Pulse #alertas).              |
+| R15 | **War Room alerts are session-scoped** | Alert rules with `panel = "war_room"` are only evaluated while a War Room session is active. When no War Room is active, these rules are skipped entirely.                                                                                                 |
 
 ### 6.4 Panel Access Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R16 | **Creative role restriction** | Users with the `creative` role see ONLY the Marketing panel. All other panels are hidden from the layout and their data endpoints return `403 Forbidden`. This ensures creative team members are focused on their domain. |
-| R17 | **Finance role restriction** | Users with the `finance` role see Financeiro + Vendas panels. They can also access the DRE visual endpoint. All other panels are hidden. |
-| R18 | **Operations role access** | Users with the `operations` role see Vendas, Estoque, PCP, and Trocas panels. They can also view the War Room when active. |
+| #   | Rule                             | Detail                                                                                                                                                                                                                                                |
+| --- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R16 | **Creative role restriction**    | Users with the `creative` role see ONLY the Marketing panel. All other panels are hidden from the layout and their data endpoints return `403 Forbidden`. This ensures creative team members are focused on their domain.                             |
+| R17 | **Finance role restriction**     | Users with the `finance` role see Financeiro + Vendas panels. They can also access the DRE visual endpoint. All other panels are hidden.                                                                                                              |
+| R18 | **Operations role access**       | Users with the `operations` role see Vendas, Estoque, PLM, and Trocas panels. They can also view the War Room when active.                                                                                                                            |
 | R19 | **Panel visibility enforcement** | Panel visibility is enforced at the API level, not just the UI. If a user's role does not have access to a panel, the data endpoint returns `403` and the layout config hides the panel. Users cannot override panel visibility via API manipulation. |
 
 ### 6.5 DRE Visual Rules
 
-| # | Rule | Detail |
-|---|------|--------|
-| R20 | **DRE data source** | The DRE visual reads from `erp.income_statements`. It does NOT recalculate the DRE — it visualizes whatever the ERP module has generated. If the DRE for a requested month does not exist, the endpoint returns a clear message: "DRE para {month}/{year} ainda nao foi gerado." |
+| #   | Rule                              | Detail                                                                                                                                                                                                                                                                                                                                                      |
+| --- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R20 | **DRE data source**               | The DRE visual reads from `erp.income_statements`. It does NOT recalculate the DRE — it visualizes whatever the ERP module has generated. If the DRE for a requested month does not exist, the endpoint returns a clear message: "DRE para {month}/{year} ainda nao foi gerado."                                                                            |
 | R21 | **DRE waterfall chart structure** | The waterfall chart always has 8 bars in this order: Receita Bruta (absolute, green), (-) Descontos (relative, red), (-) Devolucoes (relative, red), = Receita Liquida (subtotal, blue), (-) CMV (relative, red), = Margem Bruta (subtotal, blue), (-) Despesas Operacionais (relative, red), = Lucro Liquido (final, green if positive / red if negative). |
 
 ---
@@ -924,32 +924,32 @@ Each panel has its own data endpoint with standardized parameters for date range
 
 ### 7.1 Inbound (data sources Dashboard reads FROM)
 
-| Source Module | Data Read | Dashboard Usage |
-|--------------|-----------|-----------------|
-| **Checkout** | `orders`, `order_items`, `carts`, `conversion_events`, `ab_tests` | Vendas panel (revenue, orders, products), Checkout panel (funnel, abandonment, A/B), War Room (live sales, conversion) |
-| **ERP** | `skus`, `inventory`, `inventory_movements`, `financial_transactions`, `margin_calculations`, `income_statements`, `shipping_labels`, `revenue_leak_daily` | Estoque panel (stock levels, velocity, revenue leak, SKU tiers, days-to-zero), Financeiro panel (MP balance, chargebacks, DRE, margins, cost composition), War Room (live inventory) |
-| **PCP** | `production_orders`, `production_stages`, `drops` | PCP panel (timeline, overdue), War Room (drop reference) |
-| **CRM** | `contacts`, `rfm_scores`, `segments`, `cohorts`, `acquisition_channels`, `contact_ltv` | Retencao panel (RFM grid, repurchase rate, LTV, cohort heatmap, CAC per channel, LTV/CAC ratio) |
-| **Marketing Intelligence** | `ugc_posts`, `campaign_metrics`, `social_metrics` | Marketing panel (ad spend, ROAS, UGC, Instagram) |
-| **Creators** | `profiles`, `sales_attributions`, `commissions` | Creators panel (GMV, top performers, tier distribution, payouts) |
-| **Trocas** | `exchange_requests` | Trocas panel (volume, reasons, processing time) |
-| **B2B** | `b2b_orders`, `retailers` | _(future panel — data available for summary cards)_ |
-| **Inbox** | `tickets`, `metrics_daily` | _(available for support summary — not a dedicated panel in V1)_ |
+| Source Module | Data Read                                                                                                                                                 | Dashboard Usage                                                                                                                                                                      |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Checkout**  | `orders`, `order_items`, `carts`, `conversion_events`, `ab_tests`                                                                                         | Vendas panel (revenue, orders, products), Checkout panel (funnel, abandonment, A/B), War Room (live sales, conversion)                                                               |
+| **ERP**       | `skus`, `inventory`, `inventory_movements`, `financial_transactions`, `margin_calculations`, `income_statements`, `shipping_labels`, `revenue_leak_daily` | Estoque panel (stock levels, velocity, revenue leak, SKU tiers, days-to-zero), Financeiro panel (MP balance, chargebacks, DRE, margins, cost composition), War Room (live inventory) |
+| **PLM**       | `production_orders`, `production_stages`, `drops`                                                                                                         | PLM panel (timeline, overdue), War Room (drop reference)                                                                                                                             |
+| **CRM**       | `contacts`, `rfm_scores`, `segments`, `cohorts`, `acquisition_channels`, `contact_ltv`                                                                    | Retencao panel (RFM grid, repurchase rate, LTV, cohort heatmap, CAC per channel, LTV/CAC ratio)                                                                                      |
+| **Marketing** | `ugc_posts`, `campaign_metrics`, `social_metrics`                                                                                                         | Marketing panel (ad spend, ROAS, UGC, Instagram)                                                                                                                                     |
+| **Creators**  | `profiles`, `sales_attributions`, `commissions`                                                                                                           | Creators panel (GMV, top performers, tier distribution, payouts)                                                                                                                     |
+| **Trocas**    | `exchange_requests`                                                                                                                                       | Trocas panel (volume, reasons, processing time)                                                                                                                                      |
+| **B2B**       | `b2b_orders`, `retailers`                                                                                                                                 | _(future panel — data available for summary cards)_                                                                                                                                  |
+| **Inbox**     | `tickets`, `metrics_daily`                                                                                                                                | _(available for support summary — not a dedicated panel in V1)_                                                                                                                      |
 
 ### 7.2 Outbound (Dashboard emits TO)
 
-| Target | Data / Action | Trigger |
-|--------|--------------|---------|
-| **Flare** | Alert events when metric thresholds are crossed | Alert evaluator job + War Room SKU alerts |
-| **ClawdBot** | Dashboard data overlaps with ClawdBot report data. Same SQL queries can be shared for consistency. ClawdBot may call Dashboard panel endpoints instead of running its own SQL. | Scheduled reports (optional integration) |
-| **PostgreSQL cache table** | Cached panel data (5-min TTL) | Every panel data request that misses cache |
+| Target                     | Data / Action                                                                                                                                                            | Trigger                                    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
+| **Flare**                  | Alert events when metric thresholds are crossed                                                                                                                          | Alert evaluator job + War Room SKU alerts  |
+| **Pulse**                  | Dashboard data overlaps with Pulse report data. Same SQL queries can be shared for consistency. Pulse may call Dashboard panel endpoints instead of running its own SQL. | Scheduled reports (optional integration)   |
+| **PostgreSQL cache table** | Cached panel data (5-min TTL)                                                                                                                                            | Every panel data request that misses cache |
 
 ### 7.3 External Services
 
-| Service | Purpose | Integration Pattern |
-|---------|---------|-------------------|
-| **PostgreSQL cache table** | Panel data caching (5-min TTL for standard panels, no cache for War Room). Cache key format: `dashboard:panel:{panel_id}:{filter_hash}`. | PostgreSQL `dashboard.panel_cache` table with `key`, `data` (JSONB), `expires_at` columns. |
-| **SSE (Server-Sent Events)** | Real-time data push for War Room. Browser maintains persistent HTTP connection. Server pushes events at configured intervals. | Next.js API route returning `text/event-stream`. Connection managed per War Room session. Auto-reconnect on client disconnect. |
+| Service                      | Purpose                                                                                                                                  | Integration Pattern                                                                                                            |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **PostgreSQL cache table**   | Panel data caching (5-min TTL for standard panels, no cache for War Room). Cache key format: `dashboard:panel:{panel_id}:{filter_hash}`. | PostgreSQL `dashboard.panel_cache` table with `key`, `data` (JSONB), `expires_at` columns.                                     |
+| **SSE (Server-Sent Events)** | Real-time data push for War Room. Browser maintains persistent HTTP connection. Server pushes events at configured intervals.            | Next.js API route returning `text/event-stream`. Connection managed per War Room session. Auto-reconnect on client disconnect. |
 
 ### 7.4 Integration Diagram
 
@@ -974,7 +974,7 @@ Each panel has its own data endpoint with standardized parameters for date range
           +----------------------------+----------------------------+
           |              |              |              |              |
    +------+----+  +------+-----+  +------+-----+  +------+------+  +------+------+
-   | Checkout  |  |    ERP     |  |    PCP     |  |    CRM      |  |  Marketing  |
+   | Checkout  |  |    ERP     |  |    PLM     |  |    CRM      |  |  Marketing  |
    | (orders,  |  | (inventory,|  | (prod.     |  | (contacts,  |  | (UGC, ads,  |
    |  funnel)  |  |  finance,  |  |  stages,   |  |  RFM,       |  |  social)    |
    |           |  |  DRE)      |  |  drops)    |  |  cohorts)   |  |             |
@@ -993,14 +993,14 @@ Each panel has its own data endpoint with standardized parameters for date range
 
 All jobs run via PostgreSQL job queue (`FOR UPDATE SKIP LOCKED`) + Vercel Cron. No Redis/BullMQ.
 
-| Job Name | Queue | Schedule / Trigger | Priority | Description |
-|----------|-------|--------------------|----------|-------------|
-| `dashboard:cache-warmup` | `dashboard` | Every 5 minutes | Medium | Pre-compute and cache panel data for all 9 panels with default filters (30-day period). Ensures fast page loads without cold cache hits. |
-| `dashboard:alert-evaluator` | `dashboard` | Every 1 minute | High | Evaluate all active alert rules. For each rule: fetch current metric value, compare against threshold, fire Flare event if triggered and cooldown has elapsed. Skip `war_room` panel rules if no active War Room. |
-| `dashboard:war-room-aggregator` | `dashboard` | Every 5 seconds (while War Room active) | Critical | Aggregate War Room data: query current sales, inventory, and conversion metrics. Push SSE events to connected clients. Only runs when `war_room_sessions.status = 'active'`. |
-| `dashboard:war-room-auto-end` | `dashboard` | Hourly | Low | Check for War Room sessions active > 24 hours. Auto-end them with a meta-alert. |
-| `dashboard:cache-invalidation` | `dashboard` | On-demand (Flare event) | Medium | Listen for data-changing events (order.paid, stock.updated, etc.) and invalidate relevant panel caches. Ensures cache freshness when significant events occur. |
-| `dashboard:dre-cache` | `dashboard` | Daily 03:00 BRT | Low | Pre-compute DRE visual data for the current and previous month. Cache in PostgreSQL cache table for instant rendering. |
+| Job Name                        | Queue       | Schedule / Trigger                      | Priority | Description                                                                                                                                                                                                       |
+| ------------------------------- | ----------- | --------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `dashboard:cache-warmup`        | `dashboard` | Every 5 minutes                         | Medium   | Pre-compute and cache panel data for all 9 panels with default filters (30-day period). Ensures fast page loads without cold cache hits.                                                                          |
+| `dashboard:alert-evaluator`     | `dashboard` | Every 1 minute                          | High     | Evaluate all active alert rules. For each rule: fetch current metric value, compare against threshold, fire Flare event if triggered and cooldown has elapsed. Skip `war_room` panel rules if no active War Room. |
+| `dashboard:war-room-aggregator` | `dashboard` | Every 5 seconds (while War Room active) | Critical | Aggregate War Room data: query current sales, inventory, and conversion metrics. Push SSE events to connected clients. Only runs when `war_room_sessions.status = 'active'`.                                      |
+| `dashboard:war-room-auto-end`   | `dashboard` | Hourly                                  | Low      | Check for War Room sessions active > 24 hours. Auto-end them with a meta-alert.                                                                                                                                   |
+| `dashboard:cache-invalidation`  | `dashboard` | On-demand (Flare event)                 | Medium   | Listen for data-changing events (order.paid, stock.updated, etc.) and invalidate relevant panel caches. Ensures cache freshness when significant events occur.                                                    |
+| `dashboard:dre-cache`           | `dashboard` | Daily 03:00 BRT                         | Low      | Pre-compute DRE visual data for the current and previous month. Cache in PostgreSQL cache table for instant rendering.                                                                                            |
 
 ---
 
@@ -1010,44 +1010,45 @@ From [AUTH.md](../../architecture/AUTH.md). Dashboard permissions control which 
 
 ### 9.1 Panel Access Matrix
 
-| Panel | admin | pm | creative | operations | support | finance | commercial | b2b | creator |
-|-------|-------|-----|----------|-----------|---------|---------|-----------|-----|---------|
-| Summary Cards | Y | Y | -- | Y | -- | Y | -- | -- | -- |
-| Vendas | Y | Y | -- | Y | -- | Y | -- | -- | -- |
-| Retencao (CRM) | Y | Y | -- | -- | -- | -- | -- | -- | -- |
-| Estoque | Y | Y | -- | Y | -- | -- | -- | -- | -- |
-| Financeiro | Y | Y | -- | -- | -- | Y | -- | -- | -- |
-| Marketing | Y | Y | Y | -- | -- | -- | -- | -- | -- |
-| PCP | Y | Y | -- | Y | -- | -- | -- | -- | -- |
-| Trocas | Y | Y | -- | Y | Y | -- | -- | -- | -- |
-| Checkout | Y | Y | -- | Y | -- | -- | -- | -- | -- |
-| Creators | Y | Y | -- | -- | -- | -- | -- | -- | -- |
-| DRE Visual | Y | Y | -- | -- | -- | Y | -- | -- | -- |
-| War Room | Y | Y | -- | Y | -- | -- | -- | -- | -- |
+| Panel          | admin | pm  | creative | operations | support | finance | commercial | b2b | creator |
+| -------------- | ----- | --- | -------- | ---------- | ------- | ------- | ---------- | --- | ------- |
+| Summary Cards  | Y     | Y   | --       | Y          | --      | Y       | --         | --  | --      |
+| Vendas         | Y     | Y   | --       | Y          | --      | Y       | --         | --  | --      |
+| Retencao (CRM) | Y     | Y   | --       | --         | --      | --      | --         | --  | --      |
+| Estoque        | Y     | Y   | --       | Y          | --      | --      | --         | --  | --      |
+| Financeiro     | Y     | Y   | --       | --         | --      | Y       | --         | --  | --      |
+| Marketing      | Y     | Y   | Y        | --         | --      | --      | --         | --  | --      |
+| PLM            | Y     | Y   | --       | Y          | --      | --      | --         | --  | --      |
+| Trocas         | Y     | Y   | --       | Y          | Y       | --      | --         | --  | --      |
+| Checkout       | Y     | Y   | --       | Y          | --      | --      | --         | --  | --      |
+| Creators       | Y     | Y   | --       | --         | --      | --      | --         | --  | --      |
+| DRE Visual     | Y     | Y   | --       | --         | --      | Y       | --         | --  | --      |
+| War Room       | Y     | Y   | --       | Y          | --      | --      | --         | --  | --      |
 
 ### 9.2 Admin Permissions
 
 Format: `{module}:{resource}:{action}`
 
-| Permission | admin | pm | creative | operations | support | finance | commercial | b2b | creator |
-|-----------|-------|-----|----------|-----------|---------|---------|-----------|-----|---------|
-| `dashboard:config:read` | Y | Y | Y | Y | Y | Y | -- | -- | -- |
-| `dashboard:config:write` | Y | Y | Y | Y | Y | Y | -- | -- | -- |
-| `dashboard:filters:read` | Y | Y | Y | Y | Y | Y | -- | -- | -- |
-| `dashboard:filters:write` | Y | Y | Y | Y | Y | Y | -- | -- | -- |
-| `dashboard:panels:read` | Y | Y | * | * | * | * | -- | -- | -- |
-| `dashboard:war-room:read` | Y | Y | -- | Y | -- | -- | -- | -- | -- |
-| `dashboard:war-room:write` | Y | Y | -- | -- | -- | -- | -- | -- | -- |
-| `dashboard:alert-rules:read` | Y | Y | -- | Y | -- | Y | -- | -- | -- |
-| `dashboard:alert-rules:write` | Y | Y | -- | -- | -- | -- | -- | -- | -- |
-| `dashboard:dre:read` | Y | Y | -- | -- | -- | Y | -- | -- | -- |
+| Permission                    | admin | pm  | creative | operations | support | finance | commercial | b2b | creator |
+| ----------------------------- | ----- | --- | -------- | ---------- | ------- | ------- | ---------- | --- | ------- |
+| `dashboard:config:read`       | Y     | Y   | Y        | Y          | Y       | Y       | --         | --  | --      |
+| `dashboard:config:write`      | Y     | Y   | Y        | Y          | Y       | Y       | --         | --  | --      |
+| `dashboard:filters:read`      | Y     | Y   | Y        | Y          | Y       | Y       | --         | --  | --      |
+| `dashboard:filters:write`     | Y     | Y   | Y        | Y          | Y       | Y       | --         | --  | --      |
+| `dashboard:panels:read`       | Y     | Y   | \*       | \*         | \*      | \*      | --         | --  | --      |
+| `dashboard:war-room:read`     | Y     | Y   | --       | Y          | --      | --      | --         | --  | --      |
+| `dashboard:war-room:write`    | Y     | Y   | --       | --         | --      | --      | --         | --  | --      |
+| `dashboard:alert-rules:read`  | Y     | Y   | --       | Y          | --      | Y       | --         | --  | --      |
+| `dashboard:alert-rules:write` | Y     | Y   | --       | --         | --      | --      | --         | --  | --      |
+| `dashboard:dre:read`          | Y     | Y   | --       | --         | --      | Y       | --         | --  | --      |
 
 `*` = restricted to panels listed in the Panel Access Matrix above.
 
 **Notes:**
+
 - `admin` (Marcus) and `pm` (Caio) have full access to all dashboard panels, War Room, alert rules, and DRE visual.
 - `creative` has access ONLY to the Marketing panel. All other endpoints return 403.
-- `operations` (Tavares, Ana Clara) can view Vendas, Estoque, PCP, Trocas, Checkout panels and the War Room (read only). Cannot activate/deactivate War Room or manage alert rules.
+- `operations` (Tavares, Ana Clara) can view Vendas, Estoque, PLM, Trocas, Checkout panels and the War Room (read only). Cannot activate/deactivate War Room or manage alert rules.
 - `finance` (Pedro) can view Vendas, Financeiro panels and DRE visual. Can read alert rules but not write.
 - `support` (Slimgust) can view only the Trocas panel for exchange monitoring.
 - External roles (`b2b_retailer`, `creator`) have zero dashboard access.
@@ -1059,26 +1060,26 @@ Format: `{module}:{resource}:{action}`
 
 ### 10.1 Events Emitted by Dashboard
 
-| Event Key | Trigger | Channels | Recipients | Priority |
-|-----------|---------|----------|------------|----------|
-| `dashboard.alert.triggered` | Alert rule condition met (metric crosses threshold) | Configured in `alert_rules.notification_channels` (in-app and/or Discord) | Configured per alert rule. Default: `admin`, `pm`. | Depends on metric severity: conversion/chargeback = High, revenue = Medium. |
-| `dashboard.war_room.activated` | War Room session started | In-app | All users with `dashboard:war-room:read` permission | Medium |
-| `dashboard.war_room.ended` | War Room session ended (manual or auto) | In-app | All users with `dashboard:war-room:read` permission | Low |
-| `dashboard.war_room.sku_warning` | SKU stock drops below warning threshold during War Room | In-app, Discord #alertas | `operations`, `admin`, `pm` | High |
-| `dashboard.war_room.sku_critical` | SKU stock drops below critical threshold during War Room | In-app, Discord #alertas (with @mention) | `operations` (@Tavares), `admin` (@Marcus) | Critical |
+| Event Key                         | Trigger                                                  | Channels                                                                  | Recipients                                          | Priority                                                                    |
+| --------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------------- |
+| `dashboard.alert.triggered`       | Alert rule condition met (metric crosses threshold)      | Configured in `alert_rules.notification_channels` (in-app and/or Discord) | Configured per alert rule. Default: `admin`, `pm`.  | Depends on metric severity: conversion/chargeback = High, revenue = Medium. |
+| `dashboard.war_room.activated`    | War Room session started                                 | In-app                                                                    | All users with `dashboard:war-room:read` permission | Medium                                                                      |
+| `dashboard.war_room.ended`        | War Room session ended (manual or auto)                  | In-app                                                                    | All users with `dashboard:war-room:read` permission | Low                                                                         |
+| `dashboard.war_room.sku_warning`  | SKU stock drops below warning threshold during War Room  | In-app, Discord #alertas                                                  | `operations`, `admin`, `pm`                         | High                                                                        |
+| `dashboard.war_room.sku_critical` | SKU stock drops below critical threshold during War Room | In-app, Discord #alertas (with @mention)                                  | `operations` (@Tavares), `admin` (@Marcus)          | Critical                                                                    |
 
 ### 10.2 Events Consumed by Dashboard
 
 Dashboard listens for these Flare events to trigger cache invalidation:
 
-| Event Key | Action |
-|-----------|--------|
-| `order.paid` | Invalidate vendas panel cache + checkout panel cache + War Room (if active) |
-| `stock.updated` | Invalidate estoque panel cache + War Room inventory (if active) |
-| `order.shipped` | Invalidate vendas panel cache |
-| `chargeback.received` | Invalidate financeiro panel cache |
-| `pcp.stage.completed` | Invalidate PCP panel cache |
-| `exchange.created` | Invalidate trocas panel cache |
+| Event Key             | Action                                                                      |
+| --------------------- | --------------------------------------------------------------------------- |
+| `order.paid`          | Invalidate vendas panel cache + checkout panel cache + War Room (if active) |
+| `stock.updated`       | Invalidate estoque panel cache + War Room inventory (if active)             |
+| `order.shipped`       | Invalidate vendas panel cache                                               |
+| `chargeback.received` | Invalidate financeiro panel cache                                           |
+| `pcp.stage.completed` | Invalidate PLM panel cache                                                  |
+| `exchange.created`    | Invalidate trocas panel cache                                               |
 
 ---
 
@@ -1086,20 +1087,20 @@ Dashboard listens for these Flare events to trigger cache invalidation:
 
 All errors follow the standard envelope from [API.md](../../architecture/API.md) and error codes from [ERROR-HANDLING.md](../../platform/ERROR-HANDLING.md).
 
-| Error Code | HTTP | When | User-facing Message |
-|-----------|------|------|-------------------|
-| `DASHBOARD_PANEL_FORBIDDEN` | 403 | User's role does not have access to the requested panel | "Voce nao tem acesso a este painel." |
-| `DASHBOARD_WAR_ROOM_NOT_FOUND` | 404 | War Room session ID does not exist | "Sessao de War Room nao encontrada." |
-| `DASHBOARD_WAR_ROOM_ALREADY_ACTIVE` | 409 | Attempting to start a second War Room | "Ja existe um War Room ativo. Encerre o atual antes de iniciar um novo." |
-| `DASHBOARD_WAR_ROOM_ALREADY_ENDED` | 409 | Attempting to end a War Room that is already ended | "Esta sessao de War Room ja foi encerrada." |
-| `DASHBOARD_WAR_ROOM_FORBIDDEN` | 403 | Non-admin/pm user attempting to activate/deactivate War Room | "Apenas admin e pm podem ativar/encerrar o War Room." |
-| `DASHBOARD_ALERT_RULE_NOT_FOUND` | 404 | Alert rule ID does not exist | "Regra de alerta nao encontrada." |
-| `DASHBOARD_ALERT_INVALID_METRIC` | 422 | Metric name not recognized for the specified panel | "Metrica '{metric}' nao e valida para o painel '{panel}'." |
-| `DASHBOARD_DRE_NOT_FOUND` | 404 | DRE for requested month/year does not exist | "DRE para {month}/{year} ainda nao foi gerado." |
-| `DASHBOARD_FILTER_NOT_FOUND` | 404 | Saved filter ID does not exist or belongs to another user | "Filtro salvo nao encontrado." |
-| `DASHBOARD_DATE_RANGE_EXCEEDED` | 422 | Custom date range exceeds 365 days | "Periodo maximo de 365 dias." |
-| `DASHBOARD_DROP_NOT_FOUND` | 404 | Drop ID for War Room does not exist | "Drop nao encontrado." |
-| `DASHBOARD_SSE_CONNECTION_FAILED` | 500 | SSE stream failed to initialize | "Erro ao conectar ao stream de dados em tempo real. Tente recarregar a pagina." |
+| Error Code                          | HTTP | When                                                         | User-facing Message                                                             |
+| ----------------------------------- | ---- | ------------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| `DASHBOARD_PANEL_FORBIDDEN`         | 403  | User's role does not have access to the requested panel      | "Voce nao tem acesso a este painel."                                            |
+| `DASHBOARD_WAR_ROOM_NOT_FOUND`      | 404  | War Room session ID does not exist                           | "Sessao de War Room nao encontrada."                                            |
+| `DASHBOARD_WAR_ROOM_ALREADY_ACTIVE` | 409  | Attempting to start a second War Room                        | "Ja existe um War Room ativo. Encerre o atual antes de iniciar um novo."        |
+| `DASHBOARD_WAR_ROOM_ALREADY_ENDED`  | 409  | Attempting to end a War Room that is already ended           | "Esta sessao de War Room ja foi encerrada."                                     |
+| `DASHBOARD_WAR_ROOM_FORBIDDEN`      | 403  | Non-admin/pm user attempting to activate/deactivate War Room | "Apenas admin e pm podem ativar/encerrar o War Room."                           |
+| `DASHBOARD_ALERT_RULE_NOT_FOUND`    | 404  | Alert rule ID does not exist                                 | "Regra de alerta nao encontrada."                                               |
+| `DASHBOARD_ALERT_INVALID_METRIC`    | 422  | Metric name not recognized for the specified panel           | "Metrica '{metric}' nao e valida para o painel '{panel}'."                      |
+| `DASHBOARD_DRE_NOT_FOUND`           | 404  | DRE for requested month/year does not exist                  | "DRE para {month}/{year} ainda nao foi gerado."                                 |
+| `DASHBOARD_FILTER_NOT_FOUND`        | 404  | Saved filter ID does not exist or belongs to another user    | "Filtro salvo nao encontrado."                                                  |
+| `DASHBOARD_DATE_RANGE_EXCEEDED`     | 422  | Custom date range exceeds 365 days                           | "Periodo maximo de 365 dias."                                                   |
+| `DASHBOARD_DROP_NOT_FOUND`          | 404  | Drop ID for War Room does not exist                          | "Drop nao encontrado."                                                          |
+| `DASHBOARD_SSE_CONNECTION_FAILED`   | 500  | SSE stream failed to initialize                              | "Erro ao conectar ao stream de dados em tempo real. Tente recarregar a pagina." |
 
 ---
 
@@ -1123,7 +1124,7 @@ Following the testing strategy from [TESTING.md](../../platform/TESTING.md).
 - [ ] DRE waterfall data structure: 8 bars in correct order with correct signs
 - [ ] Cache key generation: `dashboard:panel:{panel_id}:{filter_hash}` is deterministic
 - [ ] Panel access check: role -> allowed panels mapping
-- [ ] Revenue leak calculation: avg_daily_revenue_when_in_stock * days_out_of_stock per SKU
+- [ ] Revenue leak calculation: avg_daily_revenue_when_in_stock \* days_out_of_stock per SKU
 - [ ] Revenue leak weekly sparkline: correct aggregation per week for last 4 weeks
 - [ ] Revenue leak top 10 sorting: sorted by estimated_leak_amount DESC
 - [ ] SKU tier distribution: correct count and percentage per tier (gold/silver/bronze)
@@ -1146,7 +1147,7 @@ Following the testing strategy from [TESTING.md](../../platform/TESTING.md).
 - [ ] Estoque panel: known inventory -> verify depletion velocity, days-to-zero, status badges
 - [ ] Financeiro panel: known transactions -> verify MP balance, chargeback count, approval rate
 - [ ] Marketing panel: known campaign data -> verify ROAS, ad spend, UGC count
-- [ ] PCP panel: known production data -> verify overdue count, timeline structure
+- [ ] PLM panel: known production data -> verify overdue count, timeline structure
 - [ ] Trocas panel: known exchanges -> verify volume, reasons breakdown, avg processing time
 - [ ] Checkout panel: known events -> verify funnel step counts and drop-off percentages
 - [ ] Creators panel: known attributions -> verify GMV, top performers, tier distribution
@@ -1214,34 +1215,39 @@ Following the testing strategy from [TESTING.md](../../platform/TESTING.md).
 > Referência: `DS.md` seções 4 (ICP & Filosofia), 7 (Dashboards), 8 (Charts), 11 (Onboarding)
 
 ### Layout & Hierarquia
+
 - **F-pattern:** KPI primário no canto superior esquerdo. Leitura ocidental segue F-pattern — informação mais importante no topo esquerdo, complementar à direita.
 - **Ruído zero:** elemento não útil = carga cognitiva. Fundo e sidebar SEMPRE em nível visual inferior ao conteúdo. Conteúdo é protagonista.
 - **Conduza para ação:** só exibir KPIs acionáveis pelo role. Não mostrar dados que o usuário não pode influenciar.
 
 ### Personalização por Role
+
 Painéis default por role (configurável por tenant):
 
-| Role | Painel default | KPI primário (top-left) |
-|---|---|---|
-| `admin` | War Room | Faturamento hoje vs meta |
-| `pm` | Marketing + Creators | GMV Creators + ROAS |
-| `operations` | PCP Timeline | Ordens atrasadas |
-| `support` | Inbox | Tickets abertos + tempo médio |
-| `finance` | Financeiro | DRE do mês + margem |
-| `creative` | Marketing | UGC pendente + calendário |
-| `commercial` | B2B | Pipeline atacado |
+| Role         | Painel default       | KPI primário (top-left)       |
+| ------------ | -------------------- | ----------------------------- |
+| `admin`      | War Room             | Faturamento hoje vs meta      |
+| `pm`         | Marketing + Creators | GMV Creators + ROAS           |
+| `operations` | PLM Timeline         | Ordens atrasadas              |
+| `support`    | Inbox                | Tickets abertos + tempo médio |
+| `finance`    | Financeiro           | DRE do mês + margem           |
+| `creative`   | Marketing            | UGC pendente + calendário     |
+| `commercial` | B2B                  | Pipeline atacado              |
 
 ### War Room UX
+
 - War Room = modo ativado sobre o dashboard (não painel separado). Ativação manual com transição clara.
 - Dados em tempo real: vendas por minuto, estoque por SKU, comparativo com drops anteriores.
 - Hierarquia visual: números grandes em `--text-white` / DM Mono Display, deltas em cor semântica (`--success` / `--danger`).
 
 ### Contextualização de Dados
+
 - Todo valor principal acompanhado de delta (% ou absoluto) + período de referência.
 - Tooltips com enquadramento: "R$ 12.400 — 15% acima da média dos últimos 30 dias".
 - Números em DM Mono, deltas em cor semântica: `--success` para positivo, `--danger` para negativo.
 
 ### Empty States & Onboarding
+
 - **Módulo não ativado:** mostrar preview visual + 1 frase de benefício + CTA "Ativar". Loss aversion: "Clientes que ativam [módulo] reduzem X em Y%."
 - **Dashboard com 1 módulo ativo:** ainda é útil. Mostrar o painel desse módulo + empty states dos demais como oportunidade.
 - **Primeiro login:** welcome contextual por role com guia inline (não modal bloqueante). Guia desaparece após completar checklist de ativação (3-5 passos).
@@ -1254,7 +1260,7 @@ Painéis default por role (configurável por tenant):
 
 ```json
 {
-  "revenue": { "value": 42600.00, "delta_pct": 18.2, "trend": "up" },
+  "revenue": { "value": 42600.0, "delta_pct": 18.2, "trend": "up" },
   "orders": { "value": 152, "delta_abs": 12, "trend": "up" },
   "avg_ticket": { "value": 280.26, "delta_pct": 5.3, "trend": "up" },
   "conversion_rate": { "value": 3.8, "delta_pp": -0.3, "trend": "down" },
@@ -1270,14 +1276,54 @@ Painéis default por role (configurável por tenant):
   "period": { "month": 2, "year": 2026 },
   "status": "final",
   "bars": [
-    { "label": "Receita Bruta", "value": 48200.00, "type": "absolute", "color": "green" },
-    { "label": "(-) Descontos", "value": -3100.00, "type": "relative", "color": "red" },
-    { "label": "(-) Devolucoes", "value": -1800.00, "type": "relative", "color": "red" },
-    { "label": "Receita Liquida", "value": 43300.00, "type": "subtotal", "color": "blue" },
-    { "label": "(-) CMV", "value": -18500.00, "type": "relative", "color": "red" },
-    { "label": "Margem Bruta", "value": 24800.00, "type": "subtotal", "color": "blue" },
-    { "label": "(-) Desp. Operacionais", "value": -12300.00, "type": "relative", "color": "red" },
-    { "label": "Lucro Liquido", "value": 12500.00, "type": "final", "color": "green" }
+    {
+      "label": "Receita Bruta",
+      "value": 48200.0,
+      "type": "absolute",
+      "color": "green"
+    },
+    {
+      "label": "(-) Descontos",
+      "value": -3100.0,
+      "type": "relative",
+      "color": "red"
+    },
+    {
+      "label": "(-) Devolucoes",
+      "value": -1800.0,
+      "type": "relative",
+      "color": "red"
+    },
+    {
+      "label": "Receita Liquida",
+      "value": 43300.0,
+      "type": "subtotal",
+      "color": "blue"
+    },
+    {
+      "label": "(-) CMV",
+      "value": -18500.0,
+      "type": "relative",
+      "color": "red"
+    },
+    {
+      "label": "Margem Bruta",
+      "value": 24800.0,
+      "type": "subtotal",
+      "color": "blue"
+    },
+    {
+      "label": "(-) Desp. Operacionais",
+      "value": -12300.0,
+      "type": "relative",
+      "color": "red"
+    },
+    {
+      "label": "Lucro Liquido",
+      "value": 12500.0,
+      "type": "final",
+      "color": "green"
+    }
   ],
   "net_margin_pct": 25.9,
   "approved_by": null
@@ -1288,21 +1334,21 @@ Painéis default por role (configurável por tenant):
 
 ```json
 {
-  "total_estimated_leak": 14280.00,
+  "total_estimated_leak": 14280.0,
   "delta_pct_vs_previous_week": 8.3,
   "trend": "up",
   "weekly_sparkline": [
-    { "week_label": "Sem -4", "value": 3200.00 },
-    { "week_label": "Sem -3", "value": 3000.00 },
-    { "week_label": "Sem -2", "value": 3640.00 },
-    { "week_label": "Sem -1", "value": 4440.00 }
+    { "week_label": "Sem -4", "value": 3200.0 },
+    { "week_label": "Sem -3", "value": 3000.0 },
+    { "week_label": "Sem -2", "value": 3640.0 },
+    { "week_label": "Sem -1", "value": 4440.0 }
   ],
   "top_skus": [
     {
       "sku_code": "SKU-0412-P",
       "product_name": "Moletom Oversized Preto",
       "days_out_of_stock": 12,
-      "estimated_leak_amount": 2340.00
+      "estimated_leak_amount": 2340.0
     }
   ]
 }
@@ -1335,19 +1381,19 @@ Painéis default por role (configurável por tenant):
 
 ```json
 {
-  "cac_average": { "value": 42.00, "delta_pct": -5.2, "trend": "down" },
-  "ltv_average": { "value": 380.00, "delta_pct": 3.8, "trend": "up" },
+  "cac_average": { "value": 42.0, "delta_pct": -5.2, "trend": "down" },
+  "ltv_average": { "value": 380.0, "delta_pct": 3.8, "trend": "up" },
   "ltv_cac_ratio": { "value": 9.0, "color": "green" },
   "cac_by_channel": [
-    { "channel": "trafego_pago", "label": "Trafego Pago", "cac": 68.00 },
-    { "channel": "creators", "label": "Creators", "cac": 45.00 },
-    { "channel": "organico", "label": "Organico", "cac": 12.00 },
-    { "channel": "whatsapp", "label": "WhatsApp", "cac": 22.00 },
-    { "channel": "marketplace", "label": "Marketplace", "cac": 35.00 }
+    { "channel": "trafego_pago", "label": "Trafego Pago", "cac": 68.0 },
+    { "channel": "creators", "label": "Creators", "cac": 45.0 },
+    { "channel": "organico", "label": "Organico", "cac": 12.0 },
+    { "channel": "whatsapp", "label": "WhatsApp", "cac": 22.0 },
+    { "channel": "marketplace", "label": "Marketplace", "cac": 35.0 }
   ],
   "monthly_evolution": [
-    { "month": "2025-04", "cac": 55.00, "ltv_cac_ratio": 6.2 },
-    { "month": "2025-05", "cac": 52.00, "ltv_cac_ratio": 6.8 }
+    { "month": "2025-04", "cac": 55.0, "ltv_cac_ratio": 6.2 },
+    { "month": "2025-05", "cac": 52.0, "ltv_cac_ratio": 6.8 }
   ]
 }
 ```
@@ -1360,23 +1406,63 @@ Painéis default por role (configurável por tenant):
     "month": 3,
     "year": 2026,
     "categories": [
-      { "key": "cogs", "label": "Produto (COGS)", "value": 18500.00, "percentage": 52.4 },
-      { "key": "marketing", "label": "Marketing", "value": 9800.00, "percentage": 27.8 },
-      { "key": "personnel", "label": "Pessoal", "value": 4900.00, "percentage": 13.9 },
-      { "key": "infrastructure", "label": "Infraestrutura", "value": 2100.00, "percentage": 5.9 }
+      {
+        "key": "cogs",
+        "label": "Produto (COGS)",
+        "value": 18500.0,
+        "percentage": 52.4
+      },
+      {
+        "key": "marketing",
+        "label": "Marketing",
+        "value": 9800.0,
+        "percentage": 27.8
+      },
+      {
+        "key": "personnel",
+        "label": "Pessoal",
+        "value": 4900.0,
+        "percentage": 13.9
+      },
+      {
+        "key": "infrastructure",
+        "label": "Infraestrutura",
+        "value": 2100.0,
+        "percentage": 5.9
+      }
     ],
-    "total": 35300.00
+    "total": 35300.0
   },
   "previous_month": {
     "month": 2,
     "year": 2026,
     "categories": [
-      { "key": "cogs", "label": "Produto (COGS)", "value": 17200.00, "percentage": 53.0 },
-      { "key": "marketing", "label": "Marketing", "value": 8400.00, "percentage": 25.9 },
-      { "key": "personnel", "label": "Pessoal", "value": 4900.00, "percentage": 15.1 },
-      { "key": "infrastructure", "label": "Infraestrutura", "value": 1950.00, "percentage": 6.0 }
+      {
+        "key": "cogs",
+        "label": "Produto (COGS)",
+        "value": 17200.0,
+        "percentage": 53.0
+      },
+      {
+        "key": "marketing",
+        "label": "Marketing",
+        "value": 8400.0,
+        "percentage": 25.9
+      },
+      {
+        "key": "personnel",
+        "label": "Pessoal",
+        "value": 4900.0,
+        "percentage": 15.1
+      },
+      {
+        "key": "infrastructure",
+        "label": "Infraestrutura",
+        "value": 1950.0,
+        "percentage": 6.0
+      }
     ],
-    "total": 32450.00
+    "total": 32450.0
   },
   "deltas": [
     { "key": "cogs", "delta_pct": 7.6 },
@@ -1431,17 +1517,76 @@ Painéis default por role (configurável por tenant):
 
 ## Appendix B: Open Questions
 
-| # | Question | Owner | Status | Notes |
-|---|----------|-------|--------|-------|
-| OQ-1 | Should the dashboard support PDF export for panels and War Room sessions? | Marcus / Caio | Open | Useful for investor reports and post-mortem analysis. Could use Puppeteer for server-side rendering. Defer to V2. |
-| OQ-2 | Should panel data be refreshable in real-time (SSE for standard panels too) or is 5-min cache sufficient? | Caio | Open | Real-time for all panels adds server load. Current spec: only War Room uses SSE. Standard panels use 5-min cache with manual refresh button. |
-| OQ-3 | Should the War Room support multi-drop comparison (compare current drop vs. 2+ previous drops simultaneously)? | Caio | Open | V1 supports single comparison drop. Multi-comparison would add visual complexity but improve trend analysis. |
-| OQ-4 | Should the dashboard have a "shared view" feature where Marcus can share his dashboard configuration with the team? | Marcus | Open | Currently each user has their own layout. A "team default" layout could be useful for standardization. |
-| OQ-5 | Should the Retencao panel include a predictive churn model visualization, or is the current RFM grid sufficient for V1? | Caio | Open | Predictive churn requires ML model. RFM grid provides segment-level churn visibility. Defer predictive to V2. |
-| OQ-6 | How should the dashboard handle timezone for teams in different locations? | Marcus | Open | Currently all data is in BRT (America/Sao_Paulo). If team members travel or work remotely from different timezones, should the dashboard adjust? V1 assumption: all BRT. |
-| OQ-7 | Should War Room sessions store their own snapshot data (denormalized) or always query live data from source tables? | Caio | Open | Storing snapshots enables faster historical review but adds storage cost. Currently: historical review re-queries source tables with time filters. |
-| OQ-8 | Should we add a mobile-optimized War Room view for team members monitoring drops from their phones? | Marcus | Open | War Room is data-dense and optimized for desktop. A simplified mobile view could show just the key metric cards and SKU stock levels. |
+| #    | Question                                                                                                                | Owner         | Status | Notes                                                                                                                                                                    |
+| ---- | ----------------------------------------------------------------------------------------------------------------------- | ------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| OQ-1 | Should the dashboard support PDF export for panels and War Room sessions?                                               | Marcus / Caio | Open   | Useful for investor reports and post-mortem analysis. Could use Puppeteer for server-side rendering. Defer to V2.                                                        |
+| OQ-2 | Should panel data be refreshable in real-time (SSE for standard panels too) or is 5-min cache sufficient?               | Caio          | Open   | Real-time for all panels adds server load. Current spec: only War Room uses SSE. Standard panels use 5-min cache with manual refresh button.                             |
+| OQ-3 | Should the War Room support multi-drop comparison (compare current drop vs. 2+ previous drops simultaneously)?          | Caio          | Open   | V1 supports single comparison drop. Multi-comparison would add visual complexity but improve trend analysis.                                                             |
+| OQ-4 | Should the dashboard have a "shared view" feature where Marcus can share his dashboard configuration with the team?     | Marcus        | Open   | Currently each user has their own layout. A "team default" layout could be useful for standardization.                                                                   |
+| OQ-5 | Should the Retencao panel include a predictive churn model visualization, or is the current RFM grid sufficient for V1? | Caio          | Open   | Predictive churn requires ML model. RFM grid provides segment-level churn visibility. Defer predictive to V2.                                                            |
+| OQ-6 | How should the dashboard handle timezone for teams in different locations?                                              | Marcus        | Open   | Currently all data is in BRT (America/Sao_Paulo). If team members travel or work remotely from different timezones, should the dashboard adjust? V1 assumption: all BRT. |
+| OQ-7 | Should War Room sessions store their own snapshot data (denormalized) or always query live data from source tables?     | Caio          | Open   | Storing snapshots enables faster historical review but adds storage cost. Currently: historical review re-queries source tables with time filters.                       |
+| OQ-8 | Should we add a mobile-optimized War Room view for team members monitoring drops from their phones?                     | Marcus        | Open   | War Room is data-dense and optimized for desktop. A simplified mobile view could show just the key metric cards and SKU stock levels.                                    |
 
 ---
 
-*This module spec is the source of truth for Dashboard Executivo + Drop War Room implementation. All development, review, and QA should reference this document. Changes require review from Marcus (admin) or Caio (PM).*
+_This module spec is the source of truth for Dashboard Executivo + Drop War Room implementation. All development, review, and QA should reference this document. Changes require review from Marcus (admin) or Caio (PM)._
+
+---
+
+## Advanced Dashboard Features
+
+> Source: Competitive analysis (Axoly, April 2026)
+
+### Dashboard por Role
+
+Each role sees a different dashboard optimized for their responsibilities. System detects role via `auth.user_roles` and shows relevant panels. Admin (Marcus) sees all panels; finance (Pedro) sees Financeiro, DRE, Cashflow; operations (Tavares) sees Estoque, PLM, Trocas. New table `dashboard.role_defaults` with `visible_panels` and `panel_order` per role. User's custom layout (from US-11/12/13) overrides role defaults.
+
+**User Stories:**
+
+| #       | As a...  | I want to...                                                    | Acceptance Criteria                                                                                                                            |
+| ------- | -------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-AX11 | Any user | See a dashboard pre-configured for my role when I first open it | Dashboard loads with role-appropriate panels. Finance role sees Financeiro + DRE. Operations sees Estoque + PLM. Creative sees Marketing only. |
+| US-AX12 | Marcus   | Configure default panel visibility per role                     | Admin settings page for role defaults. Drag-and-drop panel ordering per role. Saved to `dashboard.role_defaults`.                              |
+
+### CRO Panel (Conversion Funnel)
+
+New dashboard panel showing conversion funnel: visitors → cart → checkout → payment → confirmed. Data from Shopify analytics + Yever checkout + ERP orders. Conversion rate per stage with trend (last 30 days). Click on funnel opens detail view.
+
+**User Stories:**
+
+| #       | As a... | I want to...                                   | Acceptance Criteria                                                                                                                               |
+| ------- | ------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-AX13 | Marcus  | See a conversion funnel panel on the dashboard | Funnel visualization with 5 stages, counts, and % conversion between stages. Overall conversion = confirmed / visitors. Delta vs previous period. |
+| US-AX14 | Caio    | See conversion rate trend over last 30 days    | Line chart below funnel showing daily conversion rate. Hover shows date + value.                                                                  |
+
+### Health Score da Marca
+
+Composite "brand health" score across 5 dimensions: Vendas, Produção, Marketing, Atendimento, Financeiro. Displayed as radar chart card on dashboard. Each dimension scored 0-100 from real system metrics. Calculated daily via Vercel Cron. New table `dashboard.health_scores`.
+
+**User Stories:**
+
+| #       | As a... | I want to...                                                          | Acceptance Criteria                                                                                                      |
+| ------- | ------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| US-AX15 | Marcus  | See overall brand health as a single score with dimensional breakdown | Radar chart card at top of dashboard. 5 axes. Overall score (weighted average). Color: green ≥80, yellow 60-79, red <60. |
+| US-AX16 | Marcus  | See health score evolution over time                                  | Weekly trend line chart (12 weeks). Hover shows score breakdown per dimension.                                           |
+| US-AX17 | Marcus  | Configure dimension weights for the overall score                     | Admin settings: slider per dimension (0-100% weight). Default: equal weights.                                            |
+
+### Custom Dashboard Widgets
+
+Evolution of existing layout customization (US-11/12/13). Allow individual micro-widgets (not just full panels) to be composed freely via drag-and-drop. v2 of the existing `dashboard.dashboard_configs.layout` — expand JSONB to support widget-level granularity.
+
+**Note:** This is a natural evolution of the existing layout system, not a separate feature. Implement as v2 when the current panel-level customization proves insufficient.
+
+---
+
+## CRO Engine (Conversion Rate Optimization)
+
+Features de otimização de conversão integradas ao Dashboard:
+
+- Heatmap & Session Recording via Microsoft Clarity (free, LGPD-compliant with consent)
+- A/B Testing suggestions (complements Checkout A/B testing)
+- Conversion Funnel Analysis (funnel evolution with period comparisons)
+- Page Speed Monitor (Core Web Vitals — TTFB sub-100ms target)
+- Price Elasticity Calculator ("if price changes from X to Y, volume changes Z%")
+- Social Proof Engine (real-time purchase notifications using pipeline data)

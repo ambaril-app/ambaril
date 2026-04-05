@@ -3,23 +3,23 @@ import { drizzle as drizzleHttp } from "drizzle-orm/neon-http";
 import { drizzle as drizzleWs } from "drizzle-orm/neon-serverless";
 import ws from "ws";
 import * as globalSchema from "./schema/global";
-import * as creatorsSchema from "./schema/creators";
 import * as checkoutSchema from "./schema/checkout";
 import * as crmSchema from "./schema/crm";
 import * as erpSchema from "./schema/erp";
-import * as whatsappSchema from "./schema/whatsapp";
+import * as messagingSchema from "./schema/messaging";
 import * as dashboardSchema from "./schema/dashboard";
 import * as marketingSchema from "./schema/marketing";
+import * as creatorsSchema from "./schema/creators";
 
 const allSchemas = {
   ...globalSchema,
-  ...creatorsSchema,
   ...checkoutSchema,
   ...crmSchema,
   ...erpSchema,
-  ...whatsappSchema,
+  ...messagingSchema,
   ...dashboardSchema,
   ...marketingSchema,
+  ...creatorsSchema,
 };
 
 function getDatabaseUrl(): string {

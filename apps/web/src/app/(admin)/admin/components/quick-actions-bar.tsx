@@ -22,37 +22,14 @@ interface ActionConfig {
 // Actions per role
 // ---------------------------------------------------------------------------
 
-function getActions(role: RoleCode, pendingCount: number): ActionConfig[] {
+function getActions(role: RoleCode, _pendingCount: number): ActionConfig[] {
   switch (role) {
     case "admin":
-      return [
-        {
-          label:
-            pendingCount > 0
-              ? `Aprovar Criadores (${pendingCount})`
-              : "Aprovar Criadores",
-          href: "/admin/creators?status=pending",
-          badge: pendingCount > 0 ? pendingCount : undefined,
-        },
-        { label: "Anti-Fraude", href: "/admin/creators/anti-fraud" },
-        { label: "Analytics", href: "/admin/creators/analytics" },
-      ];
+      return [{ label: "Configurações", href: "/admin/settings" }];
     case "pm":
-      return [
-        {
-          label:
-            pendingCount > 0
-              ? `Aprovar Criadores (${pendingCount})`
-              : "Aprovar Criadores",
-          href: "/admin/creators?status=pending",
-          badge: pendingCount > 0 ? pendingCount : undefined,
-        },
-        { label: "Criar Desafio", href: "/admin/creators/challenges" },
-        { label: "Ver Campanhas", href: "/admin/creators/campaigns" },
-      ];
+      return [{ label: "Configurações", href: "/admin/settings" }];
     case "creative":
       return [
-        { label: "Ver Briefs Ativos", href: "/admin/creators/campaigns" },
         { label: "Biblioteca DAM", disabled: true },
         { label: "Marketing Intel", disabled: true },
       ];
@@ -96,7 +73,7 @@ export function QuickActionsBar({ role, pendingCount }: QuickActionsBarProps) {
 
   return (
     <section>
-      <h2 className="mb-3 text-[11px] font-medium uppercase tracking-[0.06em] text-text-ghost">
+      <h2 className="mb-3 text-sm font-medium text-text-bright">
         Ações rápidas
       </h2>
       <div className="flex flex-wrap gap-2">

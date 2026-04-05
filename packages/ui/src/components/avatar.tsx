@@ -21,8 +21,7 @@ function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 0) return "";
   const first = parts[0]?.[0] ?? "";
-  const last =
-    parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
+  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
   return (first + last).toUpperCase();
 }
 
@@ -44,9 +43,7 @@ const Avatar = React.forwardRef<HTMLSpanElement, AvatarProps>(
             className="aspect-square h-full w-full object-cover"
           />
         )}
-        <AvatarPrimitive.Fallback
-          className="flex h-full w-full items-center justify-center bg-[var(--bg-surface)] font-medium text-[var(--text-secondary)]"
-        >
+        <AvatarPrimitive.Fallback className="flex h-full w-full items-center justify-center bg-bg-surface font-medium text-text-secondary">
           {name ? getInitials(name) : "?"}
         </AvatarPrimitive.Fallback>
       </AvatarPrimitive.Root>

@@ -5,15 +5,24 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../lib/utils";
 
 const badgeVariants = cva(
-  "inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium",
+  "inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium",
   {
     variants: {
       variant: {
-        default: "bg-[var(--badge-bg)] text-[var(--badge-text)]",
-        success: "bg-[var(--success-muted)] text-[var(--success)]",
-        warning: "bg-[var(--warning-muted)] text-[var(--warning)]",
-        danger: "bg-[var(--danger-muted)] text-[var(--danger)]",
-        secondary: "bg-[var(--bg-surface)] text-[var(--text-secondary)]",
+        default: "bg-badge-bg text-badge-text",
+        success: "bg-success-muted text-success",
+        warning: "bg-warning-muted text-warning",
+        danger: "bg-danger-muted text-danger",
+        info: "bg-info-muted text-info",
+        secondary: "bg-bg-surface text-text-secondary",
+        // Organizational colors (muted, for categorization)
+        slate: "bg-org-slate-bg text-org-slate-text",
+        blue: "bg-org-blue-bg text-org-blue-text",
+        violet: "bg-org-violet-bg text-org-violet-text",
+        rose: "bg-org-rose-bg text-org-rose-text",
+        emerald: "bg-org-emerald-bg text-org-emerald-text",
+        cyan: "bg-org-cyan-bg text-org-cyan-text",
+        orange: "bg-org-orange-bg text-org-orange-text",
       },
     },
     defaultVariants: {
@@ -23,7 +32,8 @@ const badgeVariants = cva(
 );
 
 export interface BadgeProps
-  extends Omit<React.HTMLAttributes<HTMLDivElement>, "color">,
+  extends
+    Omit<React.HTMLAttributes<HTMLDivElement>, "color">,
     VariantProps<typeof badgeVariants> {}
 
 function Badge({ className, variant, children, ...props }: BadgeProps) {

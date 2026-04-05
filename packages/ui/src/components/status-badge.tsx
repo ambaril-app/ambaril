@@ -23,24 +23,27 @@ const DEFAULT_STATUS_MAP: Record<string, StatusConfig> = {
   rejected: { label: "Rejeitado", variant: "danger" },
 };
 
-const VARIANT_STYLES: Record<StatusVariant, { bg: string; dot: string; text: string }> = {
+const VARIANT_STYLES: Record<
+  StatusVariant,
+  { bg: string; dot: string; text: string }
+> = {
   success: {
-    bg: "bg-[var(--success-muted)]",
+    bg: "bg-success-muted",
     dot: "bg-success",
     text: "text-success",
   },
   warning: {
-    bg: "bg-[var(--warning-muted)]",
+    bg: "bg-warning-muted",
     dot: "bg-warning",
     text: "text-warning",
   },
   danger: {
-    bg: "bg-[var(--danger-muted)]",
+    bg: "bg-danger-muted",
     dot: "bg-danger",
     text: "text-danger",
   },
   info: {
-    bg: "bg-[var(--info-muted)]",
+    bg: "bg-info-muted",
     dot: "bg-info",
     text: "text-info",
   },
@@ -51,11 +54,7 @@ const VARIANT_STYLES: Record<StatusVariant, { bg: string; dot: string; text: str
   },
 };
 
-function StatusBadge({
-  status,
-  statusMap,
-  className,
-}: StatusBadgeProps) {
+function StatusBadge({ status, statusMap, className }: StatusBadgeProps) {
   const map = statusMap ?? DEFAULT_STATUS_MAP;
   const config = map[status] ?? {
     label: status,

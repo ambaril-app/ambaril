@@ -22,11 +22,7 @@ function getBreadcrumbs(pathname: string): { label: string; path: string }[] {
 
   const labels: Record<string, string> = {
     admin: "Admin",
-    creators: "Creators",
-    challenges: "Desafios",
-    campaigns: "Campanhas",
-    payouts: "Pagamentos",
-    analytics: "Visão Geral",
+    analytics: "Analytics",
     settings: "Configurações",
     new: "Novo",
     edit: "Editar",
@@ -35,6 +31,21 @@ function getBreadcrumbs(pathname: string): { label: string; path: string }[] {
     erp: "ERP",
     whatsapp: "WhatsApp",
     dashboard: "Dashboard",
+    tiers: "Tiers",
+    "anti-fraud": "Anti-Fraude",
+    setup: "Configuração",
+    brief: "Brief",
+    integrations: "Integrações",
+    profile: "Perfil",
+    coupons: "Cupons",
+    content: "Conteúdo",
+    briefings: "Briefings",
+    earnings: "Ganhos",
+    ranking: "Ranking",
+    sales: "Vendas",
+    products: "Produtos",
+    materials: "Materiais",
+    points: "Pontos",
   };
 
   let path = "";
@@ -114,9 +125,10 @@ export function Topbar({ session }: TopbarProps) {
       )}
 
       {/* Main topbar */}
-      <header className="flex h-14 items-center justify-between border-b border-border-default bg-bg-base pl-14 pr-4 lg:px-6">
-        {/* Breadcrumbs */}
-        <nav className="flex items-center gap-1 text-sm">
+      {/* pl-14 compensates for the hamburger button (visible below lg). lg:px-6 overrides when sidebar is visible. */}
+      <header className="flex h-14 items-center justify-between border-b border-border-default bg-bg-base pl-14 pr-3 sm:pr-4 lg:px-6">
+        {/* Breadcrumbs — truncate on narrow screens */}
+        <nav className="flex min-w-0 items-center gap-1 text-sm">
           {breadcrumbs.map((crumb, i) => (
             <span key={crumb.path} className="flex items-center gap-1">
               {i > 0 && <span className="text-text-muted">/</span>}
@@ -134,7 +146,7 @@ export function Topbar({ session }: TopbarProps) {
         </nav>
 
         {/* Right side */}
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
           {/* Role badge */}
           <span className="hidden rounded-full bg-bg-surface px-2 py-0.5 text-xs text-text-secondary sm:inline-block">
             {session.roleDisplayName}
@@ -158,7 +170,7 @@ export function Topbar({ session }: TopbarProps) {
               {dropdownOpen && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute right-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-lg border border-border-default bg-bg-base shadow-lg"
+                  className="absolute right-0 top-full z-50 mt-1 w-56 overflow-hidden rounded-lg border border-border-default bg-bg-base shadow-[var(--shadow-lg)]"
                 >
                   <div className="border-b border-border-default px-3 py-2">
                     <p className="text-xs font-medium text-text-muted">

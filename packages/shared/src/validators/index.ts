@@ -58,7 +58,10 @@ export const createOrderSchema = z.object({
     .array(
       z.object({
         skuId: uuidSchema,
-        quantity: z.number().int().positive("Quantidade deve ser maior que zero"),
+        quantity: z
+          .number()
+          .int()
+          .positive("Quantidade deve ser maior que zero"),
         unitPrice: z.string().regex(/^\d+\.\d{2}$/, "Preço inválido"),
       }),
     )
@@ -184,56 +187,6 @@ export const productFiltersSchema = paginationSchema.extend({
 });
 
 // ---------------------------------------------------------------------------
-// Creators
-// ---------------------------------------------------------------------------
-
-// Creator application (public form — 3-step)
-// @deprecated — Superseded by comprehensive schemas in ../schemas/creators.ts
-// (fullRegistrationSchema, registrationStep1Schema, registrationStep2Schema, registrationStep3Schema)
-// Kept for backward compatibility. New code should import from @ambaril/shared/schemas.
-export const creatorApplicationSchema = z.object({
-  // Step 1: Personal info
-  name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(255),
-  email: emailSchema,
-  phone: z.string().regex(/^\d{10,11}$/, "Telefone deve ter 10 ou 11 dígitos"),
-  cpf: cpfSchema,
-  // Step 2: Social media
-  instagramHandle: z.string().min(1, "Instagram é obrigatório").max(100),
-  tiktokHandle: z.string().max(100).optional(),
-  youtubeHandle: z.string().max(100).optional(),
-  followersCount: z.number().int().nonnegative(),
-  // Step 3: Motivation
-  motivation: z
-    .string()
-    .min(20, "Conte mais sobre sua motivação (mínimo 20 caracteres)")
-    .max(2000),
-  contentStyle: z.string().max(500).optional(),
-  shippingAddress: addressSchema,
-});
-
-// @deprecated — Superseded by profileUpdateSchema in ../schemas/creators.ts
-// Kept for backward compatibility. New code should import from @ambaril/shared/schemas.
-export const updateCreatorSchema = z.object({
-  tierId: uuidSchema.optional(), // FK to creators.creator_tiers — configurable per tenant
-  status: z.enum(["pending", "active", "suspended", "inactive"]).optional(),
-  notes: z.string().max(2000).optional(),
-  commissionRate: z
-    .string()
-    .regex(/^\d+\.\d{2}$/, "Taxa de comissão inválida")
-    .optional(),
-});
-
-// @deprecated — Superseded by creatorFiltersSchema in ../schemas/creators.ts
-// Kept for backward compatibility. New code should import from @ambaril/shared/schemas.
-export const creatorFiltersSchema = paginationSchema.extend({
-  tierId: uuidSchema.optional(), // FK to creators.creator_tiers
-  status: z.enum(["pending", "active", "suspended", "inactive"]).optional(),
-  search: z.string().max(255).optional(),
-  dateFrom: z.string().datetime().optional(),
-  dateTo: z.string().datetime().optional(),
-});
-
-// ---------------------------------------------------------------------------
 // Inferred types
 // ---------------------------------------------------------------------------
 
@@ -248,6 +201,3 @@ export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type CreateSkuInput = z.infer<typeof createSkuSchema>;
 export type ProductFiltersInput = z.infer<typeof productFiltersSchema>;
-export type CreatorApplicationInput = z.infer<typeof creatorApplicationSchema>;
-export type UpdateCreatorInput = z.infer<typeof updateCreatorSchema>;
-export type CreatorFiltersInput = z.infer<typeof creatorFiltersSchema>;

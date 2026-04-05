@@ -29,95 +29,287 @@ export const INTERNAL_ROLES: readonly RoleCode[] = [
 // Sidebar, home page, and catch-all placeholder all react automatically.
 export const MODULES: ModuleConfig[] = [
   {
-    id: "creators",
-    label: "Creators",
-    description: "Programa de influenciadores e embaixadores",
-    icon: "Users",
-    basePath: "/admin/creators",
-    status: "active",
-    requiredRoles: ["admin", "pm"],
+    id: "dashboard",
+    label: "Dashboard",
+    description: "Visão geral e War Room",
+    icon: "LayoutDashboard",
+    basePath: "/admin/dashboard",
+    status: "coming_soon",
+    requiredRoles: ["admin", "pm", "creative", "operations", "finance"],
     subroutes: [
-      { id: "creators-analytics", label: "Analytics", path: "/admin/creators/analytics", requiredPermission: "creators:analytics:read", showOnlyAfterSetup: true },
-      { id: "creators-list", label: "Creators", path: "/admin/creators", showOnlyAfterSetup: true },
-      { id: "creators-challenges", label: "Desafios", path: "/admin/creators/challenges", requiredPermission: "creators:challenges:read", showOnlyAfterSetup: true },
-      { id: "creators-campaigns", label: "Campanhas", path: "/admin/creators/campaigns", requiredPermission: "creators:campaigns:read", showOnlyAfterSetup: true },
-      { id: "creators-payouts", label: "Pagamentos", path: "/admin/creators/payouts", requiredPermission: "creators:payouts:read", showOnlyAfterSetup: true },
-      { id: "creators-tiers", label: "Tiers", path: "/admin/creators/tiers", requiredPermission: "creators:tiers:read", showOnlyAfterSetup: true },
-      { id: "creators-antifraud", label: "Anti-fraude", path: "/admin/creators/anti-fraud", requiredPermission: "creators:antifraud:read", showOnlyAfterSetup: true },
-      { id: "creators-setup", label: "Configurar", path: "/admin/creators/setup" },
+      {
+        id: "dashboard-overview",
+        label: "Visão Geral",
+        path: "/admin/dashboard",
+      },
+      {
+        id: "dashboard-war-room",
+        label: "War Room",
+        path: "/admin/dashboard/war-room",
+        requiredPermission: "dashboard:war_room:read",
+      },
     ],
   },
   {
-    id: "checkout",
-    label: "Checkout",
-    description: "Pedidos, carrinhos e testes A/B",
-    icon: "ShoppingCart",
-    basePath: "/admin/checkout",
+    id: "erp",
+    label: "ERP",
+    description: "Produtos, estoque, NF-e e frete",
+    icon: "Package",
+    basePath: "/admin/erp",
     status: "coming_soon",
-    requiredRoles: ["admin", "pm"],
+    requiredRoles: ["admin", "operations", "finance"],
     subroutes: [
-      { id: "checkout-orders", label: "Pedidos", path: "/admin/checkout/orders" },
-      { id: "checkout-carts", label: "Carrinhos", path: "/admin/checkout/carts", requiredPermission: "checkout:carts:read" },
-      { id: "checkout-abandoned", label: "Abandonados", path: "/admin/checkout/abandoned", requiredPermission: "checkout:abandoned:read" },
-      { id: "checkout-ab-tests", label: "Testes A/B", path: "/admin/checkout/ab-tests", requiredPermission: "checkout:ab_tests:read" },
+      { id: "erp-orders", label: "Pedidos", path: "/admin/erp/orders" },
+      { id: "erp-products", label: "Produtos", path: "/admin/erp/products" },
+      {
+        id: "erp-inventory",
+        label: "Estoque",
+        path: "/admin/erp/inventory",
+        requiredPermission: "erp:inventory:read",
+      },
+      {
+        id: "erp-nfe",
+        label: "Notas Fiscais",
+        path: "/admin/erp/nfe",
+        requiredPermission: "erp:nfe:read",
+      },
+      {
+        id: "erp-finance",
+        label: "Financeiro",
+        path: "/admin/erp/finance",
+        requiredPermission: "erp:finance:read",
+      },
+    ],
+  },
+  {
+    id: "plm",
+    label: "PLM",
+    description: "Produção, coleções e fornecedores",
+    icon: "ClipboardList",
+    basePath: "/admin/plm",
+    status: "coming_soon",
+    requiredRoles: ["admin", "operations", "creative"],
+    subroutes: [
+      {
+        id: "plm-production",
+        label: "Produção",
+        path: "/admin/plm/production",
+      },
+      {
+        id: "plm-suppliers",
+        label: "Fornecedores",
+        path: "/admin/plm/suppliers",
+      },
+      { id: "plm-materials", label: "Insumos", path: "/admin/plm/materials" },
+      { id: "plm-costs", label: "Custos", path: "/admin/plm/costs" },
+    ],
+  },
+  {
+    id: "tarefas",
+    label: "Tarefas",
+    description: "Projetos, dailies e editorial",
+    icon: "CheckSquare",
+    basePath: "/admin/tarefas",
+    status: "coming_soon",
+    requiredRoles: [
+      "admin",
+      "pm",
+      "creative",
+      "operations",
+      "support",
+      "finance",
+    ],
+    subroutes: [
+      { id: "tarefas-gantt", label: "Gantt", path: "/admin/tarefas/gantt" },
+      { id: "tarefas-kanban", label: "Kanban", path: "/admin/tarefas/kanban" },
+      {
+        id: "tarefas-calendar",
+        label: "Editorial",
+        path: "/admin/tarefas/calendar",
+      },
     ],
   },
   {
     id: "crm",
     label: "CRM",
-    description: "Contatos, segmentos e automacoes",
+    description: "Contatos, segmentos e automações",
     icon: "Users",
     basePath: "/admin/crm",
     status: "coming_soon",
     requiredRoles: ["admin", "pm", "support"],
     subroutes: [
       { id: "crm-contacts", label: "Contatos", path: "/admin/crm/contacts" },
-      { id: "crm-segments", label: "Segmentos", path: "/admin/crm/segments", requiredPermission: "crm:segments:read" },
-      { id: "crm-automations", label: "Automações", path: "/admin/crm/automations", requiredPermission: "crm:automations:read" },
-      { id: "crm-campaigns", label: "Campanhas", path: "/admin/crm/campaigns", requiredPermission: "crm:campaigns:read" },
+      {
+        id: "crm-segments",
+        label: "Segmentos",
+        path: "/admin/crm/segments",
+        requiredPermission: "crm:segments:read",
+      },
+      {
+        id: "crm-automations",
+        label: "Automações",
+        path: "/admin/crm/automations",
+        requiredPermission: "crm:automations:read",
+      },
+      {
+        id: "crm-campaigns",
+        label: "Campanhas",
+        path: "/admin/crm/campaigns",
+        requiredPermission: "crm:campaigns:read",
+      },
     ],
   },
   {
-    id: "erp",
-    label: "ERP",
-    description: "Produtos, estoque, notas fiscais e frete",
-    icon: "Package",
-    basePath: "/admin/erp",
-    status: "coming_soon",
-    requiredRoles: ["admin", "operations", "finance"],
-    subroutes: [
-      { id: "erp-products", label: "Produtos", path: "/admin/erp/products" },
-      { id: "erp-inventory", label: "Estoque", path: "/admin/erp/inventory", requiredPermission: "erp:inventory:read" },
-      { id: "erp-nfe", label: "Notas Fiscais", path: "/admin/erp/nfe", requiredPermission: "erp:nfe:read" },
-      { id: "erp-finance", label: "Financeiro", path: "/admin/erp/finance", requiredPermission: "erp:finance:read" },
-      { id: "erp-shipping", label: "Frete", path: "/admin/erp/shipping", requiredPermission: "erp:shipping:read" },
-    ],
-  },
-  {
-    id: "whatsapp",
-    label: "WhatsApp",
-    description: "Conversas, templates e grupos",
+    id: "mensageria",
+    label: "Mensageria",
+    description: "WhatsApp, email e Inbox",
     icon: "MessageCircle",
-    basePath: "/admin/whatsapp",
+    basePath: "/admin/mensageria",
     status: "coming_soon",
     requiredRoles: ["admin", "pm", "support"],
     subroutes: [
-      { id: "whatsapp-conversations", label: "Conversas", path: "/admin/whatsapp/conversations" },
-      { id: "whatsapp-templates", label: "Templates", path: "/admin/whatsapp/templates", requiredPermission: "whatsapp:templates:read" },
-      { id: "whatsapp-groups", label: "Grupos", path: "/admin/whatsapp/groups", requiredPermission: "whatsapp:groups:read" },
+      {
+        id: "mensageria-inbox",
+        label: "Inbox",
+        path: "/admin/mensageria/inbox",
+      },
+      {
+        id: "mensageria-broadcasts",
+        label: "Broadcasts",
+        path: "/admin/mensageria/broadcasts",
+        requiredPermission: "messaging:broadcasts:read",
+      },
+      {
+        id: "mensageria-templates",
+        label: "Templates",
+        path: "/admin/mensageria/templates",
+        requiredPermission: "messaging:templates:read",
+      },
     ],
   },
   {
-    id: "dashboard",
-    label: "Dashboard",
-    description: "Visao geral e War Room",
-    icon: "LayoutDashboard",
-    basePath: "/admin/dashboard",
+    id: "trocas",
+    label: "Trocas",
+    description: "Reversa, créditos e devoluções",
+    icon: "RefreshCw",
+    basePath: "/admin/trocas",
     status: "coming_soon",
-    requiredRoles: ["admin", "pm", "creative", "operations", "finance"],
+    requiredRoles: ["admin", "support", "operations"],
     subroutes: [
-      { id: "dashboard-overview", label: "Visão Geral", path: "/admin/dashboard" },
-      { id: "dashboard-war-room", label: "War Room", path: "/admin/dashboard/war-room", requiredPermission: "dashboard:war_room:read" },
+      {
+        id: "trocas-requests",
+        label: "Solicitações",
+        path: "/admin/trocas/requests",
+      },
+      {
+        id: "trocas-logistics",
+        label: "Logística Reversa",
+        path: "/admin/trocas/logistics",
+      },
+    ],
+  },
+  {
+    id: "creators",
+    label: "Creators",
+    description: "Programa de influenciadores",
+    icon: "Star",
+    basePath: "/admin/creators",
+    status: "coming_soon",
+    requiredRoles: ["admin", "pm"],
+    subroutes: [
+      { id: "creators-list", label: "Creators", path: "/admin/creators" },
+      {
+        id: "creators-challenges",
+        label: "Desafios",
+        path: "/admin/creators/challenges",
+        requiredPermission: "creators:challenges:read",
+      },
+      {
+        id: "creators-payouts",
+        label: "Pagamentos",
+        path: "/admin/creators/payouts",
+        requiredPermission: "creators:payouts:read",
+      },
+    ],
+  },
+  {
+    id: "dam",
+    label: "DAM",
+    description: "Repositório de assets",
+    icon: "Image",
+    basePath: "/admin/dam",
+    status: "coming_soon",
+    requiredRoles: ["admin", "creative", "pm"],
+    subroutes: [
+      { id: "dam-assets", label: "Assets", path: "/admin/dam/assets" },
+      {
+        id: "dam-collections",
+        label: "Coleções",
+        path: "/admin/dam/collections",
+      },
+    ],
+  },
+  {
+    id: "marketing",
+    label: "Marketing",
+    description: "Inteligência e Ads",
+    icon: "Megaphone",
+    basePath: "/admin/marketing",
+    status: "coming_soon",
+    requiredRoles: ["admin", "pm", "creative"],
+    subroutes: [
+      {
+        id: "marketing-ugc",
+        label: "UGC Monitor",
+        path: "/admin/marketing/ugc",
+      },
+      {
+        id: "marketing-competitors",
+        label: "Competitor Watch",
+        path: "/admin/marketing/competitors",
+      },
+      {
+        id: "marketing-ads",
+        label: "Ads Reporting",
+        path: "/admin/marketing/ads",
+      },
+    ],
+  },
+  {
+    id: "b2b",
+    label: "B2B",
+    description: "Atacado e Portal",
+    icon: "Briefcase",
+    basePath: "/admin/b2b",
+    status: "coming_soon",
+    requiredRoles: ["admin", "commercial"],
+    subroutes: [
+      { id: "b2b-orders", label: "Pedidos B2B", path: "/admin/b2b/orders" },
+      { id: "b2b-retailers", label: "Lojistas", path: "/admin/b2b/retailers" },
+    ],
+  },
+  {
+    id: "pulse",
+    label: "Pulse",
+    description: "Discord Bot e Relatórios",
+    icon: "Radio",
+    basePath: "/admin/pulse",
+    status: "coming_soon",
+    requiredRoles: ["admin"],
+    subroutes: [
+      { id: "pulse-channels", label: "Canais", path: "/admin/pulse/channels" },
+    ],
+  },
+  {
+    id: "astro",
+    label: "Astro",
+    description: "AI Brain",
+    icon: "Sparkles",
+    basePath: "/admin/astro",
+    status: "coming_soon",
+    requiredRoles: ["admin"],
+    subroutes: [
+      { id: "astro-brain", label: "Brand Brain", path: "/admin/astro/brain" },
     ],
   },
 ];
@@ -134,25 +326,59 @@ export const MAX_PAGE_SIZE = 100;
 // ─── SKU Tiers ─────────────────────────────────────────
 export const SKU_TIERS = ["gold", "silver", "bronze"] as const;
 
-// ─── Creator Statuses ──────────────────────────────────
-// Tiers are configurable per tenant — no hardcoded tier list here.
-// See creators.creator_tiers table for tenant-specific tier definitions.
-export const CREATOR_STATUSES = ["pending", "active", "suspended", "inactive"] as const;
-
 // ─── Order Statuses ────────────────────────────────────
-export const ORDER_STATUSES = ["pending", "paid", "separating", "shipped", "delivered", "cancelled", "returned"] as const;
+export const ORDER_STATUSES = [
+  "pending",
+  "paid",
+  "separating",
+  "shipped",
+  "delivered",
+  "cancelled",
+  "returned",
+] as const;
 export const PAYMENT_METHODS = ["credit_card", "pix", "bank_slip"] as const;
 
 // ─── Contact Sources ───────────────────────────────────
-export const CONTACT_SOURCES = ["checkout", "crm_import", "whatsapp", "manual", "creator_referral"] as const;
+export const CONTACT_SOURCES = [
+  "checkout",
+  "crm_import",
+  "whatsapp",
+  "manual",
+  "creator_referral",
+] as const;
 
-// ─── WhatsApp ──────────────────────────────────────────
+// ─── Messaging (unified WhatsApp + Email) ─────────────
 export const MESSAGE_DIRECTIONS = ["inbound", "outbound"] as const;
-export const MESSAGE_STATUSES = ["pending", "sent", "delivered", "read", "failed"] as const;
-export const CONVERSATION_STATUSES = ["open", "closed", "archived"] as const;
+export const MESSAGE_STATUSES = [
+  "pending",
+  "sent",
+  "delivered",
+  "read",
+  "failed",
+] as const;
+export const THREAD_STATUSES = [
+  "open",
+  "pending",
+  "resolved",
+  "closed",
+] as const;
+export const MESSAGING_CHANNELS = ["whatsapp", "email"] as const;
 
 // ─── Sidebar Module Groups ─────────────────────────────
 export const MODULE_GROUPS = [
-  { id: "growth", label: "Crescimento", moduleIds: ["creators"] },
-  { id: "soon", label: "Em breve", moduleIds: ["checkout", "crm", "erp", "whatsapp", "dashboard"] },
+  {
+    id: "core",
+    label: "Operação",
+    moduleIds: ["dashboard", "erp", "plm", "tarefas"],
+  },
+  {
+    id: "growth",
+    label: "Retenção & Crescimento",
+    moduleIds: ["crm", "mensageria", "trocas", "creators", "marketing"],
+  },
+  {
+    id: "infra",
+    label: "Inteligência & B2B",
+    moduleIds: ["dam", "b2b", "pulse", "astro"],
+  },
 ] as const;

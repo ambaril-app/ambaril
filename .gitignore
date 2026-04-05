@@ -16,27 +16,32 @@ coverage
 
 # macOS
 .DS_Store
+**/.DS_Store
 
 # Logs
 logs
 *.log
 
-# Shopify
-extensions/*/build
-extensions/*/dist
-.shopify/*
-.shopify.lock
+# Shopify (will be reconfigured from scratch during ERP implementation)
+# extensions/*/build
+# extensions/*/dist
+# .shopify/*
+# .shopify.lock
 
 # IDE
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
 
-# Legacy (temporary — reverse engineering data)
-_legacy/
+# Preview/demo files
+*.demo.html
+_preview-*.html
 
 # Drizzle
 drizzle/
 
 # Misc
 *.tsbuildinfo
+# Runtime
+*.pid
+dev.pid

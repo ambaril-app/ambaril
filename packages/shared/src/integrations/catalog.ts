@@ -8,9 +8,10 @@ import type { Capability } from "./types";
 export interface ConfigField {
   key: string;
   label: string;
-  type: "text" | "password" | "url";
+  type: "text" | "password" | "url" | "select";
   required: boolean;
   placeholder?: string;
+  options?: { label: string; value: string }[];
 }
 
 /** Catalog entry describing an available provider */
@@ -159,6 +160,143 @@ export const PROVIDER_CATALOG: ProviderCatalogEntry[] = [
         label: "Business Account ID",
         type: "text",
         required: true,
+      },
+    ],
+  },
+  // ─── Shipping ──────────────────────────────────────────
+  {
+    id: "loggi",
+    name: "Loggi",
+    capability: "shipping",
+    description: "Entregas expressas e rastreio",
+    icon: "Truck",
+    configFields: [
+      {
+        key: "apiKey",
+        label: "API Key",
+        type: "password",
+        required: true,
+      },
+      {
+        key: "clientId",
+        label: "Client ID",
+        type: "text",
+        required: true,
+      },
+      {
+        key: "clientSecret",
+        label: "Client Secret",
+        type: "password",
+        required: true,
+      },
+    ],
+  },
+  {
+    id: "melhor-envio",
+    name: "Melhor Envio",
+    capability: "shipping",
+    description: "Etiquetas de frete, rastreio e cotação",
+    icon: "Package",
+    configFields: [
+      {
+        key: "apiToken",
+        label: "Token de API",
+        type: "password",
+        required: true,
+        placeholder: "Cole o token gerado em Melhor Envio → Integrações",
+      },
+      {
+        key: "environment",
+        label: "Ambiente",
+        type: "select",
+        required: true,
+        options: [
+          { label: "Sandbox", value: "sandbox" },
+          { label: "Produção", value: "production" },
+        ],
+      },
+    ],
+  },
+  // ─── Payments ──────────────────────────────────────────
+  {
+    id: "mercado-pago",
+    name: "Mercado Pago",
+    capability: "payments",
+    description: "Pagamentos, PIX e conciliação financeira",
+    icon: "Wallet",
+    configFields: [
+      {
+        key: "accessToken",
+        label: "Access Token",
+        type: "password",
+        required: true,
+      },
+      {
+        key: "publicKey",
+        label: "Public Key",
+        type: "text",
+        required: true,
+      },
+    ],
+  },
+  // ─── Fiscal ────────────────────────────────────────────
+  {
+    id: "focus-nfe",
+    name: "Focus NFe",
+    capability: "fiscal",
+    description: "Emissão e gestão de NF-e",
+    icon: "FileText",
+    configFields: [
+      {
+        key: "apiToken",
+        label: "Token de API",
+        type: "password",
+        required: true,
+      },
+      {
+        key: "environment",
+        label: "Ambiente",
+        type: "select",
+        required: true,
+        options: [
+          { label: "Sandbox (Homologação)", value: "sandbox" },
+          { label: "Produção", value: "production" },
+        ],
+      },
+    ],
+  },
+  // ─── WhatsApp ──────────────────────────────────────────
+  {
+    id: "meta-whatsapp",
+    name: "Meta Cloud API (WhatsApp)",
+    capability: "messaging",
+    description: "WhatsApp Business — mensagens transacionais e campanhas",
+    icon: "MessageCircle",
+    configFields: [
+      {
+        key: "accessToken",
+        label: "Access Token",
+        type: "password",
+        required: true,
+      },
+      {
+        key: "phoneNumberId",
+        label: "Phone Number ID",
+        type: "text",
+        required: true,
+      },
+      {
+        key: "businessAccountId",
+        label: "Business Account ID",
+        type: "text",
+        required: true,
+      },
+      {
+        key: "verifyToken",
+        label: "Webhook Verify Token",
+        type: "password",
+        required: true,
+        placeholder: "Token para verificação do webhook Meta",
       },
     ],
   },

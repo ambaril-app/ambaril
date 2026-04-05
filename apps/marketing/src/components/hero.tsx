@@ -142,7 +142,7 @@ export function Hero() {
         updateSpark(p);
         const displayOpacity = Math.min(
           1,
-          p.opacity + p.sparkOpacityBoost * (1 - p.opacity)
+          p.opacity + p.sparkOpacityBoost * (1 - p.opacity),
         );
         const displayGlowRadius = p.glowRadius * p.sparkGlowBoost;
 
@@ -169,8 +169,14 @@ export function Hero() {
         p.x += p.vx;
         p.y += p.vy;
 
-        if (p.x < 0) { p.x = 0; p.vx *= -1; }
-        if (p.x > W) { p.x = W; p.vx *= -1; }
+        if (p.x < 0) {
+          p.x = 0;
+          p.vx *= -1;
+        }
+        if (p.x > W) {
+          p.x = W;
+          p.vx *= -1;
+        }
 
         if (p.y < -20) {
           respawn(p);
@@ -179,8 +185,12 @@ export function Hero() {
 
         // Glow halo
         const grd = ctx!.createRadialGradient(
-          p.x, p.y, 0,
-          p.x, p.y, displayGlowRadius
+          p.x,
+          p.y,
+          0,
+          p.x,
+          p.y,
+          displayGlowRadius,
         );
         if (p.type === "cool") {
           grd.addColorStop(0, `rgba(232,234,240,${displayOpacity * 0.18})`);
@@ -221,34 +231,20 @@ export function Hero() {
       mouse.y = -9999;
     }
 
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
+    resize();
+    initParticles();
+    loop();
 
-    if (!prefersReducedMotion) {
-      resize();
-      initParticles();
-      loop();
+    window.addEventListener("resize", resize);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseleave", onMouseLeave);
 
-      const handleResize = () => {
-        resize();
-        for (const p of particles) {
-          if (p.x > W) p.x = rand(0, W);
-          if (p.y > H) p.y = rand(0, H);
-        }
-      };
-
-      window.addEventListener("resize", handleResize);
-      window.addEventListener("mousemove", onMouseMove);
-      window.addEventListener("mouseleave", onMouseLeave);
-
-      return () => {
-        cancelAnimationFrame(rafId);
-        window.removeEventListener("resize", handleResize);
-        window.removeEventListener("mousemove", onMouseMove);
-        window.removeEventListener("mouseleave", onMouseLeave);
-      };
-    }
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseleave", onMouseLeave);
+    };
   }, []);
 
   return (
@@ -262,6 +258,7 @@ export function Hero() {
         justifyContent: "center",
         overflow: "hidden",
         background: "#07080B",
+        paddingBottom: "8dvh",
       }}
     >
       {/* Lumens canvas */}
@@ -308,13 +305,13 @@ export function Hero() {
         <p
           className="animate-fade-up-1"
           style={{
-            fontFamily: "var(--font)",
-            fontWeight: 400,
+            fontFamily: "var(--font-display)",
+            fontWeight: 600,
             fontSize: "12px",
-            letterSpacing: "0.02em",
+            letterSpacing: "0.12em",
             color: "#3A3F4C",
             textTransform: "uppercase",
-            marginBottom: "56px",
+            marginBottom: "24px",
           }}
         >
           Ambaril
@@ -324,17 +321,18 @@ export function Hero() {
           className="animate-fade-up-2"
           style={{
             fontFamily: "var(--font-display)",
-            fontWeight: 500,
+            fontWeight: 600,
             fontSize: "clamp(38px, 5vw, 64px)",
             letterSpacing: "-0.026em",
             lineHeight: 1.06,
             color: "#E8EAF0",
             maxWidth: "680px",
             textWrap: "balance",
-            marginBottom: "24px",
+            marginBottom: "32px",
           }}
         >
-          O primeiro sistema que opera seu e-commerce, não só mostra.
+          O primeiro sistema que opera seu e-commerce{" "}
+          <span className="hero-quase">quase</span> por conta propria.
         </h1>
 
         <p
@@ -343,13 +341,13 @@ export function Hero() {
             fontFamily: "var(--font)",
             fontWeight: 400,
             fontSize: "16px",
-            lineHeight: 1.7,
+            lineHeight: 1.55,
             color: "#7C8293",
             maxWidth: "460px",
-            marginBottom: "40px",
+            marginBottom: "32px",
           }}
         >
-          Enquanto ferramentas te mostram o problema, ele já está resolvendo.{" "}
+          Enquanto ferramentas te mostram o problema, nós resolvemos.{" "}
           <span className="invite-badge">invite-only</span>
         </p>
 
@@ -357,14 +355,15 @@ export function Hero() {
           className="animate-fade-up-4"
           style={{
             fontFamily: "var(--font-mono)",
-            fontSize: "11px",
-            color: "#3A3F4C",
+            fontSize: "12px",
+            letterSpacing: "0.08em",
+            color: "#64748B",
             display: "flex",
             alignItems: "center",
             flexWrap: "wrap",
           }}
         >
-          <span>Drop War Room</span>
+          <span>Agentic E-commerce</span>
           <span
             aria-hidden="true"
             style={{
@@ -372,14 +371,14 @@ export function Hero() {
               width: "3px",
               height: "3px",
               borderRadius: "50%",
-              background: "#3A3F4C",
+              background: "#64748B",
               margin: "0 10px",
               flexShrink: 0,
               position: "relative",
               top: "-1px",
             }}
           />
-          <span>Creators com atribuição</span>
+          <span>Context Driven</span>
           <span
             aria-hidden="true"
             style={{
@@ -387,14 +386,14 @@ export function Hero() {
               width: "3px",
               height: "3px",
               borderRadius: "50%",
-              background: "#3A3F4C",
+              background: "#64748B",
               margin: "0 10px",
               flexShrink: 0,
               position: "relative",
               top: "-1px",
             }}
           />
-          <span>PCP integrado</span>
+          <span>All-in-one</span>
         </div>
       </div>
     </section>
