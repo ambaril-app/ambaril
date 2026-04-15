@@ -28,6 +28,8 @@
     "spec:index": "bash scripts/build-state-index.sh",
     "spec:scan": "bash scripts/state-scan.sh",
     "spec:drift": "bash scripts/state-scan.sh drift --module",
+    "skills:check": "scripts/sync-consumers.sh check",
+    "skills:sync": "scripts/sync-consumers.sh all",
     "prepare": "husky"
   },
   "devDependencies": {

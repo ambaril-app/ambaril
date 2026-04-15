@@ -20,7 +20,9 @@
 - Type check: {pass | fail | skipped (not configured)}
 - Lint: {pass | fail | skipped (not configured)}
 - Build: {pass | fail | skipped (not configured)}
-- Tests: {pass | fail | skipped (not configured)}
+- Fast test gate: {pass | fail | skipped (not configured)}
+- Schema baseline gate: {pass | fail | skipped (not configured)}
+- Full test gate: {pass | fail | skipped (not configured)}
 - Security scan: {pass | fail | skipped (not configured)}
 - State scan evidence: {verified | missing | skipped (not configured)}
 - Regression set: {executed set}

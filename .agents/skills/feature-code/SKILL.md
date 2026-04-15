@@ -13,12 +13,13 @@ Read `project.yaml` from the project root. **If not found → STOP.** All paths,
 
 ```
 docs:       design_companion, change_safety, security_checklist, security,
-            release_checklist, release_approval, review_protocol,
+            testing_strategy, release_checklist, release_approval, review_protocol,
             migration_safety, handoff_template, design_system
 paths:      insights, handoffs
-checks:     type_check, lint, test, security_scan, state_scan, state_scan_cwd
+checks:     type_check, lint, test, test_fast, test_full, test_schemas,
+            security_scan, state_scan, state_scan_cwd
 conventions: copy_language, conversation_language, multi_tenant, design_lab,
-             change_safety_classes
+             change_safety_classes, test_enforcement, schema_baseline_required
 ceremony:   "full" | "standard" | "light" | "auto"
 ```
 
@@ -59,6 +60,8 @@ Language: Use `conventions.conversation_language` for all conversation. Commit m
 - Plan not approved → STOP
 - No real data → STOP
 - Medium+ without risk tier/blast radius/regression/rollback/observability → STOP
+- `conventions.test_enforcement = "hard"` and `checks.test_fast` missing → STOP
+- `conventions.test_enforcement = "hard"` and `checks.test_full`/`checks.test` missing → STOP
 - Saturation: >15 files touched in session | >45 min elapsed → HARD STOP
 - Visual slice touching more than 1 primary surface / archetype → STOP and split before continuing
 - 3 consecutive errors → STOP, ask for help
@@ -81,9 +84,11 @@ Language: Use `conventions.conversation_language` for all conversation. Commit m
 
 6. **Scope Check** — Discoveries not foreseen? If exceeds appetite → read [scope-hammer.md](references/scope-hammer.md). Report Hill Chart (GOING UP / GOING DOWN).
 
-7. **Implement + TDD** — Business logic: RED→GREEN→REFACTOR. UI: implement, Playwright if interactions are testable. If slice contains FSM, calculation, scoring, or validation logic: write PBT tests (fast-check) alongside unit tests — derive properties from spec §4.6 Test Scenarios (Given/When/Then), not from implementation.
+7. **Implement + TDD** — Business logic: RED→GREEN→REFACTOR. Schema/validator changes: write contract tests first. **If slice contains FSM, calculation, scoring, or validation logic: write PBT tests (fast-check) alongside unit tests — derive properties from spec §4.6 Test Scenarios (Given/When/Then), not from implementation.** UI: implement, Playwright if interactions are testable.
 
 8. **Auto-Check (early exit)**
+   - If slice touches schema/validators and `checks.test_schemas` exists → run it first
+   - `checks.test_fast` _(if null and `test_enforcement=hard` → STOP; otherwise warn)_
    - `checks.type_check` → `checks.lint` _(skip any that are null; warn if `checks.type_check` is null)_
    - If provider: verify sandbox, not production
    - Playwright smoke (if exists)
@@ -103,7 +108,7 @@ Language: Use `conventions.conversation_language` for all conversation. Commit m
 
 ### Wave End
 
-14. **Cross-slice smoke** — Re-run tests from ALL slices in the wave.
+14. **Cross-slice smoke** — Re-run tests from ALL slices in the wave + `checks.test_full` (fallback: `checks.test`).
 
 15. **SEC Gate** — Run `checks.security_scan`. **Exit code != 0 → fix violations before proceeding.** Warnings are informational. Wave does not advance to human checklist with open violations. _(Skip entirely if `checks.security_scan` is null; warn "no security scan configured")_ _(ceremony:light → skip)_
 
@@ -129,7 +134,7 @@ Language: Use `conventions.conversation_language` for all conversation. Commit m
 ## Built-in Discipline
 
 - Step 7 already implies RED → GREEN → REFACTOR. Do not skip the failing-test phase.
-- For any slice with business logic (FSM, money, scoring, validation), at least 2 property-based tests are required alongside example tests. Properties come from spec §4.6 Test Scenarios (Given/When/Then), not from looking at the implementation.
+- Step 7 PBT rule: for any slice with business logic (FSM, money, scoring, validation), at least 2 property-based tests are required alongside example tests. Properties come from spec §4.6 Test Scenarios (Given/When/Then), not from looking at the implementation. See `docs/platform/TESTING.md §11`.
 - Step 10 is the built-in debugging loop: read error, form hypothesis, apply smallest fix, stop after 3 attempts.
 - Before reporting a wave complete, rerun the concrete verification commands from Steps 8, 14, and 15 in the same session.
 

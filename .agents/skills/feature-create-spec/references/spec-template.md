@@ -35,6 +35,49 @@ supersedes: null
 1. {Regra testavel e sem ambiguidade}
 2. ...
 
+## 4.6 Test Matrix
+
+| Area                                | Change Type | Automated Proof            | Fast Gate | Full Gate        |
+| ----------------------------------- | ----------- | -------------------------- | --------- | ---------------- |
+| {schema / logic / action / UI flow} | {type}      | {test file / suite / lane} | {command} | {command or N/A} |
+
+### Must-Pass Scenarios
+
+- {Happy path proving the feature works for the intended role}
+- {Another success case if the feature has multiple valid paths}
+
+### Must-Fail Scenarios
+
+- {Invalid input is rejected with the expected error}
+- {Unauthorized actor is denied}
+- {Boundary / invariant violation is blocked}
+
+### Regression-Sensitive Areas
+
+- {existing journey / test / module likely to regress}
+- {critical journey from project.yaml quality.critical_journeys when applicable}
+
+### Observability Expectations
+
+- {audit event / log / metric emitted by the feature}
+- {how the operator or tests verify this signal}
+
+### Contract Cases (required for schema-affecting changes)
+
+- **Canonical valid payload:** {payload}
+- **Invalid payloads:** {list}
+- **Defaults / coercions:** {expected parsed values}
+- **Cross-field rules:** {if applicable}
+
+### Test Scenarios (Given/When/Then — required for behavior-heavy logic)
+
+- **Given** {state} **when** {action} **then** {expected outcome}
+- **Given** {invalid / edge state} **when** {action} **then** {block / fallback / error}
+
+### Regression Cases
+
+- [ ] {bug or edge case that must stay green}
+
 ## 5. Permissions
 
 | Role   | Permissions                  |

@@ -208,6 +208,11 @@ When included, it **MUST** declare:
   - ASVS v5 controls required for ALL change_classes (not just medium+).
   - Mandatory OWASP + ASVS mapping regardless of change_class.
 
+**§12 Change Safety** — Always concrete. If `agent-tool` in `SAFETY_CLASSES` AND change_class includes `agent-tool`:
+
+- Require lethal trifecta analysis.
+- Require `maskForLLM`/`sanitizePrompt` declaration.
+
 **§4.6 Test Matrix** — Required for all ceremonies:
 
 - **Must-pass scenarios:** happy-path assertions that prove the feature works end-to-end.
@@ -218,11 +223,6 @@ When included, it **MUST** declare:
 - For logic changes: declare unit/property/integration coverage.
 - For bug-prone flows: declare the regression that must fail before the fix and pass after it.
 - For behavior-heavy sections (FSM, calculations, workflows, complex validations): include explicit **Test Scenarios** in Given/When/Then form. These scenarios are mechanically translated to tests — the LLM translates, it does not interpret. See `docs/platform/TESTING.md §13`.
-
-**§12 Change Safety** — Always concrete. If `agent-tool` in `SAFETY_CLASSES` AND change_class includes `agent-tool`:
-
-- Require lethal trifecta analysis.
-- Require `maskForLLM`/`sanitizePrompt` declaration.
 
 ---
 

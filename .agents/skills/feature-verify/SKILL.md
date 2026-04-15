@@ -57,6 +57,7 @@ When `ceremony` is `"auto"` or absent, infer from `change_class`:
 
 - No approved artifacts (`spec` and `plan`) → STOP.
 - No fresh verification evidence (same session) → STOP.
+- `conventions.test_enforcement = "hard"` and no `checks.test`/`checks.test_full` → STOP.
 - If medium+ without minimum release package (and `docs.release_checklist` is defined) → STOP.
 - If UI change without validation against design docs (when `docs.design_companion` and/or `docs.design_system` are defined and `conventions.design_lab` is true) → STOP.
 - Do not approve push/PR with an open blocker.
@@ -111,7 +112,7 @@ Run individual checks:
 
 - `checks.type_check` — if null, skip and warn
 - `checks.lint` — if null, skip and warn
-- `checks.test` — if null and `test_enforcement=hard`, STOP
+- `checks.test_full` (fallback: `checks.test`) — if null and `test_enforcement=hard`, STOP
 - `checks.build` — if null, skip and warn
 - `checks.security_scan` — same rules as above
 

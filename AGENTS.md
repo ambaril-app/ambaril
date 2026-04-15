@@ -6,8 +6,9 @@ This file is the Codex-first operating contract for the Shape Up workflow in thi
 
 - Operator-facing conversation, summaries, and checklists are in PT-BR.
 - Code symbols, filenames, database entities, route segments, and internal IDs stay in English.
-- The canonical skill family is `feature-*`. Source of truth: `.claude/skills/feature-*`. Mirror for cross-agent use: `.agents/skills/feature-*`. Both must stay in sync.
-- Workflow rule changes must be applied to BOTH `.claude/skills/feature-*` AND `.agents/skills/feature-*`.
+- The canonical skill family is `feature-*`. Source of truth: `.claude/skills/feature-*` plus `.claude/skills/state-scan`.
+- Published consumers are synced from that source via `scripts/sync-consumers.sh` into `.agents/skills/feature-*`, `../.agents/skills/feature-*`, `~/.agents/skills/feature-*`, and `~/.claude/skills/feature-*`.
+- Workflow rule changes must be applied to the canonical `.claude/skills/*` copy first, then propagated with `scripts/sync-consumers.sh`.
 - `GOLD-STANDARD.md` is the permanent methodology source.
 - `IMPLEMENTATION.md` is a catalog of possible bets, not a committed backlog.
 - `docs/modules/` contains durable module context and long-lived module documentation.

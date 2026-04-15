@@ -144,6 +144,7 @@ Para cada achado com resposta objetivamente correta (sem tradeoff de design), co
 
 - Tipo de dado incorreto sem ambiguidade (ex: `text` onde deveria ser `uuid`, `int` onde deveria ser `boolean`)
 - FK referenciada na narrativa mas ausente no schema
+- Mudanca de schema sem casos de contrato em `§4.6 Test Matrix`
 - `updated_at` / `created_at` / `deleted_at` ausentes onde o modulo claramente usa soft delete ou audit
 - Naming inconsistente com o resto da spec (ex: mesmo conceito com dois nomes diferentes na mesma secao)
 - Campo listado em duas secoes com tipos conflitantes

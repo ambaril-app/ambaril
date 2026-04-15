@@ -13,8 +13,8 @@ Read `project.yaml` from the project root. **If not found → STOP.** All paths,
 
 ```
 paths:      specs
-checks:     type_check, lint, test, build, security_scan, state_scan, state_scan_cwd
-conventions: copy_language, conversation_language, multi_tenant
+checks:     type_check, lint, test, test_fast, test_full, build, security_scan, state_scan, state_scan_cwd
+conventions: copy_language, conversation_language, multi_tenant, test_enforcement
 ```
 
 **Ceremony is always `"light"` for fixes** — regardless of what `project.yaml` declares. Fixes are inherently scoped and should not carry full-ceremony overhead.
@@ -111,6 +111,7 @@ Write the fix using RED → GREEN → REFACTOR:
 
 After implementation, run available checks:
 
+- `checks.test_fast` — if null, fallback to `checks.test`; if both null and `test_enforcement=hard`, STOP
 - `checks.type_check` — if null, skip and warn
 - `checks.lint` — if null, skip and warn
 - `checks.test` — if null, skip and warn
