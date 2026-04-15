@@ -25,11 +25,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Type check
-        run: pnpm type-check
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
 
-      - name: Lint
-        run: pnpm lint
+      - name: CI gate
+        run: ./bin/ci
+        env:
+          DATABASE_URL: ${{ secrets.NEON_TEST_DATABASE_URL }}
 
       - name: Dependency audit
         run: pnpm audit --audit-level=high

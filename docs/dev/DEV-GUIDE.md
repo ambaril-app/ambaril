@@ -70,7 +70,7 @@ The platform has **15 core modules** organized into four pillars: Commerce, Oper
 | ------------------ | --------------------------------------------- | ------------------------------------------------------------------------- |
 | **Neon**           | Serverless PostgreSQL (free tier covers dev)  | [neon.tech](https://neon.tech) -- create a project, get connection string |
 | **Upstash**        | Serverless Redis (free tier covers dev)       | [upstash.com](https://upstash.com) -- create a Redis database             |
-| **Discord**        | ClawdBot testing                              | Need a Discord account + access to the CIENA dev server                   |
+| **Discord**        | Astro testing                                 | Need a Discord account + access to the CIENA dev server                   |
 | **Meta Developer** | WhatsApp Business API + Instagram API testing | [developers.facebook.com](https://developers.facebook.com)                |
 
 ### Recommended: VS Code Setup
@@ -206,7 +206,7 @@ ambaril/
 │   │   │   │   ├── inbox/          # Team inbox pages
 │   │   │   │   ├── tarefas/        # Task manager pages
 │   │   │   │   ├── dam/            # Digital asset management pages
-│   │   │   │   ├── dashboard/      # Beacon dashboard + War Room
+│   │   │   │   ├── dashboard/      # Dashboard + War Room
 │   │   │   │   └── settings/       # System settings
 │   │   │   ├── (public)/           # Public pages (checkout, meu-pedido)
 │   │   │   ├── api/                # API routes (BFF layer)
@@ -222,7 +222,7 @@ ambaril/
 │   │   ├── stores/                 # Zustand stores (client state)
 │   │   └── styles/                 # Global styles, Tailwind config
 │   │
-│   └── discord-bot/                # ClawdBot / Pulse Discord bot
+│   └── discord-bot/                # Astro Discord runtime
 │       ├── commands/               # Slash commands
 │       ├── reports/                # Scheduled report generators
 │       ├── handlers/               # Event handlers
@@ -267,9 +267,9 @@ ambaril/
 │   │   ├── commerce/               # checkout, b2b
 │   │   ├── operations/             # erp, pcp, trocas
 │   │   ├── growth/                 # crm, creators, marketing-intel
-│   │   ├── communication/          # whatsapp, clawdbot
+│   │   ├── communication/          # whatsapp, astro
 │   │   ├── team/                   # inbox, tarefas, dam
-│   │   └── intelligence/           # dashboard (Beacon)
+│   │   └── intelligence/           # dashboard
 │   ├── dev/                        # GLOSSARY, DEV-GUIDE (this file)
 │   └── expansions/                 # Future expansion specs
 │
@@ -507,14 +507,21 @@ All commands are run from the repo root. Turborepo handles running them across t
 | `pnpm build`                    | Build all packages and apps for production                                |
 | `pnpm lint`                     | Run ESLint across all packages                                            |
 | `pnpm format`                   | Run Prettier across all packages                                          |
-| `pnpm test`                     | Run Vitest unit and integration tests                                     |
-| `pnpm test:e2e`                 | Run Playwright end-to-end tests                                           |
+| `pnpm test`                     | Full monorepo suite — 151 always-on + 9 env-aware                         |
+| `pnpm test:fast`                | Fast gate — contracts + PBT (64 tests, no DB needed)                      |
+| `pnpm test:schemas`             | Schema/validator contracts only (46 tests)                                |
+| `pnpm test:pbt`                 | Property-based tests — shared validators + app SSRF (18 tests)            |
+| `pnpm test:integration`         | DB-backed integration (requires `DATABASE_URL`, skips otherwise)          |
+| `pnpm test:e2e`                 | Playwright E2E (requires dev server + browsers installed)                 |
+| `pnpm test:e2e:smoke`           | Playwright smoke only (login render + root redirect)                      |
+| `pnpm test:ci`                  | **Canonical CI gate** — lint + type-check + test + integration + build    |
+| `pnpm db:secure`                | Apply RLS security bootstrap (`packages/db/sql/rls-bootstrap.sql`)        |
 | `pnpm db:generate`              | Generate a new Drizzle migration from schema changes                      |
 | `pnpm db:push`                  | Push schema changes directly to the database (dev only)                   |
 | `pnpm db:migrate`               | Run pending SQL migrations                                                |
 | `pnpm db:seed`                  | Seed the database with development data                                   |
 | `pnpm db:studio`                | Open Drizzle Studio (visual DB browser at `https://local.drizzle.studio`) |
-| `pnpm typecheck`                | Run TypeScript type checking across all packages                          |
+| `pnpm type-check`               | Run TypeScript type checking across all packages                          |
 
 ### Filtering by Package
 
@@ -648,7 +655,7 @@ R2_SECRET_ACCESS_KEY="your-secret-key"
 R2_BUCKET_NAME="ambaril-dev"
 ```
 
-### Discord (ClawdBot / Pulse)
+### Discord (Astro)
 
 ```bash
 # Bot authentication
@@ -792,12 +799,12 @@ Register the new module in the sidebar navigation config so users can access it.
 
 Update the auth configuration to include permissions for the new module. See [AUTH.md](../architecture/AUTH.md) for the RBAC model.
 
-### Step 8: Add Flare Notification Events
+### Step 8: Add Notification Events
 
-Register events that should trigger notifications. See [NOTIFICATIONS.md](../platform/NOTIFICATIONS.md) for the Flare system.
+Register events that should trigger notifications. See [NOTIFICATIONS.md](../platform/NOTIFICATIONS.md) for the notification system.
 
 ```typescript
-// Example: register a Flare event
+// Example: register a notification event
 {
   event: "loyalty.tier_upgraded",
   channels: ["in_app", "discord"],
@@ -822,23 +829,31 @@ For the complete testing strategy, coverage targets, and patterns, see [TESTING.
 ### Running Tests
 
 ```bash
-# Run all tests
-pnpm test
+# ── Canonical CI gate (the one command to rule them all) ──────
+./bin/ci              # or: pnpm test:ci
 
-# Run tests in watch mode (re-runs on file change)
-pnpm test -- --watch
+# ── Always-on (no env required) ──────────────────────────────
+pnpm test             # Full monorepo suite
+pnpm test:fast        # Fast gate: contracts + PBT
+pnpm test:schemas     # Schema/validator contracts only
+pnpm test:pbt         # Property-based tests only
 
-# Run tests for a specific package
-pnpm test --filter=shared
+# ── Env-aware (requires DATABASE_URL) ────────────────────────
+pnpm test:integration # DB-backed integration (skips without DB)
+
+# ── E2E (requires dev server + Playwright browsers) ─────────
+pnpm test:e2e         # All Playwright tests
+pnpm test:e2e:smoke   # Smoke only (login + root redirect)
+
+# ── DB security ──────────────────────────────────────────────
+pnpm db:secure        # Apply RLS bootstrap (requires DATABASE_URL)
+
+# ── Development helpers ──────────────────────────────────────
+pnpm --filter @ambaril/shared vitest        # Watch mode
+pnpm --filter @ambaril/shared vitest run    # Run specific package
 
 # Run a specific test file
-pnpm test -- packages/shared/src/utils/__tests__/cpf.test.ts
-
-# Run Playwright E2E tests
-pnpm test:e2e
-
-# Run E2E tests with UI mode (visual debugging)
-pnpm test:e2e -- --ui
+pnpm --filter @ambaril/shared vitest run src/utils/__tests__/mask-for-llm.test.ts
 ```
 
 ### Writing a Unit Test
@@ -1112,14 +1127,14 @@ All documentation lives in the `docs/` folder. Here is a complete index:
 
 ### Platform (Cross-Cutting)
 
-| Document              | Path                                                          | Description                                    |
-| --------------------- | ------------------------------------------------------------- | ---------------------------------------------- |
-| Error Handling        | [`platform/ERROR-HANDLING.md`](../platform/ERROR-HANDLING.md) | Error taxonomy, AppError class, retry patterns |
-| Testing Strategy      | [`platform/TESTING.md`](../platform/TESTING.md)               | Test types, coverage targets, patterns         |
-| Global Search         | [`platform/SEARCH.md`](../platform/SEARCH.md)                 | Search index, tsvector setup, command palette  |
-| Notifications (Flare) | [`platform/NOTIFICATIONS.md`](../platform/NOTIFICATIONS.md)   | Cross-module notification system               |
-| Audit Log             | [`platform/AUDIT-LOG.md`](../platform/AUDIT-LOG.md)           | Change tracking, compliance                    |
-| LGPD Compliance       | [`platform/LGPD.md`](../platform/LGPD.md)                     | Data protection, consent, anonymization        |
+| Document         | Path                                                          | Description                                    |
+| ---------------- | ------------------------------------------------------------- | ---------------------------------------------- |
+| Error Handling   | [`platform/ERROR-HANDLING.md`](../platform/ERROR-HANDLING.md) | Error taxonomy, AppError class, retry patterns |
+| Testing Strategy | [`platform/TESTING.md`](../platform/TESTING.md)               | Test types, coverage targets, patterns         |
+| Global Search    | [`platform/SEARCH.md`](../platform/SEARCH.md)                 | Search index, tsvector setup, command palette  |
+| Notificações     | [`platform/NOTIFICATIONS.md`](../platform/NOTIFICATIONS.md)   | Cross-module notification system               |
+| Audit Log        | [`platform/AUDIT-LOG.md`](../platform/AUDIT-LOG.md)           | Change tracking, compliance                    |
+| LGPD Compliance  | [`platform/LGPD.md`](../platform/LGPD.md)                     | Data protection, consent, anonymization        |
 
 ### Module Specs
 
@@ -1134,11 +1149,11 @@ All documentation lives in the `docs/` folder. Here is a complete index:
 | Creators           | [`modules/growth/creators.md`](../modules/growth/creators.md)               | Growth        |
 | Marketing Intel    | [`modules/growth/marketing-intel.md`](../modules/growth/marketing-intel.md) | Growth        |
 | WhatsApp Engine    | [`modules/communication/whatsapp.md`](../modules/communication/whatsapp.md) | Communication |
-| ClawdBot (Discord) | [`modules/communication/clawdbot.md`](../modules/communication/clawdbot.md) | Communication |
+| Astro (Discord)    | [`modules/communication/astro.md`](../modules/communication/astro.md)       | Communication |
 | Inbox              | [`modules/team/inbox.md`](../modules/team/inbox.md)                         | Team          |
 | Tarefas (Tasks)    | [`modules/team/tarefas.md`](../modules/team/tarefas.md)                     | Team          |
 | DAM                | [`modules/team/dam.md`](../modules/team/dam.md)                             | Team          |
-| Dashboard (Beacon) | [`modules/intelligence/dashboard.md`](../modules/intelligence/dashboard.md) | Intelligence  |
+| Dashboard          | [`modules/intelligence/dashboard.md`](../modules/intelligence/dashboard.md) | Intelligence  |
 
 ### Developer Resources
 

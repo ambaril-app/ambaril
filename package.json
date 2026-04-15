@@ -9,6 +9,15 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
+    "test": "turbo run test --filter='*'",
+    "test:fast": "pnpm test:schemas && pnpm test:pbt",
+    "test:schemas": "pnpm --filter @ambaril/shared test:schemas",
+    "test:pbt": "pnpm --filter @ambaril/shared test:pbt && pnpm --filter @ambaril/web test:pbt",
+    "test:integration": "pnpm --filter @ambaril/web test:integration",
+    "test:e2e": "pnpm exec playwright test",
+    "test:e2e:smoke": "pnpm exec playwright test e2e/smoke.spec.ts",
+    "test:ci": "./bin/ci",
+    "db:secure": "./bin/db-secure",
     "db:generate": "turbo db:generate",
     "db:migrate": "turbo db:migrate",
     "db:seed": "turbo db:seed",
@@ -16,9 +25,13 @@
     "shopify:dev": "shopify app dev",
     "shopify:build": "shopify app build",
     "shopify:deploy": "shopify app deploy",
+    "spec:index": "bash scripts/build-state-index.sh",
+    "spec:scan": "bash scripts/state-scan.sh",
+    "spec:drift": "bash scripts/state-scan.sh drift --module",
     "prepare": "husky"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@typescript-eslint/parser": "^8.58.0",
     "eslint": "^10.2.0",
     "eslint-plugin-security": "^4.0.0",
@@ -30,7 +43,7 @@
   },
   "lint-staged": {
     "*.{ts,tsx}": [
-      "eslint --quiet --max-warnings=0"
+      "eslint --quiet --max-warnings=0 --no-warn-ignored"
     ],
     "*.{ts,tsx,js,jsx,json,md}": [
       "prettier --check"

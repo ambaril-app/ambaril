@@ -12,16 +12,23 @@
     "./schemas": "./src/schemas/index.ts",
     "./schemas/*": "./src/schemas/*.ts",
     "./integrations": "./src/integrations/index.ts",
-    "./hooks/use-count-up": "./src/hooks/use-count-up.ts"
+    "./hooks/use-count-up": "./src/hooks/use-count-up.ts",
+    "./hooks/use-reveal": "./src/hooks/use-reveal.ts",
+    "./ui/styles": "./src/ui/styles.ts"
   },
   "scripts": {
     "type-check": "tsc --noEmit",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "test": "vitest run",
+    "test:schemas": "vitest run src/validators/__tests__/validators-contract.test.ts src/schemas/__tests__/integrations-contract.test.ts",
+    "test:pbt": "vitest run src/**/__tests__/*-pbt.test.ts"
   },
   "dependencies": {
     "zod": "^3.24"
   },
   "devDependencies": {
-    "typescript": "^5.7"
+    "fast-check": "^4.6.0",
+    "typescript": "^5.7",
+    "vitest": "^2.1"
   }
 }

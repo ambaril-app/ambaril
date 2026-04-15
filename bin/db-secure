@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# =============================================================================
+# bin/db-secure — Apply RLS security bootstrap to the database
+# =============================================================================
+# Runs packages/db/sql/rls-bootstrap.sql against DATABASE_URL.
+# Requires psql. Idempotent — safe to re-run on any environment.
+# =============================================================================
+
+set -euo pipefail
+
+if [ -z "${DATABASE_URL:-}" ]; then
+  echo "ERROR: DATABASE_URL is not set."
+  echo ""
+  echo "Usage:"
+  echo "  source .env && ./bin/db-secure"
+  echo "  DATABASE_URL=\$URL ./bin/db-secure"
+  exit 1
+fi
+
+if ! command -v psql &>/dev/null; then
+  echo "ERROR: psql is required but not found."
+  echo ""
+  echo "This script executes multi-statement SQL with DO blocks that"
+  echo "cannot be safely run through the Neon HTTP driver."
+  echo ""
+  echo "Install PostgreSQL client:"
+  echo "  macOS:  brew install libpq && brew link --force libpq"
+  echo "  Ubuntu: sudo apt-get install postgresql-client"
+  echo "  Nix:    nix-shell -p postgresql"
+  exit 1
+fi
+
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+SQL_FILE="$SCRIPT_DIR/packages/db/sql/rls-bootstrap.sql"
+
+if [ ! -f "$SQL_FILE" ]; then
+  echo "ERROR: $SQL_FILE not found"
+  exit 1
+fi
+
+echo "Applying RLS security bootstrap..."
+echo "Target: ${DATABASE_URL%%@*}@..."
+
+psql "$DATABASE_URL" -f "$SQL_FILE"
+echo ""
+echo "Done. RLS bootstrap applied."

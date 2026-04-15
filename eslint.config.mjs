@@ -35,6 +35,7 @@ export default [
       ".next/**",
       "dist/**",
       "build/**",
+      "e2e/**",
       "*.config.{js,mjs,ts}",
     ],
   },

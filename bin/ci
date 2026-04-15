@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# =============================================================================
+# bin/ci — Canonical CI entrypoint for the Ambaril project
+# =============================================================================
+# Green exit = green baseline. Used by GitHub Actions and local pre-push.
+#
+# Env-aware behavior:
+#   DATABASE_URL set    → integration tests run
+#   DATABASE_URL absent → integration tests skipped (explicit message)
+#   PLAYWRIGHT_INSTALLED set or npx playwright test --list succeeds → E2E smoke runs
+#   otherwise           → E2E skipped (explicit message)
+# =============================================================================
+
+set -euo pipefail
+
+BOLD='\033[1m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+pass() { echo -e "  ${GREEN}✓${NC} $1"; }
+fail() { echo -e "  ${RED}✗${NC} $1"; exit 1; }
+skip() { echo -e "  ${YELLOW}⊘ SKIP${NC} $1"; }
+
+echo -e "${BOLD}═══ Ambaril CI ═══${NC}"
+echo ""
+
+# ── 1. Lint ──────────────────────────────────────────────────
+echo -e "${BOLD}1/5 Lint${NC}"
+pnpm lint || fail "Lint failed"
+pass "Lint"
+
+# ── 2. Type check ───────────────────────────────────────────
+echo -e "${BOLD}2/5 Type check${NC}"
+pnpm type-check || fail "Type check failed"
+pass "Type check"
+
+# ── 3. Tests (always-on) ────────────────────────────────────
+echo -e "${BOLD}3/5 Tests${NC}"
+pnpm test || fail "Tests failed"
+pass "Tests"
+
+# ── 4. Integration (env-aware) ──────────────────────────────
+echo -e "${BOLD}4/5 Integration${NC}"
+if [ -n "${DATABASE_URL:-}" ]; then
+  pnpm test:integration || fail "Integration tests failed"
+  pass "Integration (DATABASE_URL present)"
+else
+  skip "Integration — DATABASE_URL not set"
+fi
+
+# ── 5. Build ────────────────────────────────────────────────
+echo -e "${BOLD}5/5 Build${NC}"
+pnpm build || fail "Build failed"
+pass "Build"
+
+# ── Optional: E2E smoke ─────────────────────────────────────
+if [ -f "playwright.config.ts" ]; then
+  if pnpm exec playwright test --list &>/dev/null 2>&1; then
+    echo -e "${BOLD}E2E Smoke${NC}"
+    pnpm test:e2e:smoke || fail "E2E smoke failed"
+    pass "E2E smoke"
+  else
+    skip "E2E — Playwright browsers not installed (run: pnpm exec playwright install)"
+  fi
+else
+  skip "E2E — no playwright.config.ts"
+fi
+
+echo ""
+echo -e "${GREEN}${BOLD}═══ CI GREEN ═══${NC}"
