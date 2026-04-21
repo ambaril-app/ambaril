@@ -1,6 +1,5 @@
 import {
   pgSchema,
-  pgEnum,
   pgPolicy,
   uuid,
   varchar,
@@ -179,134 +178,145 @@ export const permissions = globalSchema.table(
 // is called PER ROW. Ref: Supabase RLS Performance Best Practices.
 
 // global.audit_logs — append-only audit trail (per-tenant)
-export const auditLogs = globalSchema.table(
-  "audit_logs",
-  {
-    id: uuid("id")
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    tenantId: uuid("tenant_id")
-      .notNull()
-      .references(() => tenants.id),
-    timestamp: timestamp("timestamp", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id),
-    userRole: userRoleEnum("user_role").notNull(),
-    action: auditActionEnum("action").notNull(),
-    resourceType: varchar("resource_type", { length: 100 }).notNull(),
-    resourceId: uuid("resource_id").notNull(),
-    module: varchar("module", { length: 50 }).notNull(),
-    changes: jsonb("changes").notNull(),
-    ipAddress: inet("ip_address"),
-    userAgent: text("user_agent"),
-    requestId: uuid("request_id"),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    index("idx_audit_logs_tenant").on(table.tenantId),
-    index("idx_audit_logs_user").on(table.userId),
-    index("idx_audit_logs_resource").on(table.resourceType, table.resourceId),
-    index("idx_audit_logs_module").on(table.module),
-    index("idx_audit_logs_timestamp").on(table.timestamp),
-    index("idx_audit_logs_action").on(table.action),
-    index("idx_audit_logs_tenant_timestamp").on(table.tenantId, table.timestamp),
-    pgPolicy("tenant_isolation", {
-      as: "permissive",
-      for: "all",
-      to: "public",
-      using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
-      withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
-    }),
-  ],
-).enableRLS();
+export const auditLogs = globalSchema
+  .table(
+    "audit_logs",
+    {
+      id: uuid("id")
+        .primaryKey()
+        .default(sql`gen_random_uuid()`),
+      tenantId: uuid("tenant_id")
+        .notNull()
+        .references(() => tenants.id),
+      timestamp: timestamp("timestamp", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+      userId: uuid("user_id")
+        .notNull()
+        .references(() => users.id),
+      userRole: userRoleEnum("user_role").notNull(),
+      action: auditActionEnum("action").notNull(),
+      resourceType: varchar("resource_type", { length: 100 }).notNull(),
+      resourceId: uuid("resource_id").notNull(),
+      module: varchar("module", { length: 50 }).notNull(),
+      changes: jsonb("changes").notNull(),
+      ipAddress: inet("ip_address"),
+      userAgent: text("user_agent"),
+      requestId: uuid("request_id"),
+      createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+      index("idx_audit_logs_tenant").on(table.tenantId),
+      index("idx_audit_logs_user").on(table.userId),
+      index("idx_audit_logs_resource").on(table.resourceType, table.resourceId),
+      index("idx_audit_logs_module").on(table.module),
+      index("idx_audit_logs_timestamp").on(table.timestamp),
+      index("idx_audit_logs_action").on(table.action),
+      index("idx_audit_logs_tenant_timestamp").on(
+        table.tenantId,
+        table.timestamp,
+      ),
+      pgPolicy("tenant_isolation", {
+        as: "permissive",
+        for: "all",
+        to: "public",
+        using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+        withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+      }),
+    ],
+  )
+  .enableRLS();
 
 // global.notifications — Flare notification system (per-tenant)
-export const notifications = globalSchema.table(
-  "notifications",
-  {
-    id: uuid("id")
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    tenantId: uuid("tenant_id")
-      .notNull()
-      .references(() => tenants.id),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id),
-    title: varchar("title", { length: 255 }).notNull(),
-    body: text("body").notNull(),
-    icon: varchar("icon", { length: 50 }),
-    actionUrl: text("action_url"),
-    priority: notificationPriorityEnum("priority").notNull().default("medium"),
-    readAt: timestamp("read_at", { withTimezone: true }),
-    module: varchar("module", { length: 50 }).notNull(),
-    eventType: varchar("event_type", { length: 100 }).notNull(),
-    metadata: jsonb("metadata"),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    index("idx_notifications_tenant").on(table.tenantId),
-    index("idx_notifications_user_unread").on(table.userId, table.createdAt),
-    index("idx_notifications_module").on(table.module),
-    index("idx_notifications_tenant_user").on(table.tenantId, table.userId),
-    pgPolicy("tenant_isolation", {
-      as: "permissive",
-      for: "all",
-      to: "public",
-      using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
-      withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
-    }),
-  ],
-).enableRLS();
+export const notifications = globalSchema
+  .table(
+    "notifications",
+    {
+      id: uuid("id")
+        .primaryKey()
+        .default(sql`gen_random_uuid()`),
+      tenantId: uuid("tenant_id")
+        .notNull()
+        .references(() => tenants.id),
+      userId: uuid("user_id")
+        .notNull()
+        .references(() => users.id),
+      title: varchar("title", { length: 255 }).notNull(),
+      body: text("body").notNull(),
+      icon: varchar("icon", { length: 50 }),
+      actionUrl: text("action_url"),
+      priority: notificationPriorityEnum("priority")
+        .notNull()
+        .default("medium"),
+      readAt: timestamp("read_at", { withTimezone: true }),
+      module: varchar("module", { length: 50 }).notNull(),
+      eventType: varchar("event_type", { length: 100 }).notNull(),
+      metadata: jsonb("metadata"),
+      createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+      index("idx_notifications_tenant").on(table.tenantId),
+      index("idx_notifications_user_unread").on(table.userId, table.createdAt),
+      index("idx_notifications_module").on(table.module),
+      index("idx_notifications_tenant_user").on(table.tenantId, table.userId),
+      pgPolicy("tenant_isolation", {
+        as: "permissive",
+        for: "all",
+        to: "public",
+        using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+        withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+      }),
+    ],
+  )
+  .enableRLS();
 
 // global.search_index — full-text search across all modules (per-tenant)
-export const searchIndex = globalSchema.table(
-  "search_index",
-  {
-    id: uuid("id")
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    tenantId: uuid("tenant_id")
-      .notNull()
-      .references(() => tenants.id),
-    resourceType: varchar("resource_type", { length: 100 }).notNull(),
-    resourceId: uuid("resource_id").notNull(),
-    title: text("title").notNull(),
-    subtitle: text("subtitle"),
-    metadata: jsonb("metadata"),
-    module: varchar("module", { length: 50 }).notNull(),
-    searchVector: text("search_vector").notNull(), // tsvector managed via trigger
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    index("idx_search_index_tenant").on(table.tenantId),
-    uniqueIndex("idx_search_index_resource").on(
-      table.tenantId,
-      table.resourceType,
-      table.resourceId,
-    ),
-    index("idx_search_index_module").on(table.module),
-    pgPolicy("tenant_isolation", {
-      as: "permissive",
-      for: "all",
-      to: "public",
-      using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
-      withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
-    }),
-  ],
-).enableRLS();
+export const searchIndex = globalSchema
+  .table(
+    "search_index",
+    {
+      id: uuid("id")
+        .primaryKey()
+        .default(sql`gen_random_uuid()`),
+      tenantId: uuid("tenant_id")
+        .notNull()
+        .references(() => tenants.id),
+      resourceType: varchar("resource_type", { length: 100 }).notNull(),
+      resourceId: uuid("resource_id").notNull(),
+      title: text("title").notNull(),
+      subtitle: text("subtitle"),
+      metadata: jsonb("metadata"),
+      module: varchar("module", { length: 50 }).notNull(),
+      searchVector: text("search_vector").notNull(), // tsvector managed via trigger
+      createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+      updatedAt: timestamp("updated_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+      index("idx_search_index_tenant").on(table.tenantId),
+      uniqueIndex("idx_search_index_resource").on(
+        table.tenantId,
+        table.resourceType,
+        table.resourceId,
+      ),
+      index("idx_search_index_module").on(table.module),
+      pgPolicy("tenant_isolation", {
+        as: "permissive",
+        for: "all",
+        to: "public",
+        using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+        withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+      }),
+    ],
+  )
+  .enableRLS();
 
 // global.sessions — DB-backed sessions (replaces Redis per ADR-012)
 // NOTE: No RLS on sessions — session lookup establishes tenant context.
@@ -322,7 +332,9 @@ export const sessions = globalSchema.table(
     tenantId: uuid("tenant_id").references(() => tenants.id),
     token: varchar("token", { length: 64 }).notNull().unique(),
     userRole: userRoleEnum("user_role").notNull(),
-    userType: varchar("user_type", { length: 20 }).notNull().default("internal"), // internal | b2b | creator
+    userType: varchar("user_type", { length: 20 })
+      .notNull()
+      .default("internal"), // internal | b2b | creator
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     lastActiveAt: timestamp("last_active_at", { withTimezone: true })
       .notNull()
@@ -374,6 +386,30 @@ export const jobQueue = globalSchema.table(
   ],
 );
 
+// global.plan_capabilities — which capabilities each plan authorizes (fail-closed policy)
+// If a capability is not listed for a plan, it is DENIED. No exceptions.
+export const planCapabilities = globalSchema.table(
+  "plan_capabilities",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    plan: varchar("plan", { length: 20 }).notNull(),
+    capability: varchar("capability", { length: 50 }).notNull(),
+    isEnabled: boolean("is_enabled").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idx_plan_capabilities_unique").on(
+      table.plan,
+      table.capability,
+    ),
+    index("idx_plan_capabilities_plan").on(table.plan),
+  ],
+);
+
 // global.integration_providers — catalog of available integration providers
 export const integrationProviders = globalSchema.table(
   "integration_providers",
@@ -402,94 +438,109 @@ export const integrationProviders = globalSchema.table(
 );
 
 // global.tenant_integrations — per-tenant integration connections (RLS enabled)
-export const tenantIntegrations = globalSchema.table(
-  "tenant_integrations",
-  {
-    id: uuid("id")
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    tenantId: uuid("tenant_id")
-      .notNull()
-      .references(() => tenants.id, { onDelete: "cascade" }),
-    providerId: varchar("provider_id", { length: 50 })
-      .notNull()
-      .references(() => integrationProviders.providerId),
-    capability: varchar("capability", { length: 50 }).notNull(),
-    credentials: jsonb("credentials").notNull().default("{}"),
-    isActive: boolean("is_active").notNull().default(true),
-    lastTestedAt: timestamp("last_tested_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("idx_tenant_integrations_unique").on(table.tenantId, table.capability),
-    index("idx_tenant_integrations_tenant").on(table.tenantId),
-    index("idx_tenant_integrations_provider").on(table.providerId),
-    pgPolicy("tenant_isolation", {
-      as: "permissive",
-      for: "all",
-      to: "public",
-      using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
-      withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
-    }),
-  ],
-).enableRLS();
+export const tenantIntegrations = globalSchema
+  .table(
+    "tenant_integrations",
+    {
+      id: uuid("id")
+        .primaryKey()
+        .default(sql`gen_random_uuid()`),
+      tenantId: uuid("tenant_id")
+        .notNull()
+        .references(() => tenants.id, { onDelete: "cascade" }),
+      providerId: varchar("provider_id", { length: 50 })
+        .notNull()
+        .references(() => integrationProviders.providerId),
+      capability: varchar("capability", { length: 50 }).notNull(),
+      credentials: jsonb("credentials").notNull().default("{}"),
+      isActive: boolean("is_active").notNull().default(true),
+      lastTestedAt: timestamp("last_tested_at", { withTimezone: true }),
+      createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+      updatedAt: timestamp("updated_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+      uniqueIndex("idx_tenant_integrations_unique").on(
+        table.tenantId,
+        table.capability,
+      ),
+      index("idx_tenant_integrations_tenant").on(table.tenantId),
+      index("idx_tenant_integrations_provider").on(table.providerId),
+      pgPolicy("tenant_isolation", {
+        as: "permissive",
+        for: "all",
+        to: "public",
+        using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+        withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+      }),
+    ],
+  )
+  .enableRLS();
 
 // global.module_setup_state — setup wizard progress per module (RLS enabled)
-export const moduleSetupState = globalSchema.table(
-  "module_setup_state",
+export const moduleSetupState = globalSchema
+  .table(
+    "module_setup_state",
+    {
+      id: uuid("id")
+        .primaryKey()
+        .default(sql`gen_random_uuid()`),
+      tenantId: uuid("tenant_id")
+        .notNull()
+        .references(() => tenants.id, { onDelete: "cascade" }),
+      moduleId: varchar("module_id", { length: 50 }).notNull(),
+      isSetupComplete: boolean("is_setup_complete").notNull().default(false),
+      currentStep: varchar("current_step", { length: 50 }),
+      stepData: jsonb("step_data").notNull().default("{}"),
+      completedAt: timestamp("completed_at", { withTimezone: true }),
+      completedBy: uuid("completed_by").references(() => users.id),
+      createdAt: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+      updatedAt: timestamp("updated_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+      uniqueIndex("idx_module_setup_unique").on(table.tenantId, table.moduleId),
+      index("idx_module_setup_tenant").on(table.tenantId),
+      pgPolicy("tenant_isolation", {
+        as: "permissive",
+        for: "all",
+        to: "public",
+        using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+        withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
+      }),
+    ],
+  )
+  .enableRLS();
+
+// global.magic_links — passwordless authentication tokens
+export const magicLinks = globalSchema.table(
+  "magic_links",
   {
     id: uuid("id")
       .primaryKey()
       .default(sql`gen_random_uuid()`),
-    tenantId: uuid("tenant_id")
-      .notNull()
-      .references(() => tenants.id, { onDelete: "cascade" }),
-    moduleId: varchar("module_id", { length: 50 }).notNull(),
-    isSetupComplete: boolean("is_setup_complete").notNull().default(false),
-    currentStep: varchar("current_step", { length: 50 }),
-    stepData: jsonb("step_data").notNull().default("{}"),
-    completedAt: timestamp("completed_at", { withTimezone: true }),
-    completedBy: uuid("completed_by").references(() => users.id),
+    email: varchar("email", { length: 255 }).notNull(),
+    token: varchar("token", { length: 64 }).notNull().unique(),
+    type: varchar("type", { length: 20 }).notNull(), // 'login' | 'signup' | 'invite' | 'password_reset'
+    role: userRoleEnum("role"),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    tenantId: uuid("tenant_id").references(() => tenants.id),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    usedAt: timestamp("used_at", { withTimezone: true }),
+    ipAddress: inet("ip_address"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
   },
-  (table) => [
-    uniqueIndex("idx_module_setup_unique").on(table.tenantId, table.moduleId),
-    index("idx_module_setup_tenant").on(table.tenantId),
-    pgPolicy("tenant_isolation", {
-      as: "permissive",
-      for: "all",
-      to: "public",
-      using: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
-      withCheck: sql`tenant_id = (SELECT current_setting('app.tenant_id', true))::uuid`,
-    }),
+  (t) => [
+    uniqueIndex("idx_magic_links_token").on(t.token),
+    index("idx_magic_links_email").on(t.email),
+    index("idx_magic_links_expires").on(t.expiresAt),
   ],
-).enableRLS();
-
-// global.magic_links — passwordless authentication tokens
-export const magicLinks = globalSchema.table("magic_links", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  email: varchar("email", { length: 255 }).notNull(),
-  token: varchar("token", { length: 64 }).notNull().unique(),
-  type: varchar("type", { length: 20 }).notNull(), // 'login' | 'signup' | 'invite' | 'password_reset'
-  role: userRoleEnum("role"),
-  userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
-  tenantId: uuid("tenant_id").references(() => tenants.id),
-  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-  usedAt: timestamp("used_at", { withTimezone: true }),
-  ipAddress: inet("ip_address"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-}, (t) => [
-  uniqueIndex("idx_magic_links_token").on(t.token),
-  index("idx_magic_links_email").on(t.email),
-  index("idx_magic_links_expires").on(t.expiresAt),
-]);
+);

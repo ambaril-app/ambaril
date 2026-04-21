@@ -5,6 +5,8 @@
 // Endpoints: GET /order/list, GET /cart/list
 // NOTE: Yever has NO filter by coupon_code. Discovery requires scanning all orders.
 
+import { safeFetch } from "@/lib/safe-fetch";
+
 const YEVER_API_URL = process.env.YEVER_API_URL;
 // Support both YEVER_API_TOKEN (original) and YEVER_API_KEY (alias) for backwards compat
 const YEVER_API_KEY = process.env.YEVER_API_TOKEN ?? process.env.YEVER_API_KEY;
@@ -23,13 +25,13 @@ interface YeverApiCustomer {
 }
 
 interface YeverApiOrder {
-  reference: string;        // order ID
+  reference: string; // order ID
   cart_reference: string;
   customer: YeverApiCustomer;
-  status: string;           // paid | pending_payment | refunded | charged_back | canceled
+  status: string; // paid | pending_payment | refunded | charged_back | canceled
   coupon_code: string | null;
   currency: string;
-  price_total: number;      // final price paid
+  price_total: number; // final price paid
   price_subtotal: number;
   price_shipment: number;
   price_coupon_discount: number;
@@ -63,9 +65,9 @@ interface YeverApiListResponse {
 // ---------------------------------------------------------------------------
 
 export interface YeverOrder {
-  id: string;           // reference
-  total: number;        // price_total
-  discount: number;     // price_coupon_discount
+  id: string; // reference
+  total: number; // price_total
+  discount: number; // price_coupon_discount
   couponCode: string | null;
   customerCpf?: string; // customer.document
   createdAt: string;
@@ -118,7 +120,7 @@ async function fetchOrderPage(
     ...params,
   });
 
-  const res = await fetch(`${base}/order/list?${query.toString()}`, {
+  const res = await safeFetch(`${base}/order/list?${query.toString()}`, {
     headers: { Authorization: `Bearer ${apiKey}` },
   });
 
@@ -137,23 +139,34 @@ async function fetchOrderPage(
  * Discover coupon codes by scanning all paid orders.
  * Yever has no dedicated coupon endpoint — this is the only way to find active coupons.
  */
-export async function discoverCouponsFromOrders(): Promise<YeverDiscoveredCoupon[]> {
+export async function discoverCouponsFromOrders(): Promise<
+  YeverDiscoveredCoupon[]
+> {
   if (!isConfigured()) {
     console.warn("[Yever] API not configured. Returning empty.");
     return [];
   }
 
-  const couponMap = new Map<string, { orderCount: number; totalRevenue: number; totalDiscount: number }>();
+  const couponMap = new Map<
+    string,
+    { orderCount: number; totalRevenue: number; totalDiscount: number }
+  >();
   let page = 1;
   let hasMore = true;
 
   while (hasMore) {
-    const data = await fetchOrderPage(YEVER_API_URL!, YEVER_API_KEY!, page, { status: "paid" });
+    const data = await fetchOrderPage(YEVER_API_URL!, YEVER_API_KEY!, page, {
+      status: "paid",
+    });
 
     for (const order of data.orders) {
       if (order.coupon_code?.trim()) {
         const code = order.coupon_code.toUpperCase().trim();
-        const existing = couponMap.get(code) ?? { orderCount: 0, totalRevenue: 0, totalDiscount: 0 };
+        const existing = couponMap.get(code) ?? {
+          orderCount: 0,
+          totalRevenue: 0,
+          totalDiscount: 0,
+        };
         couponMap.set(code, {
           orderCount: existing.orderCount + 1,
           totalRevenue: existing.totalRevenue + order.price_total,
@@ -189,7 +202,11 @@ export async function getOrdersByCoupon(
   let hasMore = true;
   const targetCode = couponCode.toUpperCase().trim();
   const sinceParams: Record<string, string> = {};
-  if (since) sinceParams.created_at_inicial = since.toISOString().replace("T", " ").substring(0, 19);
+  if (since)
+    sinceParams.created_at_inicial = since
+      .toISOString()
+      .replace("T", " ")
+      .substring(0, 19);
 
   while (hasMore) {
     const data = await fetchOrderPage(YEVER_API_URL!, YEVER_API_KEY!, page, {
@@ -218,7 +235,9 @@ export async function getOrderById(
     return null;
   }
 
-  const data = await fetchOrderPage(YEVER_API_URL!, YEVER_API_KEY!, 1, { reference: orderId });
+  const data = await fetchOrderPage(YEVER_API_URL!, YEVER_API_KEY!, 1, {
+    reference: orderId,
+  });
   const order = data.orders[0];
   return order ? mapApiOrder(order) : null;
 }
@@ -239,21 +258,31 @@ export interface YeverConfig {
 export function createYeverClient(config: YeverConfig) {
   return {
     async discoverCouponsFromOrders(): Promise<YeverDiscoveredCoupon[]> {
-      const couponMap = new Map<string, { orderCount: number; totalRevenue: number; totalDiscount: number }>();
+      const couponMap = new Map<
+        string,
+        { orderCount: number; totalRevenue: number; totalDiscount: number }
+      >();
       let page = 1;
       let hasMore = true;
 
       while (hasMore) {
-        const data = await fetchOrderPage(config.apiUrl, config.apiKey, page, { status: "paid" });
+        const data = await fetchOrderPage(config.apiUrl, config.apiKey, page, {
+          status: "paid",
+        });
 
         for (const order of data.orders) {
           if (order.coupon_code?.trim()) {
             const code = order.coupon_code.toUpperCase().trim();
-            const existing = couponMap.get(code) ?? { orderCount: 0, totalRevenue: 0, totalDiscount: 0 };
+            const existing = couponMap.get(code) ?? {
+              orderCount: 0,
+              totalRevenue: 0,
+              totalDiscount: 0,
+            };
             couponMap.set(code, {
               orderCount: existing.orderCount + 1,
               totalRevenue: existing.totalRevenue + order.price_total,
-              totalDiscount: existing.totalDiscount + order.price_coupon_discount,
+              totalDiscount:
+                existing.totalDiscount + order.price_coupon_discount,
             });
           }
         }
@@ -276,7 +305,11 @@ export function createYeverClient(config: YeverConfig) {
       let hasMore = true;
       const targetCode = couponCode.toUpperCase().trim();
       const sinceParams: Record<string, string> = {};
-      if (since) sinceParams.created_at_inicial = since.toISOString().replace("T", " ").substring(0, 19);
+      if (since)
+        sinceParams.created_at_inicial = since
+          .toISOString()
+          .replace("T", " ")
+          .substring(0, 19);
 
       while (hasMore) {
         const data = await fetchOrderPage(config.apiUrl, config.apiKey, page, {
@@ -298,7 +331,9 @@ export function createYeverClient(config: YeverConfig) {
     },
 
     async getOrderById(orderId: string): Promise<YeverOrder | null> {
-      const data = await fetchOrderPage(config.apiUrl, config.apiKey, 1, { reference: orderId });
+      const data = await fetchOrderPage(config.apiUrl, config.apiKey, 1, {
+        reference: orderId,
+      });
       const order = data.orders[0];
       return order ? mapApiOrder(order) : null;
     },
@@ -306,12 +341,15 @@ export function createYeverClient(config: YeverConfig) {
     async testConnection(): Promise<boolean> {
       try {
         const base = normalizeApiUrl(config.apiUrl);
-        const res = await fetch(
-          `${base}/order/list?per_page=1`,
-          { headers: { Authorization: `Bearer ${config.apiKey}` } },
-        );
+        const res = await safeFetch(`${base}/order/list?per_page=1`, {
+          headers: { Authorization: `Bearer ${config.apiKey}` },
+        });
         return res.ok;
-      } catch {
+      } catch (e) {
+        console.error("[yever] test_connection_failed", {
+          error: e instanceof Error ? e.message : String(e),
+          apiUrl: config.apiUrl,
+        });
         return false;
       }
     },

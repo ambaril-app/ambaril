@@ -1,5 +1,8 @@
 // Resend email integration — transactional emails for Ambaril
 
+import { safeFetch } from "@/lib/safe-fetch";
+import { escapeHtml } from "@ambaril/shared/utils";
+
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const FROM_EMAIL =
   process.env.FROM_EMAIL || "Ambaril <no-reply@ambaril.com.br>";
@@ -25,7 +28,7 @@ export async function sendEmail(
     return { id: `mock-${Date.now()}` };
   }
 
-  const res = await fetch("https://api.resend.com/emails", {
+  const res = await safeFetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${RESEND_API_KEY}`,
@@ -72,7 +75,7 @@ export async function sendMagicLinkEmail(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  body { margin: 0; padding: 0; background: #F5F6FA; font-family: 'DM Sans', -apple-system, sans-serif; }
+  body { margin: 0; padding: 0; background: #F5F6FA; font-family: 'Geist', -apple-system, sans-serif; }
   .wrapper { max-width: 480px; margin: 40px auto; background: #FFFFFF; border: 1px solid #E8EAF0; border-radius: 12px; overflow: hidden; }
   .header { padding: 32px 40px 24px; border-bottom: 1px solid #F0F1F5; }
   .wordmark { font-size: 20px; font-weight: 700; color: #1A1D27; letter-spacing: -0.5px; }
@@ -125,7 +128,7 @@ export async function sendSignupEmail(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  body { margin: 0; padding: 0; background: #F5F6FA; font-family: 'DM Sans', -apple-system, sans-serif; }
+  body { margin: 0; padding: 0; background: #F5F6FA; font-family: 'Geist', -apple-system, sans-serif; }
   .wrapper { max-width: 480px; margin: 40px auto; background: #FFFFFF; border: 1px solid #E8EAF0; border-radius: 12px; overflow: hidden; }
   .header { padding: 32px 40px 24px; border-bottom: 1px solid #F0F1F5; }
   .wordmark { font-size: 20px; font-weight: 700; color: #1A1D27; letter-spacing: -0.5px; }
@@ -145,7 +148,7 @@ export async function sendSignupEmail(
   </div>
   <div class="body">
     <h1>Confirme seu email</h1>
-    <p>Seu workspace <strong>${companyName}</strong> está quase pronto. Confirme seu email para ativar o acesso.</p>
+    <p>Seu workspace <strong>${escapeHtml(companyName)}</strong> está quase pronto. Confirme seu email para ativar o acesso.</p>
     <a href="${link}" class="btn">Confirmar email</a>
     <p class="expiry">Este link expira em 15 minutos.</p>
   </div>
@@ -158,7 +161,7 @@ export async function sendSignupEmail(
 
   await sendEmail({
     to,
-    subject: `Confirme seu email — Workspace ${companyName}`,
+    subject: `Confirme seu email — Workspace ${escapeHtml(companyName)}`,
     html,
   });
 }
@@ -174,7 +177,7 @@ export async function sendPasswordResetEmail(
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
-  body { margin: 0; padding: 0; background: #F5F6FA; font-family: 'DM Sans', -apple-system, sans-serif; }
+  body { margin: 0; padding: 0; background: #F5F6FA; font-family: 'Geist', -apple-system, sans-serif; }
   .wrapper { max-width: 480px; margin: 40px auto; background: #FFFFFF; border: 1px solid #E8EAF0; border-radius: 12px; overflow: hidden; }
   .header { padding: 32px 40px 24px; border-bottom: 1px solid #F0F1F5; }
   .wordmark { font-size: 20px; font-weight: 700; color: #1A1D27; letter-spacing: -0.5px; }

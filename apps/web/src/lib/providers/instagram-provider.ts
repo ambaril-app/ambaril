@@ -6,16 +6,11 @@ import type {
   SocialProfile,
   SocialMention,
 } from "@ambaril/shared/integrations";
+import { safeFetch } from "@/lib/safe-fetch";
 
 interface InstagramCredentials {
   accessToken: string;
   businessAccountId: string;
-}
-
-interface GraphMeResponse {
-  id?: string;
-  name?: string;
-  error?: { message: string };
 }
 
 export class InstagramSocialProvider implements SocialProvider {
@@ -41,9 +36,9 @@ export class InstagramSocialProvider implements SocialProvider {
   async testConnection(): Promise<boolean> {
     if (!this.credentials) return false;
     try {
-      const res = await fetch(
-        `https://graph.facebook.com/v21.0/me?access_token=${this.credentials.accessToken}`,
-      );
+      const res = await safeFetch("https://graph.facebook.com/v21.0/me", {
+        headers: { Authorization: `Bearer ${this.credentials.accessToken}` },
+      });
       return res.ok;
     } catch {
       return false;

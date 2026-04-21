@@ -2,6 +2,8 @@
 // Tokens expire every 24h. Auto-refresh on 401.
 // GraphQL endpoint: https://{shop}.myshopify.com/admin/api/2025-01/graphql.json
 
+import { safeFetch } from "@/lib/safe-fetch";
+
 const SHOPIFY_SHOP = process.env.SHOPIFY_SHOP;
 const SHOPIFY_CLIENT_ID = process.env.SHOPIFY_CLIENT_ID;
 const SHOPIFY_CLIENT_SECRET = process.env.SHOPIFY_CLIENT_SECRET;
@@ -62,7 +64,7 @@ async function getAccessToken(): Promise<string> {
     return cachedToken.accessToken;
   }
 
-  const res = await fetch(
+  const res = await safeFetch(
     `https://${SHOPIFY_SHOP}/admin/oauth/access_token`,
     {
       method: "POST",
@@ -94,7 +96,7 @@ async function shopifyGraphQL<T>(
 ): Promise<T> {
   const token = await getAccessToken();
 
-  const res = await fetch(
+  const res = await safeFetch(
     `https://${SHOPIFY_SHOP}/admin/api/2025-01/graphql.json`,
     {
       method: "POST",
@@ -111,7 +113,7 @@ async function shopifyGraphQL<T>(
     cachedToken = null;
     const freshToken = await getAccessToken();
 
-    const retryRes = await fetch(
+    const retryRes = await safeFetch(
       `https://${SHOPIFY_SHOP}/admin/api/2025-01/graphql.json`,
       {
         method: "POST",
@@ -127,12 +129,9 @@ async function shopifyGraphQL<T>(
       throw new Error(`Shopify GraphQL error after retry: ${retryRes.status}`);
     }
 
-    const retryJson =
-      (await retryRes.json()) as ShopifyGraphQLResponse<T>;
+    const retryJson = (await retryRes.json()) as ShopifyGraphQLResponse<T>;
     if (retryJson.errors) {
-      throw new Error(
-        `Shopify GraphQL: ${JSON.stringify(retryJson.errors)}`,
-      );
+      throw new Error(`Shopify GraphQL: ${JSON.stringify(retryJson.errors)}`);
     }
     return retryJson.data as T;
   }
@@ -203,9 +202,7 @@ export async function getProducts(
   first = 10,
 ): Promise<Array<{ id: string; title: string; handle: string }>> {
   if (!SHOPIFY_SHOP || !SHOPIFY_CLIENT_ID || !SHOPIFY_CLIENT_SECRET) {
-    console.warn(
-      "[Shopify] Not configured. Returning empty product list.",
-    );
+    console.warn("[Shopify] Not configured. Returning empty product list.");
     return [];
   }
 
@@ -252,7 +249,7 @@ export function createShopifyClient(config: ShopifyConfig) {
       return clientToken.accessToken;
     }
 
-    const res = await fetch(
+    const res = await safeFetch(
       `https://${config.shop}/admin/oauth/access_token`,
       {
         method: "POST",
@@ -284,7 +281,7 @@ export function createShopifyClient(config: ShopifyConfig) {
   ): Promise<T> {
     const token = await getClientAccessToken();
 
-    const res = await fetch(
+    const res = await safeFetch(
       `https://${config.shop}/admin/api/2025-01/graphql.json`,
       {
         method: "POST",
@@ -300,7 +297,7 @@ export function createShopifyClient(config: ShopifyConfig) {
       clientToken = null;
       const freshToken = await getClientAccessToken();
 
-      const retryRes = await fetch(
+      const retryRes = await safeFetch(
         `https://${config.shop}/admin/api/2025-01/graphql.json`,
         {
           method: "POST",
@@ -313,7 +310,9 @@ export function createShopifyClient(config: ShopifyConfig) {
       );
 
       if (!retryRes.ok) {
-        throw new Error(`Shopify GraphQL error after retry: ${retryRes.status}`);
+        throw new Error(
+          `Shopify GraphQL error after retry: ${retryRes.status}`,
+        );
       }
 
       const retryJson = (await retryRes.json()) as ShopifyGraphQLResponse<T>;
@@ -371,7 +370,10 @@ export function createShopifyClient(config: ShopifyConfig) {
         },
       };
 
-      const data = await clientGraphQL<DiscountCodeBasicCreateData>(query, variables);
+      const data = await clientGraphQL<DiscountCodeBasicCreateData>(
+        query,
+        variables,
+      );
 
       if (data.discountCodeBasicCreate.userErrors.length > 0) {
         const firstError = data.discountCodeBasicCreate.userErrors[0];
