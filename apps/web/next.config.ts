@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const securityHeaders = [
   {
@@ -20,7 +21,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://cdn.jsdelivr.net https://*.myshopify.com",
       "font-src 'self' https://cdn.jsdelivr.net",
-      "connect-src 'self' https://*.neon.tech wss://*.neon.tech https://api.resend.com",
+      "connect-src 'self' https://*.neon.tech wss://*.neon.tech https://api.resend.com https://*.ingest.us.sentry.io https://*.ingest.sentry.io",
       "frame-ancestors 'none'",
     ].join("; "),
   },
@@ -53,4 +54,13 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  sourcemaps: {
+    disable: true, // No auth token on VPS — skip source map upload
+  },
+  silent: !process.env.CI,
+  autoInstrumentServerFunctions: true,
+  autoInstrumentMiddleware: true,
+});
