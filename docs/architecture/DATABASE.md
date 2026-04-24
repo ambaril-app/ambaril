@@ -270,6 +270,13 @@ CREATE INDEX idx_audit_logs_action ON global.audit_logs (action);
 
 > **Note:** audit_logs is append-only. No UPDATE or DELETE. Archived monthly to cold storage via background job.
 
+```sql
+-- IMMUTABILITY ENFORCEMENT
+REVOKE UPDATE, DELETE ON global.audit_logs FROM app_user;
+CREATE POLICY audit_immutable ON global.audit_logs FOR UPDATE TO app_user USING (false);
+CREATE POLICY audit_no_delete ON global.audit_logs FOR DELETE TO app_user USING (false);
+```
+
 #### global.notifications
 
 | Column     | Type                         | Constraints                   | Description                                  |
@@ -317,6 +324,37 @@ CREATE INDEX idx_search_index_module ON global.search_index (module);
 ---
 
 ### 4.2 Schema: `checkout`
+
+---
+
+## 4.1.1 Full-text search configuration (Quality Sprint 2026-04-24)
+
+Use PostgreSQL `unaccent` plus a custom Portuguese configuration so accents and stems normalize consistently.
+
+```sql
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
+CREATE TEXT SEARCH CONFIGURATION portuguese_unaccent (COPY = pg_catalog.portuguese);
+
+ALTER TEXT SEARCH CONFIGURATION portuguese_unaccent
+  ALTER MAPPING FOR hword, hword_part, word
+  WITH unaccent, portuguese_stem;
+```
+
+Generated `tsvector` example for product-like tables:
+
+```sql
+ALTER TABLE erp.products
+  ADD COLUMN search_vector tsvector
+  GENERATED ALWAYS AS (
+    setweight(to_tsvector('portuguese_unaccent', coalesce(name, '')), 'A') ||
+    setweight(to_tsvector('portuguese_unaccent', coalesce(description, '')), 'B') ||
+    setweight(to_tsvector('portuguese_unaccent', coalesce(array_to_string(tags, ' '), '')), 'C')
+  ) STORED;
+
+CREATE INDEX idx_products_search_vector
+  ON erp.products USING GIN (search_vector);
+```
 
 #### checkout.carts
 

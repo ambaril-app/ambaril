@@ -4695,3 +4695,53 @@ These features exist in Ambaril but NOT in Inbazz:
 8. **Multi-platform social tracking** — Instagram polling + hashtag tracking, with TikTok/YouTube planned. Inbazz focuses on Instagram + TikTok.
 
 > **Conclusion:** After this competitive gap analysis, Ambaril Creators addresses 19 out of 19 identified gaps (14 fully implemented in spec, 5 documented as conscious deferrals with roadmap items). The module maintains its core advantages (white-glove, gamification, ecosystem integration) while closing critical gaps in commission flexibility, content archival, AI compliance, and operational features.
+
+---
+
+## Payout idempotency hardening (Quality Sprint 2026-04-24)
+
+### `creators.payout_attempts`
+
+```sql
+CREATE TYPE creators.payout_attempt_status AS ENUM ('pending', 'processing', 'sent', 'failed');
+
+CREATE TABLE creators.payout_attempts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  commission_id UUID NOT NULL REFERENCES creators.sales_attributions(id),
+  attempt_number INT NOT NULL,
+  status creators.payout_attempt_status NOT NULL DEFAULT 'pending',
+  external_pix_txid VARCHAR(255) NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT payout_attempts_attempt_positive CHECK (attempt_number > 0)
+);
+
+CREATE UNIQUE INDEX idx_payout_attempts_commission_attempt
+  ON creators.payout_attempts (commission_id, attempt_number);
+
+CREATE UNIQUE INDEX idx_payout_attempts_external_pix_txid
+  ON creators.payout_attempts (external_pix_txid)
+  WHERE external_pix_txid IS NOT NULL;
+
+CREATE UNIQUE INDEX idx_payout_attempts_one_sent_per_commission
+  ON creators.payout_attempts (commission_id)
+  WHERE status = 'sent';
+```
+
+### Concurrency-safe payout flow
+
+Before initiating payout, open a transaction and lock the parent commission row with `FOR UPDATE`. This serializes concurrent payout attempts even when no `payout_attempts` rows exist yet.
+
+Inside that transaction:
+
+1. Lock `sales_attributions` or the parent commission row with `FOR UPDATE`.
+2. Check whether any `payout_attempts` row already exists with `status = 'sent'` for the same `commission_id`.
+3. Abort with `409` if a sent attempt already exists.
+4. Insert the next `pending` attempt.
+5. Move `pending -> processing -> sent` only after the PIX provider returns a unique `external_pix_txid`.
+
+### Anti-double-payment rule
+
+- No payout may start if a `sent` attempt already exists for the same `commission_id`.
+- The DB partial unique index is the last backstop, not the primary guard.
+- Application code must lock the parent commission row first, because `SELECT ... FOR UPDATE` on a missing `payout_attempts` row acquires no lock.

@@ -1288,6 +1288,54 @@ Anti-spam rule: max 1 broadcast per day per segment.
 
 ---
 
+## Broadcast FSM (Quality Sprint 2026-04-24)
+
+### States and valid transitions
+
+| State       | Valid next states                  | Guard conditions                                 |
+| ----------- | ---------------------------------- | ------------------------------------------------ |
+| `draft`     | `scheduled`, `cancelled`           | Template approved, audience resolved             |
+| `scheduled` | `running`, `cancelled`             | `scheduled_at <= now()` and worker lock acquired |
+| `running`   | `paused`, `completed`, `cancelled` | Worker heartbeat alive and batches still pending |
+| `paused`    | `running`, `cancelled`             | Explicit resume by operator or recovery job      |
+| `completed` | —                                  | Terminal state                                   |
+| `cancelled` | —                                  | Terminal state                                   |
+
+### Required broadcast fields
+
+Add these fields to `whatsapp.broadcast_campaigns` or the broadcast execution table used by the worker:
+
+- `current_batch_index INT NOT NULL DEFAULT 0`
+- `total_recipients INT NOT NULL DEFAULT 0`
+- `batch_size INT NOT NULL DEFAULT 100`
+- `worker_heartbeat_at TIMESTAMPTZ NULL`
+- `last_transition_at TIMESTAMPTZ NOT NULL DEFAULT NOW()`
+- `paused_at TIMESTAMPTZ NULL`
+- `resumed_at TIMESTAMPTZ NULL`
+- `failure_reason TEXT NULL`
+- `daily_messages_sent INT NOT NULL DEFAULT 0`
+
+### Pause / resume behavior
+
+- Worker writes `current_batch_index` before each batch dispatch.
+- After every batch, worker re-reads the broadcast row. If status changed to `paused` or `cancelled`, it stops immediately.
+- Recovery cron marks `running -> paused` when `worker_heartbeat_at` is stale for more than 5 minutes.
+- Resume restarts from `current_batch_index`, which gives at-least-once semantics. If exact-once delivery becomes mandatory, add a per-recipient send ledger.
+
+### Kill switch endpoint
+
+- `POST /api/v1/whatsapp/broadcasts/{id}/pause`
+- `404` if the broadcast does not exist
+- `409` if the broadcast is not currently `running`
+- `200` returns the updated broadcast with `status = 'paused'`
+
+### Additional enforcement
+
+- Track Meta rate limits with `daily_messages_sent` per tenant per day and block sends above the tenant tier allowance.
+- If any inbound reply matches an opt-out keyword, immediately set `crm.contacts.whatsapp_opted_out = true` and prevent future marketing sends.
+
+---
+
 ## Consolidated Features
 
 ### Inbox Unificado (absorvido do antigo módulo Inbox)

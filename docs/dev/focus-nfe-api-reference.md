@@ -989,3 +989,93 @@ For CIENA (streetwear e-commerce, RJ), the typical NF-e emission will use:
 9. **Decimal precision:** Match exactly or SEFAZ will reject
 10. **Auto-calculated fields:** Let Focus NFe calculate totals when possible to avoid mismatches
 11. **Digital certificate:** Must be valid A1 or A3, uploaded to Focus NFe dashboard
+
+---
+
+## 26. Quality Sprint 2026-04-24 — CIENA Fiscal Rules (Simples Nacional)
+
+### CFOP lookup by operation and destination
+
+| Operation                         | SP destination | Interstate destination | Notes                                               |
+| --------------------------------- | -------------- | ---------------------- | --------------------------------------------------- |
+| Standard sale to end customer     | `5102`         | `6102`                 | Typical CIENA apparel order                         |
+| Customer return (NF-e de entrada) | `1202`         | `2202`                 | Use `tipo_documento: 0` and `finalidade_emissao: 4` |
+| Return to supplier                | `5202`         | `6202`                 | Supplier return, not customer return                |
+
+### Simples Nacional CST / CSOSN guidance
+
+| Scenario                     | Focus field                  | Recommended value                |
+| ---------------------------- | ---------------------------- | -------------------------------- |
+| Standard B2C sale            | `icms_situacao_tributaria`   | `"102"`                          |
+| SN sale with credit transfer | `icms_situacao_tributaria`   | `"101"`                          |
+| ICMS-ST previously retained  | `icms_situacao_tributaria`   | `"500"`                          |
+| PIS under SN                 | `pis_situacao_tributaria`    | `"07"` with `pis_valor: 0.00`    |
+| COFINS under SN              | `cofins_situacao_tributaria` | `"07"` with `cofins_valor: 0.00` |
+
+### NCM codes for CIENA product categories
+
+| Category                   | NCM        |
+| -------------------------- | ---------- |
+| Camiseta de algodão        | `61091000` |
+| Calça masculina de algodão | `62034200` |
+| Calça feminina de algodão  | `62046200` |
+| Calça de malha masculina   | `61034200` |
+| Boné                       | `65050090` |
+| Meia de algodão            | `61159500` |
+| Meia sintética             | `61159600` |
+| Moletom sintético          | `61103000` |
+
+### ICMS context for SP origin under Simples Nacional
+
+- SP → Norte, Nordeste, Centro-Oeste, ES: `7%`
+- SP → Sul, MG, RJ: `12%`
+- Imported content cases under Resolução 13/2012: `4%`
+- DIFAL is not expected for CIENA's normal B2C Simples Nacional flow.
+
+### Complete example payload — interstate CIENA order, credit card, Simples Nacional
+
+```json
+{
+  "natureza_operacao": "Venda de mercadoria",
+  "data_emissao": "2026-04-24T12:00:00-03:00",
+  "tipo_documento": 1,
+  "local_destino": 2,
+  "finalidade_emissao": 1,
+  "consumidor_final": 1,
+  "presenca_comprador": 2,
+  "regime_tributario_emitente": 1,
+  "nome_destinatario": "Cliente CIENA",
+  "cpf_destinatario": "12345678909",
+  "indicador_inscricao_estadual_destinatario": 9,
+  "logradouro_destinatario": "Rua Exemplo",
+  "numero_destinatario": "100",
+  "bairro_destinatario": "Centro",
+  "municipio_destinatario": "Belo Horizonte",
+  "uf_destinatario": "MG",
+  "formas_pagamento": [
+    {
+      "forma_pagamento": "03",
+      "valor_pagamento": 159.9
+    }
+  ],
+  "itens": [
+    {
+      "numero_item": 1,
+      "codigo_produto": "CAMISETA-001",
+      "descricao": "Camiseta streetwear algodão",
+      "codigo_ncm": "61091000",
+      "cfop": 6102,
+      "unidade_comercial": "UN",
+      "quantidade_comercial": 1.0,
+      "valor_unitario_comercial": 159.9,
+      "valor_bruto": 159.9,
+      "icms_origem": 0,
+      "icms_situacao_tributaria": "102",
+      "pis_situacao_tributaria": "07",
+      "pis_valor": 0.0,
+      "cofins_situacao_tributaria": "07",
+      "cofins_valor": 0.0
+    }
+  ]
+}
+```
