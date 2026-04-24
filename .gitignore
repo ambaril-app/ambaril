@@ -45,3 +45,18 @@ drizzle/
 # Runtime
 *.pid
 dev.pid
+
+# OpenClaw agent files (auto-generated, not part of Ambaril source)
+.openclaw/
+HEARTBEAT.md
+IDENTITY.md
+SOUL.md
+TOOLS.md
+USER.md
+memory/
+# Local workspace hygiene
+*.tmp
+*.temp
+.cache/
+.codex/
+.claude/

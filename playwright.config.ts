@@ -7,7 +7,7 @@ import { defineConfig, devices } from "@playwright/test";
  * Set BASE_URL env to test against a different target (e.g., staging).
  */
 export default defineConfig({
-  testDir: "./e2e",
+  testDir: "./tests/e2e",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,

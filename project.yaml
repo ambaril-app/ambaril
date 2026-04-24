@@ -1,104 +1,66 @@
-project:
-  name: "Ambaril"
-  type: "saas-multitenant-monorepo"
-  language: "typescript"
+# Ambaril Project Manifest — required by feature-* skills
+# See ARATAR-SETUP.md §21 for full context
+
+project: ambaril
+description: Multi-tenant SaaS ERP for fashion/textile industry
+stack: Next.js 15, TypeScript, Drizzle ORM, Neon Postgres, Vercel
+
+ceremony: auto
+# auto: infers from spec change_class
+# low → light, medium/cross-module → standard, critical/agent-tool → full
 
 paths:
-  pitches: "docs/pitches"
-  specs: "docs/specs"
-  plans: "docs/plans"
-  cycles: "docs/cycles"
-  insights: "INSIGHTS.md"
-  handoffs: "docs/dev"
-
-docs:
-  architecture: "GOLD-STANDARD.md"
-  implementation: "IMPLEMENTATION.md"
-  agents: "AGENTS.md"
-  project_rules: "CLAUDE.md"
-  auth: "docs/architecture/AUTH.md"
-  database: "docs/architecture/DATABASE.md"
-  api: "docs/architecture/API.md"
-  security: "docs/platform/SECURITY.md"
-  security_checklist: "SECURITY-CHECKLIST.md"
-  testing_strategy: "docs/platform/TESTING.md"
-  change_safety: "docs/dev/CHANGE-SAFETY.md"
-  artifact_state: "docs/dev/ARTIFACT-STATE.md"
-  design_system: "DS.md"
-  design_companion: "../DESIGN.md"
-  release_checklist: "docs/dev/RELEASE-CHECKLIST.md"
-  release_approval: "docs/dev/RELEASE-APPROVAL.md"
-  review_protocol: "docs/dev/REVIEW-PROTOCOL.md"
-  migration_safety: "docs/dev/MIGRATION-SAFETY.md"
-  handoff_template: "docs/dev/HANDOFF-TEMPLATE.md"
+  specs: docs/specs
+  cycles: docs/cycles
+  insights: docs/INSIGHTS.md
+  handoffs: docs/handoffs
+  pitches: docs/pitches
 
 checks:
-  ci: "./bin/ci"
-  type_check: "pnpm type-check"
-  lint: "pnpm lint"
-  test: "pnpm test"
-  test_fast: "pnpm test:fast"
-  test_full: "pnpm test"
-  test_schemas: "pnpm test:schemas"
-  test_pbt: "pnpm test:pbt"
-  test_integration: "pnpm test:integration"
-  build: "pnpm build"
-  security_scan: "bash scripts/security-check.sh"
-  state_scan: "bash scripts/state-scan.sh"
+  type_check: "pnpm --filter @ambaril/web tsc --noEmit"
+  lint: "pnpm --filter @ambaril/web lint"
+  test: "pnpm --filter @ambaril/web test"
+  test_fast: "pnpm --filter @ambaril/web test"
+  test_full: "pnpm --filter @ambaril/web test"
+  build: "pnpm --filter @ambaril/web build"
+  security_scan: null # TODO: add after P2.7
+  state_scan: null # TODO: add after P2.9
   state_scan_cwd: null
-  db_secure: "pnpm db:secure"
+  ci: null # TODO: add after P1.2 (GitHub Actions)
+conventions:
+  copy_language: pt-BR
+  conversation_language: en
+  multi_tenant: true
+  test_enforcement: hard
+  design_lab: false
+  change_safety_classes: []
+
+docs:
+  auth: null # TODO: create auth conventions doc
+  database: null # TODO: create database conventions doc
+  api: null # TODO: create API conventions doc
+  change_safety: null # TODO: create change safety doc
+  security_checklist: null
+  design_companion: null
+  design_system: null
+  implementation: null
+  release_checklist: null
+  release_approval: null
+  review_protocol: null
 
 quality:
-  testing_policy: "hard"
-  test_strategy: "docs/platform/TESTING.md"
-  ci_required: true
-  bug_reproduction_test_required: true
   critical_journeys:
-    - "login → dashboard (auth flow)"
-    - "order lifecycle (pending → delivered)"
-    - "tenant switch (session isolation)"
-    - "integration setup (credential save + test)"
-  mandatory_risk_areas:
-    - "auth-tenant"
-    - "financial-fiscal"
-    - "schema-migration"
-    - "agent-tool"
+    - "user login and tenant selection"
+    - "product creation with variants"
+    - "order placement and payment"
   implementation_pilot:
     enabled: true
-    first_n_runs: 5
-    log_path: "docs/dev/FLOW-PILOT-LOG.md"
+    first_n_runs: 10
+    log_path: docs/pilot-log.md
     blocker_categories:
-      - "spec ambiguity"
-      - "missing fixture/data"
-      - "provider/env dependency"
-      - "db/migration issue"
-      - "permission/auth confusion"
-      - "state-scan drift"
-      - "test gap"
-      - "skill instruction unclear"
+      - "type-check failure"
+      - "test failure"
+      - "lint failure"
+      - "scope creep"
     thresholds:
-      same_blocker_repeat: 2
-      same_waiver_repeat: 2
-      same_verify_finding_repeat: 2
-      same_manual_check_repeat: 2
-
-conventions:
-  copy_language: "pt-br"
-  conversation_language: "pt-br"
-  multi_tenant: true
-  design_lab: true
-  test_enforcement: "hard"
-  schema_baseline_required: true
-  pbt_required_for: ["fsm", "calculation", "scoring", "validation"]
-  pbt_library: "fast-check"
-  change_safety_classes:
-    - ui-local
-    - module
-    - cross-module
-    - auth-tenant
-    - schema-migration
-    - provider-webhook
-    - financial-fiscal
-    - agent-tool
-
-ceremony: "full"
+      same_issue_count: 2

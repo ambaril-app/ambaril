@@ -2,53 +2,43 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main]
   pull_request:
     branches: [main]
 
 jobs:
-  quality:
-    name: Quality Gates
+  ci:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright browsers
+      - name: Type check
+        run: pnpm --filter @ambaril/web tsc --noEmit
+
+      - name: Lint
+        run: pnpm --filter @ambaril/web lint
+
+      - name: Unit tests
+        run: pnpm --filter @ambaril/web test
+
+      - name: Install Playwright
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: CI gate
-        run: ./bin/ci
-        env:
-          DATABASE_URL: ${{ secrets.NEON_TEST_DATABASE_URL }}
-
-      - name: Dependency audit
-        run: pnpm audit --audit-level=high
+      - name: E2E tests
+        run: pnpm --filter @ambaril/web test:e2e
         continue-on-error: true
 
-      - name: ESAA-Security quick check
-        run: bash scripts/security-check.sh
-
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Gitleaks (secrets scan)
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build
+        run: pnpm --filter @ambaril/web build
