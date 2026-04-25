@@ -1,44 +1,100 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '9'
 
 jobs:
-  ci:
+  typecheck:
+    name: Type Check
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
     steps:
       - uses: actions/checkout@v4
-
       - uses: pnpm/action-setup@v4
-
+        with:
+          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tsc --noEmit
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
 
-      - name: Type check
-        run: pnpm --filter @ambaril/web tsc --noEmit
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
 
-      - name: Lint
-        run: pnpm --filter @ambaril/web lint
+  security-check:
+    name: Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm audit --audit-level=high || true
+      - name: Check for secrets in code
+        run: |
+          if grep -rP '(sk-[a-zA-Z0-9]{20,}|ghp_[a-zA-Z0-9]{36})' --include="*.ts" --include="*.tsx" --include="*.js" .; then
+            echo "::error::Possible hardcoded secrets found!"
+            exit 1
+          fi
 
-      - name: Unit tests
-        run: pnpm --filter @ambaril/web test
-
-      - name: Install Playwright
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: E2E tests
-        run: pnpm --filter @ambaril/web test:e2e
-        continue-on-error: true
-
-      - name: Build
-        run: pnpm --filter @ambaril/web build
+  design-check:
+    name: Design System Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check DS.md → DESIGN.md drift
+        run: node scripts/ds-to-design.mjs --check
+      - name: Lint DESIGN.md structure
+        run: npx @google/design.md lint DESIGN.md

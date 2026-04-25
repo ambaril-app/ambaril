@@ -17,25 +17,26 @@ The Global Search bar is a cross-cutting platform feature that allows internal u
 - **Full-text search** powered by PostgreSQL `tsvector` / `tsquery` with the Portuguese language configuration
 - **Permission-filtered** results — users only see entities they have RBAC access to (AUTH.md section 3)
 - **Grouped results** displayed in a dropdown organized by section headers
-- **Sub-200ms response** target via GIN indexes, connection pooling, and optional Redis caching
+- **Sub-200ms response** target via GIN indexes and connection pooling
 
 ---
 
 ## 2. Searchable Entities
 
-| Entity | Module | Schema.Table | Indexed Fields | Display Format in Results | Weight |
-|--------|--------|-------------|---------------|--------------------------|--------|
-| Product | ERP | `erp.products` | name, description, category | {name} — {category} — {sku_count} variantes | A (highest) |
-| SKU | ERP | `erp.skus` | sku_code, product.name, size, color | {sku_code} — {product_name} — {size}/{color} — {qty} un | A |
-| Order | Checkout/ERP | `checkout.orders` | order_number, contact.name, contact.cpf | #{order_number} — {contact_name} — {status_badge} | A |
-| Contact | CRM | `crm.contacts` | name, email, cpf, phone | {name} — {email} — {segment} | A |
-| Creator | Creators | `creators.creators` | name, instagram_handle, coupon_code | @{instagram} — {coupon} — {tier} — {sales_count} vendas | B |
-| Supplier | PCP | `pcp.suppliers` | name, cnpj, contact_name | {name} — {type} — Score: {reliability}% | B |
-| Task | Tarefas | `tarefas.tasks` | title, description | {title} — {assignee} — {status} | B |
-| B2B Retailer | B2B | `b2b.retailers` | name, cnpj, contact_name | {name} — CNPJ: {cnpj} — {status} | C |
-| Asset | DAM | `dam.assets` | filename, tags, collection | {filename} — {type} — {collection} | C |
+| Entity       | Module       | Schema.Table        | Indexed Fields                                                    | Display Format in Results                               | Weight      |
+| ------------ | ------------ | ------------------- | ----------------------------------------------------------------- | ------------------------------------------------------- | ----------- |
+| Product      | ERP          | `erp.products`      | name, description, category                                       | {name} — {category} — {sku_count} variantes             | A (highest) |
+| SKU          | ERP          | `erp.skus`          | sku_code, product.name, size, color                               | {sku_code} — {product_name} — {size}/{color} — {qty} un | A           |
+| Order        | Checkout/ERP | `checkout.orders`   | order_number, contact.name                                        | #{order_number} — {contact_name} — {status_badge}       | A           |
+| Contact      | CRM          | `crm.contacts`      | name, email, phone (CPF excluded — use cpf_hash for exact lookup) | {name} — {email} — {segment}                            | A           |
+| Creator      | Creators     | `creators.creators` | name, instagram_handle, coupon_code                               | @{instagram} — {coupon} — {tier} — {sales_count} vendas | B           |
+| Supplier     | PCP          | `pcp.suppliers`     | name, cnpj, contact_name                                          | {name} — {type} — Score: {reliability}%                 | B           |
+| Task         | Tarefas      | `tarefas.tasks`     | title, description                                                | {title} — {assignee} — {status}                         | B           |
+| B2B Retailer | B2B          | `b2b.retailers`     | name, cnpj, contact_name                                          | {name} — CNPJ: {cnpj} — {status}                        | C           |
+| Asset        | DAM          | `dam.assets`        | filename, tags, collection                                        | {filename} — {type} — {collection}                      | C           |
 
 **Weight legend:**
+
 - **A** = highest relevance boost (core operational entities — searched most frequently)
 - **B** = medium relevance (secondary entities)
 - **C** = lower relevance (supporting entities — appear after A and B results)
@@ -124,7 +125,7 @@ BEGIN
   NEW.search_vector :=
     setweight(to_tsvector('simple', COALESCE(NEW.order_number, '')), 'A') ||
     setweight(to_tsvector('portuguese', COALESCE(contact_name, '')), 'B') ||
-    setweight(to_tsvector('simple', COALESCE(contact_cpf, '')), 'B');
+    -- CPF REMOVED from search vector (LGPD/PII). Use cpf_hash column for exact-match lookup.
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
@@ -148,14 +149,14 @@ BEGIN
   NEW.search_vector :=
     setweight(to_tsvector('portuguese', COALESCE(NEW.name, '')), 'A') ||
     setweight(to_tsvector('simple', COALESCE(NEW.email, '')), 'B') ||
-    setweight(to_tsvector('simple', COALESCE(NEW.cpf, '')), 'B') ||
+    -- CPF REMOVED from search vector (LGPD/PII). Use cpf_hash for exact-match lookup.
     setweight(to_tsvector('simple', COALESCE(NEW.phone, '')), 'C');
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER contacts_search_trigger
-  BEFORE INSERT OR UPDATE OF name, email, cpf, phone
+  BEFORE INSERT OR UPDATE OF name, email, phone
   ON crm.contacts
   FOR EACH ROW
   EXECUTE FUNCTION crm.contacts_search_update();
@@ -345,7 +346,7 @@ SELECT
   'checkout',
   setweight(to_tsvector('simple', COALESCE(o.order_number, '')), 'A') ||
   setweight(to_tsvector('portuguese', COALESCE(c.name, '')), 'B') ||
-  setweight(to_tsvector('simple', COALESCE(c.cpf, '')), 'B')
+  -- CPF excluded from search vector (LGPD/PII). Use cpf_hash for exact-match lookup.
 FROM checkout.orders o
 LEFT JOIN crm.contacts c ON c.id = o.contact_id
 WHERE o.deleted_at IS NULL;
@@ -362,7 +363,7 @@ SELECT
   'crm',
   setweight(to_tsvector('portuguese', COALESCE(c.name, '')), 'A') ||
   setweight(to_tsvector('simple', COALESCE(c.email, '')), 'B') ||
-  setweight(to_tsvector('simple', COALESCE(c.cpf, '')), 'B') ||
+  -- CPF excluded from search vector (LGPD/PII). Use cpf_hash for exact-match lookup. ||
   setweight(to_tsvector('simple', COALESCE(c.phone, '')), 'C')
 FROM crm.contacts c
 WHERE c.deleted_at IS NULL;
@@ -498,15 +499,15 @@ LIMIT 20;
 
 Results are filtered based on the requesting user's role. The `$2` parameter in the query above receives the list of allowed `resource_type` values for the current user.
 
-| Role | Allowed Resource Types | Rationale |
-|------|----------------------|-----------|
-| `admin` | product, sku, order, contact, creator, supplier, task, b2b_retailer, asset | Full access |
-| `pm` | product, sku, order, contact, creator, supplier, task, asset | All except B2B retailers (Guilherme's domain) |
-| `creative` | task, asset | Creative workspace only — no orders, contacts, financial data, PCP data |
-| `operations` | product, sku, order, supplier, task | Operational entities |
-| `support` | order, contact, task | Customer support context |
-| `finance` | product, sku, order, task | Financial context (read-only for products/orders) |
-| `commercial` | b2b_retailer, task | B2B management |
+| Role         | Allowed Resource Types                                                     | Rationale                                                               |
+| ------------ | -------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `admin`      | product, sku, order, contact, creator, supplier, task, b2b_retailer, asset | Full access                                                             |
+| `pm`         | product, sku, order, contact, creator, supplier, task, asset               | All except B2B retailers (Guilherme's domain)                           |
+| `creative`   | task, asset                                                                | Creative workspace only — no orders, contacts, financial data, PCP data |
+| `operations` | product, sku, order, supplier, task                                        | Operational entities                                                    |
+| `support`    | order, contact, task                                                       | Customer support context                                                |
+| `finance`    | product, sku, order, task                                                  | Financial context (read-only for products/orders)                       |
+| `commercial` | b2b_retailer, task                                                         | B2B management                                                          |
 
 **Implementation in application code:**
 
@@ -514,13 +515,32 @@ Results are filtered based on the requesting user's role. The `$2` parameter in 
 // lib/search/permissions.ts
 
 const SEARCH_PERMISSIONS: Record<RoleCode, string[]> = {
-  admin:      ['product', 'sku', 'order', 'contact', 'creator', 'supplier', 'task', 'b2b_retailer', 'asset'],
-  pm:         ['product', 'sku', 'order', 'contact', 'creator', 'supplier', 'task', 'asset'],
-  creative:   ['task', 'asset'],
-  operations: ['product', 'sku', 'order', 'supplier', 'task'],
-  support:    ['order', 'contact', 'task'],
-  finance:    ['product', 'sku', 'order', 'task'],
-  commercial: ['b2b_retailer', 'task'],
+  admin: [
+    "product",
+    "sku",
+    "order",
+    "contact",
+    "creator",
+    "supplier",
+    "task",
+    "b2b_retailer",
+    "asset",
+  ],
+  pm: [
+    "product",
+    "sku",
+    "order",
+    "contact",
+    "creator",
+    "supplier",
+    "task",
+    "asset",
+  ],
+  creative: ["task", "asset"],
+  operations: ["product", "sku", "order", "supplier", "task"],
+  support: ["order", "contact", "task"],
+  finance: ["product", "sku", "order", "task"],
+  commercial: ["b2b_retailer", "task"],
 };
 
 export function getAllowedSearchTypes(role: RoleCode): string[] {
@@ -549,15 +569,15 @@ Per DS.md section 9.2, search results in the dropdown are grouped by section wit
 ### 4.1 Section Order and Headers
 
 | Section Header | Resource Type(s) | Icon (Lucide) |
-|---------------|------------------|-----------------|
-| PRODUTOS | product, sku | `Package` |
-| PEDIDOS | order | `Receipt` |
-| CLIENTES | contact | `Users` |
-| CREATORS | creator | `Star` |
-| FORNECEDORES | supplier | `Factory` |
-| TAREFAS | task | `CheckSquare` |
-| VAREJISTAS B2B | b2b_retailer | `Storefront` |
-| ASSETS | asset | `Image` |
+| -------------- | ---------------- | ------------- |
+| PRODUTOS       | product, sku     | `Package`     |
+| PEDIDOS        | order            | `Receipt`     |
+| CLIENTES       | contact          | `Users`       |
+| CREATORS       | creator          | `Star`        |
+| FORNECEDORES   | supplier         | `Factory`     |
+| TAREFAS        | task             | `CheckSquare` |
+| VAREJISTAS B2B | b2b_retailer     | `Storefront`  |
+| ASSETS         | asset            | `Image`       |
 
 ### 4.2 Grouping Rules
 
@@ -599,17 +619,17 @@ Per DS.md section 9.2, search results in the dropdown are grouped by section wit
 
 When a result is clicked, the user is navigated to the entity's detail page:
 
-| Resource Type | Navigation URL |
-|--------------|----------------|
-| product | `/erp/products/{resource_id}` |
-| sku | `/erp/products/{metadata.product_id}?sku={resource_id}` |
-| order | `/erp/orders/{resource_id}` |
-| contact | `/crm/contacts/{resource_id}` |
-| creator | `/creators/{resource_id}` |
-| supplier | `/pcp/suppliers/{resource_id}` |
-| task | `/tarefas/{resource_id}` |
-| b2b_retailer | `/b2b/retailers/{resource_id}` |
-| asset | `/dam/assets/{resource_id}` |
+| Resource Type | Navigation URL                                          |
+| ------------- | ------------------------------------------------------- |
+| product       | `/erp/products/{resource_id}`                           |
+| sku           | `/erp/products/{metadata.product_id}?sku={resource_id}` |
+| order         | `/erp/orders/{resource_id}`                             |
+| contact       | `/crm/contacts/{resource_id}`                           |
+| creator       | `/creators/{resource_id}`                               |
+| supplier      | `/pcp/suppliers/{resource_id}`                          |
+| task          | `/tarefas/{resource_id}`                                |
+| b2b_retailer  | `/b2b/retailers/{resource_id}`                          |
+| asset         | `/dam/assets/{resource_id}`                             |
 
 ---
 
@@ -688,25 +708,25 @@ export function GlobalSearch() {
 
 ### 5.2 Behavior Specifications
 
-| Behavior | Specification |
-|----------|--------------|
-| **Debounce** | 200ms delay after last keystroke before firing search request (per DS.md) |
-| **Minimum query length** | 2 characters — no search fires for single characters |
-| **Keyboard shortcut** | `/` key opens search (suppressed when an input/textarea is focused) |
-| **Keyboard navigation** | Arrow keys to navigate results, Enter to select, Escape to close |
-| **Shortcut hint** | Placeholder text: "Pressione / para buscar" |
-| **Loading state** | Skeleton shimmer lines inside the dropdown (3 groups x 2 rows) |
-| **Empty state** | "Nenhum resultado encontrado" centered in dropdown |
-| **Close triggers** | Escape key, click outside dropdown, or navigate to a result |
-| **Result click** | Navigate to entity detail page, close dropdown |
-| **Mobile behavior** | Full-width search input at top of page (per DS.md 13.2) |
+| Behavior                 | Specification                                                             |
+| ------------------------ | ------------------------------------------------------------------------- |
+| **Debounce**             | 200ms delay after last keystroke before firing search request (per DS.md) |
+| **Minimum query length** | 2 characters — no search fires for single characters                      |
+| **Keyboard shortcut**    | `/` key opens search (suppressed when an input/textarea is focused)       |
+| **Keyboard navigation**  | Arrow keys to navigate results, Enter to select, Escape to close          |
+| **Shortcut hint**        | Placeholder text: "Pressione / para buscar"                               |
+| **Loading state**        | Skeleton shimmer lines inside the dropdown (3 groups x 2 rows)            |
+| **Empty state**          | "Nenhum resultado encontrado" centered in dropdown                        |
+| **Close triggers**       | Escape key, click outside dropdown, or navigate to a result               |
+| **Result click**         | Navigate to entity detail page, close dropdown                            |
+| **Mobile behavior**      | Full-width search input at top of page (per DS.md 13.2)                   |
 
 ### 5.3 Search Hook
 
 ```typescript
 // hooks/useSearchQuery.ts
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery } from "@tanstack/react-query";
 
 interface SearchResult {
   resource_type: string;
@@ -732,11 +752,12 @@ interface SearchResponse {
 
 export function useSearchQuery(query: string) {
   return useQuery<SearchResponse>({
-    queryKey: ['global-search', query],
-    queryFn: () => fetch(`/api/search?q=${encodeURIComponent(query)}`).then(r => r.json()),
+    queryKey: ["global-search", query],
+    queryFn: () =>
+      fetch(`/api/search?q=${encodeURIComponent(query)}`).then((r) => r.json()),
     enabled: query.length >= 2,
-    staleTime: 60_000,       // Cache for 60s
-    gcTime: 5 * 60_000,      // Garbage collect after 5min
+    staleTime: 60_000, // Cache for 60s
+    gcTime: 5 * 60_000, // Garbage collect after 5min
     placeholderData: (prev) => prev, // Keep previous results while loading
   });
 }
@@ -748,18 +769,18 @@ export function useSearchQuery(query: string) {
 
 ### 6.1 Search API
 
-| Method | Endpoint | Permission | Description |
-|--------|----------|------------|-------------|
-| GET | `/api/search` | Any authenticated internal user | Global search across allowed entities |
+| Method | Endpoint      | Permission                      | Description                           |
+| ------ | ------------- | ------------------------------- | ------------------------------------- |
+| GET    | `/api/search` | Any authenticated internal user | Global search across allowed entities |
 
 ### 6.2 Query Parameters
 
-| Parameter | Type | Required | Default | Description |
-|-----------|------|----------|---------|-------------|
-| `q` | string | Yes | — | Search query (min 2 chars) |
-| `type` | string | No | _(all)_ | Filter to a specific resource type |
-| `limit` | integer | No | 20 | Max results (max 50) |
-| `page` | integer | No | 1 | Page number (for full results page) |
+| Parameter | Type    | Required | Default | Description                         |
+| --------- | ------- | -------- | ------- | ----------------------------------- |
+| `q`       | string  | Yes      | —       | Search query (min 2 chars)          |
+| `type`    | string  | No       | _(all)_ | Filter to a specific resource type  |
+| `limit`   | integer | No       | 20      | Max results (max 50)                |
+| `page`    | integer | No       | 1       | Page number (for full results page) |
 
 ### 6.3 Response Format
 
@@ -792,9 +813,13 @@ export function useSearchQuery(query: string) {
           "resource_id": "uuid-here",
           "title": "#4521",
           "subtitle": "Joao Silva — Enviado",
-          "metadata": { "status": "shipped", "total": 280.00, "contact_name": "Joao Silva" },
+          "metadata": {
+            "status": "shipped",
+            "total": 280.0,
+            "contact_name": "Joao Silva"
+          },
           "module": "checkout",
-          "rank": 0.6510,
+          "rank": 0.651,
           "url": "/erp/orders/uuid-here"
         }
       ],
@@ -812,35 +837,36 @@ export function useSearchQuery(query: string) {
 ```typescript
 // app/api/search/route.ts
 
-import { withAuth } from '@/lib/auth/middleware';
-import { getAllowedSearchTypes } from '@/lib/search/permissions';
-import { db } from '@packages/db';
-import { sql } from 'drizzle-orm';
+import { withAuth } from "@/lib/auth/middleware";
+import { getAllowedSearchTypes } from "@/lib/search/permissions";
+import { db } from "@packages/db";
+import { sql } from "drizzle-orm";
 
-export const GET = withAuth(async (req, session) => {
-  const url = new URL(req.url);
-  const query = url.searchParams.get('q');
-  const type = url.searchParams.get('type');
-  const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '20'), 50);
+export const GET = withAuth(
+  async (req, session) => {
+    const url = new URL(req.url);
+    const query = url.searchParams.get("q");
+    const type = url.searchParams.get("type");
+    const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "20"), 50);
 
-  if (!query || query.length < 2) {
-    return Response.json({ groups: [], total: 0, query: '', took_ms: 0 });
-  }
+    if (!query || query.length < 2) {
+      return Response.json({ groups: [], total: 0, query: "", took_ms: 0 });
+    }
 
-  const start = performance.now();
+    const start = performance.now();
 
-  // Get allowed types for this role
-  let allowedTypes = getAllowedSearchTypes(session.role);
-  if (type && allowedTypes.includes(type)) {
-    allowedTypes = [type];
-  }
+    // Get allowed types for this role
+    let allowedTypes = getAllowedSearchTypes(session.role);
+    if (type && allowedTypes.includes(type)) {
+      allowedTypes = [type];
+    }
 
-  if (allowedTypes.length === 0) {
-    return Response.json({ groups: [], total: 0, query, took_ms: 0 });
-  }
+    if (allowedTypes.length === 0) {
+      return Response.json({ groups: [], total: 0, query, took_ms: 0 });
+    }
 
-  // Execute search query
-  const results = await db.execute(sql`
+    // Execute search query
+    const results = await db.execute(sql`
     WITH query AS (
       SELECT plainto_tsquery('portuguese', ${query}) AS q
     )
@@ -855,12 +881,16 @@ export const GET = withAuth(async (req, session) => {
     FROM global.search_index si, query
     WHERE si.search_vector @@ query.q
       AND si.resource_type = ANY(${allowedTypes}::text[])
-      ${session.role === 'creative' ? sql`
+      ${
+        session.role === "creative"
+          ? sql`
         AND (
           si.resource_type != 'task'
           OR (si.metadata->>'assignee_id')::uuid = ${session.userId}::uuid
         )
-      ` : sql``}
+      `
+          : sql``
+      }
     ORDER BY
       CASE si.resource_type
         WHEN 'product' THEN 1 WHEN 'sku' THEN 1
@@ -873,18 +903,20 @@ export const GET = withAuth(async (req, session) => {
     LIMIT ${limit}
   `);
 
-  const took_ms = Math.round(performance.now() - start);
+    const took_ms = Math.round(performance.now() - start);
 
-  // Group results by type
-  const groups = groupResults(results.rows);
+    // Group results by type
+    const groups = groupResults(results.rows);
 
-  return Response.json({
-    groups,
-    total: results.rows.length,
-    query,
-    took_ms,
-  });
-}, { permission: 'global:notifications:read' });
+    return Response.json({
+      groups,
+      total: results.rows.length,
+      query,
+      took_ms,
+    });
+  },
+  { permission: "global:notifications:read" },
+);
 ```
 
 ---
@@ -893,12 +925,12 @@ export const GET = withAuth(async (req, session) => {
 
 ### 7.1 Target Metrics
 
-| Metric | Target | Measurement |
-|--------|--------|-------------|
-| Search response time (P95) | < 200ms | Server-side query execution + serialization |
-| Search response time (P50) | < 100ms | Typical query |
-| Index size | < 500MB | `global.search_index` table + GIN indexes |
-| Concurrent searches | 50 req/s | Peak during working hours |
+| Metric                     | Target   | Measurement                                 |
+| -------------------------- | -------- | ------------------------------------------- |
+| Search response time (P95) | < 200ms  | Server-side query execution + serialization |
+| Search response time (P50) | < 100ms  | Typical query                               |
+| Index size                 | < 500MB  | `global.search_index` table + GIN indexes   |
+| Concurrent searches        | 50 req/s | Peak during working hours                   |
 
 ### 7.2 Optimization Strategies
 
@@ -913,6 +945,9 @@ CREATE INDEX idx_search_index_fts ON global.search_index USING GIN(search_vector
 **Connection Pooling:**
 Neon provides built-in connection pooling. The search endpoint uses the pooled connection string to avoid connection overhead per request.
 
+<!-- TODO: Redis was eliminated per ADR-012. If search caching is needed,
+     use Next.js ISR/revalidation or a PostgreSQL-based cache table instead. -->
+
 **Redis Cache (Optional):**
 For frequently repeated queries, cache the serialized response in Redis with a short TTL:
 
@@ -921,20 +956,27 @@ For frequently repeated queries, cache the serialized response in Redis with a s
 
 const SEARCH_CACHE_TTL = 60; // 60 seconds
 
-export async function getCachedSearch(query: string, role: string): Promise<SearchResponse | null> {
+export async function getCachedSearch(
+  query: string,
+  role: string,
+): Promise<SearchResponse | null> {
   const key = `search:${role}:${hashQuery(query)}`;
   const cached = await redis.get(key);
   return cached ? JSON.parse(cached) : null;
 }
 
-export async function setCachedSearch(query: string, role: string, response: SearchResponse): Promise<void> {
+export async function setCachedSearch(
+  query: string,
+  role: string,
+  response: SearchResponse,
+): Promise<void> {
   const key = `search:${role}:${hashQuery(query)}`;
   await redis.set(key, JSON.stringify(response), { ex: SEARCH_CACHE_TTL });
 }
 
 function hashQuery(query: string): string {
   // Normalize: lowercase, trim, collapse whitespace
-  return query.toLowerCase().trim().replace(/\s+/g, ' ');
+  return query.toLowerCase().trim().replace(/\s+/g, " ");
 }
 ```
 
@@ -951,7 +993,7 @@ CREATE MATERIALIZED VIEW global.search_materialized AS
 CREATE UNIQUE INDEX idx_search_materialized_pk ON global.search_materialized (id);
 CREATE INDEX idx_search_materialized_fts ON global.search_materialized USING GIN(search_vector);
 
--- Refresh periodically (every 5 minutes via BullMQ scheduled job)
+-- Refresh periodically (every 5 minutes via Vercel Cron)
 REFRESH MATERIALIZED VIEW CONCURRENTLY global.search_materialized;
 ```
 
@@ -960,23 +1002,25 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY global.search_materialized;
 The `global.search_index` table must stay in sync with source tables. Three strategies, from simplest to most robust:
 
 **Strategy 1 — Application-level hooks (recommended for MVP):**
+
 ```typescript
 // In the product service, after create/update/delete:
 await searchIndexService.upsert({
-  resource_type: 'product',
+  resource_type: "product",
   resource_id: product.id,
   title: product.name,
   subtitle: `${product.category} — ${skuCount} variantes`,
   metadata: { category: product.category, sku_count: skuCount },
-  module: 'erp',
+  module: "erp",
   search_vector: sql`
     setweight(to_tsvector('portuguese', ${product.name}), 'A') ||
-    setweight(to_tsvector('portuguese', ${product.description ?? ''}), 'C')
+    setweight(to_tsvector('portuguese', ${product.description ?? ""}), 'C')
   `,
 });
 ```
 
 **Strategy 2 — PostgreSQL triggers (for consistency):**
+
 ```sql
 CREATE OR REPLACE FUNCTION sync_search_index_products() RETURNS trigger AS $$
 BEGIN
@@ -996,7 +1040,7 @@ END;
 $$ LANGUAGE plpgsql;
 ```
 
-**Strategy 3 — BullMQ reindex job (for full rebuild):**
+**Strategy 3 — Vercel Cron reindex job (for full rebuild):**
 A scheduled job that rebuilds the entire `global.search_index` table. Runs nightly as a safety net.
 
 ---
@@ -1027,22 +1071,22 @@ When the user clicks "Ver todos" in a section or navigates to `/search?q=...`, a
 
 ## 9. Implementation Checklist
 
-| # | Task | Priority | Dependencies |
-|---|------|----------|-------------|
-| 1 | Add `search_vector` columns and triggers to all 9 searchable tables | P0 | DATABASE.md migrations |
-| 2 | Create `global.search_index` table with GIN index | P0 | Migration 0020 |
-| 3 | Build initial population scripts for `global.search_index` | P0 | All source tables seeded |
-| 4 | Implement search index sync hooks in application services | P0 | Service layer |
-| 5 | Build `/api/search` endpoint with permission filtering | P0 | Auth middleware, RBAC |
-| 6 | Build `GlobalSearch` component using Command (cmdk) | P1 | DS.md compliance |
-| 7 | Implement keyboard shortcut (`/`) handler | P1 | GlobalSearch component |
-| 8 | Implement result grouping and "Ver todos" links | P1 | API response format |
-| 9 | Add Redis caching layer for frequent queries | P2 | Upstash Redis |
-| 10 | Build full search results page (`/search`) | P2 | GlobalSearch, API |
-| 11 | Add creative role task scoping in search query | P1 | Auth scoping |
-| 12 | Build nightly reindex job as safety net | P2 | BullMQ |
-| 13 | Performance testing: verify < 200ms P95 with realistic data | P1 | Seeded database |
+| #   | Task                                                                | Priority | Dependencies                          |
+| --- | ------------------------------------------------------------------- | -------- | ------------------------------------- |
+| 1   | Add `search_vector` columns and triggers to all 9 searchable tables | P0       | DATABASE.md migrations                |
+| 2   | Create `global.search_index` table with GIN index                   | P0       | Migration 0020                        |
+| 3   | Build initial population scripts for `global.search_index`          | P0       | All source tables seeded              |
+| 4   | Implement search index sync hooks in application services           | P0       | Service layer                         |
+| 5   | Build `/api/search` endpoint with permission filtering              | P0       | Auth middleware, RBAC                 |
+| 6   | Build `GlobalSearch` component using Command (cmdk)                 | P1       | DS.md compliance                      |
+| 7   | Implement keyboard shortcut (`/`) handler                           | P1       | GlobalSearch component                |
+| 8   | Implement result grouping and "Ver todos" links                     | P1       | API response format                   |
+| 9   | Add caching layer for frequent queries                              | P2       | Next.js ISR or PostgreSQL cache table |
+| 10  | Build full search results page (`/search`)                          | P2       | GlobalSearch, API                     |
+| 11  | Add creative role task scoping in search query                      | P1       | Auth scoping                          |
+| 12  | Build nightly reindex job as safety net                             | P2       | Vercel Cron                           |
+| 13  | Performance testing: verify < 200ms P95 with realistic data         | P1       | Seeded database                       |
 
 ---
 
-*This document is the single source of truth for the Ambaril global search system. All searchable entities must be registered here before implementation. The search index must be kept in sync with source data at all times — stale search results degrade user trust in the platform.*
+_This document is the single source of truth for the Ambaril global search system. All searchable entities must be registered here before implementation. The search index must be kept in sync with source data at all times — stale search results degrade user trust in the platform._

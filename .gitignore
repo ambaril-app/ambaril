@@ -60,3 +60,8 @@ memory/
 .cache/
 .codex/
 .claude/
+
+# Playwright
+e2e/results.json
+e2e/test-results/
+playwright-report/

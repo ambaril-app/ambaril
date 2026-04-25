@@ -15,6 +15,7 @@ paths:
   insights: docs/INSIGHTS.md
   handoffs: docs/handoffs
   pitches: docs/pitches
+  plans: docs/plans
 
 checks:
   type_check: "pnpm --filter @ambaril/web tsc --noEmit"

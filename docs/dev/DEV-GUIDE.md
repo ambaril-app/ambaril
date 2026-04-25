@@ -22,7 +22,7 @@ For devs who just want to get running:
 - [ ] Open [http://localhost:3000](http://localhost:3000)
 - [ ] Log in with seed credentials (see terminal output after `db:seed`)
 
-Total time from clone to running: ~5 minutes with Neon + Upstash.
+Total time from clone to running: ~5 minutes with Neon.
 
 ---
 
@@ -48,7 +48,7 @@ Total time from clone to running: ~5 minutes with Neon + Upstash.
 
 The platform has **15 core modules** organized into four pillars: Commerce, Operations, Growth, and Team. For the complete module map and scope, see [PLAN.md](../../PLAN.md). For the design system governing all UI decisions, see [DS.md](../../DS.md).
 
-**Architecture in a nutshell:** Ambaril is a Next.js 15 monorepo (Turborepo) using the App Router with React Server Components for the internal dashboard, SSR for public-facing pages (checkout, order tracking), and API routes as a BFF layer for external integrations (Mercado Pago, Discord bot, WhatsApp webhooks). Data lives in PostgreSQL (Neon) with Drizzle ORM, cached in Redis (Upstash), with background jobs processed by BullMQ. For full architectural details, see the [architecture docs](../architecture/).
+**Architecture in a nutshell:** Ambaril is a Next.js 15 monorepo (Turborepo) using the App Router with React Server Components for the internal dashboard, SSR for public-facing pages (checkout, order tracking), and API routes as a BFF layer for external integrations (Mercado Pago, Discord bot, WhatsApp webhooks). Data lives in PostgreSQL (Neon) with Drizzle ORM, with background jobs processed by PostgreSQL queues + Vercel Cron (ADR-012). For full architectural details, see the [architecture docs](../architecture/).
 
 ---
 
@@ -62,14 +62,12 @@ The platform has **15 core modules** organized into four pillars: Commerce, Oper
 | **pnpm**       | 9+        | Monorepo package manager. Install: `corepack enable && corepack prepare pnpm@latest --activate`     |
 | **Git**        | 2.40+     | Required for monorepo features                                                                      |
 | **PostgreSQL** | 16+       | Local install OR use [Neon](https://neon.tech) serverless (recommended for dev)                     |
-| **Redis**      | 7+        | Local install OR use [Upstash](https://upstash.com) serverless (recommended for dev)                |
 
 ### Required Accounts
 
 | Service            | Why                                           | Setup                                                                     |
 | ------------------ | --------------------------------------------- | ------------------------------------------------------------------------- |
 | **Neon**           | Serverless PostgreSQL (free tier covers dev)  | [neon.tech](https://neon.tech) -- create a project, get connection string |
-| **Upstash**        | Serverless Redis (free tier covers dev)       | [upstash.com](https://upstash.com) -- create a Redis database             |
 | **Discord**        | Astro testing                                 | Need a Discord account + access to the CIENA dev server                   |
 | **Meta Developer** | WhatsApp Business API + Instagram API testing | [developers.facebook.com](https://developers.facebook.com)                |
 
@@ -135,7 +133,6 @@ Open `.env.local` and fill in the required values. See [Section 7](#7-environmen
 
 - `DATABASE_URL` (Neon connection string with pooler)
 - `DIRECT_DATABASE_URL` (Neon direct connection for migrations)
-- `REDIS_URL` (Upstash Redis URL)
 - `SESSION_SECRET` (generate with `openssl rand -base64 32`)
 
 ### Step 4: Set Up the Database
@@ -569,7 +566,9 @@ DATABASE_URL="postgresql://user:pass@ep-xyz.us-east-2.aws.neon.tech/ciena_os?ssl
 DIRECT_DATABASE_URL="postgresql://user:pass@ep-xyz.us-east-2.aws.neon.tech/ciena_os?sslmode=require"
 ```
 
-### Cache / Real-time (Upstash Redis)
+### ~~Cache / Real-time (Upstash Redis)~~ — REMOVED (ADR-012)
+
+<!-- Redis was eliminated from the stack per ADR-012. Background jobs use PostgreSQL queues + Vercel Cron. Sessions use PostgreSQL. The env vars below are no longer needed. -->
 
 ```bash
 # Upstash Redis connection
@@ -982,7 +981,7 @@ pnpm clean && pnpm install
 - **Neon:** Check that your IP is allowed (Neon allows all IPs by default). Verify the connection string includes `?sslmode=require`.
 - **Local PostgreSQL:** Ensure the service is running (`brew services list` on macOS).
 
-#### Redis connection timeout
+#### ~~Redis connection timeout~~ — REMOVED (ADR-012)
 
 - **Upstash:** Verify the `REDIS_URL` starts with `rediss://` (TLS) not `redis://`.
 - **Local Redis:** Check the service is running (`redis-cli ping` should return `PONG`).
@@ -1072,7 +1071,7 @@ psql $DATABASE_URL
 
 Drizzle Studio opens at `https://local.drizzle.studio` and provides a GUI for browsing tables, running queries, and editing data.
 
-### Checking Redis State
+### ~~Checking Redis State~~ — REMOVED (ADR-012)
 
 ```bash
 # Connect to Redis CLI (local)

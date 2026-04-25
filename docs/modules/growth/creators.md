@@ -4745,3 +4745,258 @@ Inside that transaction:
 - No payout may start if a `sent` attempt already exists for the same `commission_id`.
 - The DB partial unique index is the last backstop, not the primary guard.
 - Application code must lock the parent commission row first, because `SELECT ... FOR UPDATE` on a missing `payout_attempts` row acquires no lock.
+
+---
+
+## Payout Fiscal Obligations
+
+> **Purpose:** Tax withholding and fiscal document requirements for creator payouts.
+> **Applies to:** All monetary payouts (PIX) to creators. Does not apply to store credit or product seeding.
+> **References:** [LGPD-RETENTION.md](../../platform/LGPD-RETENTION.md), [erp.md](../operations/erp.md), RIR/2018, CLT, Lei Complementar 123/2006.
+> **Tax values:** Updated for 2024 calendar year. Review annually by January.
+
+### 1. PF (Pessoa Fisica) Creators — Individual Taxpayers
+
+Payouts to individual creators (no CNPJ) require an **RPA (Recibo de Pagamento Autonomo)** and mandatory tax withholdings calculated by the paying company (Ambaril's tenant).
+
+#### 1.1 IRRF (Imposto de Renda Retido na Fonte)
+
+Progressive withholding table (2024):
+
+| Monthly Gross (R$)      | Rate        | Deduction (R$) |
+| ----------------------- | ----------- | -------------- |
+| Up to R$2,259.20        | Exempt (0%) | --             |
+| R$2,259.21 - R$2,826.65 | 7.5%        | R$169.44       |
+| R$2,826.66 - R$3,751.05 | 15%         | R$381.44       |
+| R$3,751.06 - R$4,664.68 | 22.5%       | R$662.77       |
+| Above R$4,664.68        | 27.5%       | R$896.00       |
+
+**Calculation:**
+
+```
+irrf_base = gross_payout - inss_withheld - dependents_deduction
+irrf = (irrf_base * rate) - deduction
+```
+
+**Implementation notes:**
+
+- IRRF is calculated on the **monthly cumulative total** per creator, not per payout. If a creator receives R$1,500 on April 5 and R$1,500 on April 20, the IRRF is calculated on R$3,000 (not two exempt payouts).
+- Track `monthly_gross_pf_payouts` per creator per month to correctly apply the progressive table.
+- The dependent deduction (R$189.59 per dependent in 2024) applies only if the creator declares dependents. Default: 0 dependents.
+
+#### 1.2 INSS (Previdencia Social)
+
+Withhold 11% of gross payout, up to the INSS ceiling.
+
+| Parameter       | Value (2024)       |
+| --------------- | ------------------ |
+| Rate            | 11%                |
+| Ceiling         | R$8,786.52 / month |
+| Max withholding | R$966.52 / month   |
+
+**Implementation notes:**
+
+- If the creator already contributes INSS via employment (CLT) or other contracts, they may present proof to reduce or eliminate the withholding. Store the proof document reference.
+- Track cumulative INSS withheld per creator per month to respect the ceiling.
+
+#### 1.3 ISS (Imposto Sobre Servicos)
+
+ISS rate depends on the **municipality where the service is performed** (typically the creator's city).
+
+| Parameter                  | Value                                                     |
+| -------------------------- | --------------------------------------------------------- |
+| Rate range                 | 2% - 5%                                                   |
+| Default (Sao Paulo)        | 5%                                                        |
+| Withholding responsibility | Paying company (Ambaril tenant) if ISS > R$10 per service |
+
+**Implementation notes:**
+
+- ISS withholding is required when the paying company and service provider are in the same municipality, OR when the municipality requires withholding regardless.
+- Store the creator's municipality and corresponding ISS rate in `creators.profiles`.
+- When ISS must be withheld: deduct from gross payout and the tenant must issue a DARF or GR for ISS payment to the municipality.
+- Some municipalities exempt small values (< R$10 ISS). Check local legislation.
+
+#### 1.4 RPA Document
+
+For every PF payout, an RPA must be generated containing:
+
+- Creator's full name, CPF, address
+- Service description ("Comissao por divulgacao de produtos — Programa de Criadores")
+- Gross amount
+- INSS withholding amount
+- IRRF withholding amount
+- ISS withholding amount (if applicable)
+- Net amount paid
+- Payment date and method (PIX)
+
+Store RPA reference in `creators.payout_attempts.rpa_document_id`. RPAs are retained for 5 years (fiscal obligation).
+
+#### 1.5 eSocial / SEFIP Declaration
+
+The tenant company must declare PF creator payouts on:
+
+- **eSocial:** Event S-1200 (payment to contributor) or S-2399 (termination of non-employment worker).
+- **SEFIP/GFIP:** Monthly declaration to the INSS with all contributor data.
+
+This is the tenant's accounting obligation, but Ambaril must provide the data export (monthly payout summary per PF creator with all withholding details).
+
+---
+
+### 2. PJ (Pessoa Juridica) Creators — Company Taxpayers
+
+Payouts to creators who operate as a company (CNPJ) follow a simpler fiscal flow because the creator's company handles its own tax obligations.
+
+**Requirements before payment:**
+
+1. Creator's company must issue an **NFS-e (Nota Fiscal de Servicos Eletronica)** to the tenant company.
+2. Verify NFS-e authenticity: check against the municipality's NFS-e portal (many offer API verification).
+3. NFS-e must reference the correct service description, CNAE code, and ISS treatment.
+
+**Tax treatment:**
+
+- **No IRRF withholding** — PJ handles its own income tax via IRPJ/CSLL.
+- **ISS:** Usually already included in the NFS-e amount (the creator's company pays ISS in its own municipality). No withholding by the tenant unless specific municipal legislation requires it (rare for services).
+- **PIS/COFINS:** Not withheld on service NFS-e for most small companies (Simples Nacional). For Lucro Presumido/Real companies, check if withholding applies (usually only for specific CNAE codes — marketing services may qualify).
+
+**Implementation:**
+
+- Store NFS-e reference in `creators.payout_attempts.nfse_document_id`.
+- Store NFS-e verification status: `'pending'`, `'verified'`, `'rejected'`.
+- Block payout if NFS-e is not verified.
+- Retain NFS-e records for 5 years.
+
+---
+
+### 3. MEI (Microempreendedor Individual) Creators
+
+MEI is a special category of PJ. For payment purposes, treat MEI creators as PJ.
+
+**Key constraints:**
+
+| Parameter             | Value (2024)                                                |
+| --------------------- | ----------------------------------------------------------- |
+| Annual revenue limit  | R$81,000                                                    |
+| Monthly average limit | R$6,750                                                     |
+| Employees             | Max 1                                                       |
+| Restricted activities | MEI cannot perform certain service activities — verify CNAE |
+
+**Revenue limit tracking:**
+
+Ambaril must track cumulative payouts per MEI creator per calendar year:
+
+```sql
+SELECT SUM(gross_amount) AS ytd_payouts
+FROM creators.payout_attempts
+WHERE creator_id = :creator_id
+  AND status = 'sent'
+  AND EXTRACT(YEAR FROM paid_at) = EXTRACT(YEAR FROM CURRENT_DATE);
+```
+
+**Alert thresholds:**
+
+- **At 70% of R$81,000 (R$56,700):** Warning notification to creator and operator. "Atencao: seus recebimentos acumulados no ano estao se aproximando do limite MEI."
+- **At 90% of R$81,000 (R$72,900):** Urgent alert. Recommend creator upgrade to ME (Microempresa) to avoid desenquadramento.
+- **At R$81,000:** Block further payouts until creator confirms tax regime change. Continuing payouts above the limit causes the creator's MEI to be retroactively disqualified (desenquadramento), which creates tax liability for the entire year.
+
+**Implementation notes:**
+
+- MEI creators issue NFS-e like any PJ. The NFS-e requirement is the same.
+- Some MEI creators may not have municipal NFS-e setup yet (common issue). In this case, they can issue a Nota Avulsa through the municipality. Document this in the creator onboarding flow.
+- MEI CNAE must be compatible with marketing/promotion services. Common valid CNAEs:
+  - `7311-4/00` — Agencias de publicidade
+  - `7319-0/99` — Outras atividades de publicidade nao especificadas anteriormente
+  - `9329-8/99` — Outras atividades de recreacao e lazer (some influencer activities)
+
+---
+
+### 4. Payment Evidence Chain
+
+Every payout must have a complete fiscal evidence trail linking the commission to the payment to the tax obligations.
+
+**Per-payout record (stored across tables):**
+
+| Evidence               | Source                                       | Table                                            |
+| ---------------------- | -------------------------------------------- | ------------------------------------------------ |
+| Commission calculation | Sale attribution + tier rate                 | `creators.commissions`                           |
+| Gross amount           | Commission amount                            | `creators.payout_attempts.gross_amount`          |
+| IRRF withholding       | Calculated per progressive table (PF only)   | `creators.payout_attempts.irrf_amount`           |
+| INSS withholding       | 11% up to ceiling (PF only)                  | `creators.payout_attempts.inss_amount`           |
+| ISS withholding        | Municipality rate (PF only, when applicable) | `creators.payout_attempts.iss_amount`            |
+| Net amount             | Gross - IRRF - INSS - ISS                    | `creators.payout_attempts.net_amount`            |
+| RPA reference          | Generated RPA document (PF)                  | `creators.payout_attempts.rpa_document_id`       |
+| NFS-e reference        | Creator's invoice (PJ/MEI)                   | `creators.payout_attempts.nfse_document_id`      |
+| PIX transaction ID     | Bank confirmation                            | `creators.payout_attempts.external_pix_txid`     |
+| Bank confirmation      | PIX return payload                           | `creators.payout_attempts.bank_response` (JSONB) |
+| Payout timestamp       | When PIX was confirmed                       | `creators.payout_attempts.paid_at`               |
+
+**Idempotency:** The `payout_attempts` table already enforces idempotent payouts (see Concurrency-safe payout flow above). Each attempt is a separate row with its own evidence chain.
+
+**Monthly summary report:**
+Generate per-creator monthly report for accounting:
+
+```
+Creator: Joao Silva (CPF: ***.456.789-**)
+Month: April 2026
+Gross commissions: R$3,200.00
+  - INSS (11%): R$352.00
+  - IRRF (15% - deduction): R$98.56
+  - ISS (5%): R$160.00
+Net paid: R$2,589.44
+PIX transactions: [txid1, txid2]
+RPA numbers: [RPA-2026-04-001, RPA-2026-04-002]
+```
+
+Export format: JSON + PDF. Delivered to tenant accounting team via admin dashboard.
+
+---
+
+### 5. Annual Obligations
+
+The tenant company has annual fiscal reporting obligations related to creator payouts.
+
+#### 5.1 DIRF (Declaracao do Imposto sobre a Renda Retido na Fonte)
+
+- **Deadline:** Last business day of February (for prior year).
+- **Content:** All IRRF withholdings made during the year, per beneficiary (PF creators).
+- **Ambaril's role:** Export annual payout data in DIRF-compatible format:
+  - Per PF creator: CPF, total gross, total IRRF withheld, month-by-month breakdown.
+  - Per PJ creator: CNPJ, total gross paid (IRRF withholding if applicable).
+
+**Note:** DIRF is being phased out and replaced by EFD-Reinf + DCTFWeb. Monitor Receita Federal announcements for transition timeline. Ambaril should support both formats during the transition period.
+
+#### 5.2 Informe de Rendimentos
+
+- **Deadline:** Deliver to each PF creator by February 28 (for prior year).
+- **Content:** Annual summary of gross payments, IRRF withheld, INSS withheld.
+- **Format:** Standard Receita Federal layout. Generate as PDF.
+- **Delivery:** Available in creator portal + sent via email.
+- **Ambaril's role:** Auto-generate and deliver. Store proof of delivery in audit trail.
+
+#### 5.3 eSocial Annual Events
+
+- Monthly events (S-1200) are the tenant's accounting responsibility.
+- Ambaril provides monthly export files with all required data fields.
+
+#### 5.4 Record Retention
+
+All payout-related records (RPAs, NFS-e references, withholding calculations, PIX confirmations, commission calculations, sale attributions) must be retained for **5 years** from the date of the last payout or fiscal event, as specified in [LGPD-RETENTION.md](../../platform/LGPD-RETENTION.md).
+
+On creator data deletion request:
+
+- Anonymize PII (name, CPF, email, bank details) via `anonymize_user()`.
+- RETAIN all financial records: commission amounts, withholding amounts, payout amounts, RPA/NFS-e references, PIX transaction IDs.
+- The anonymized records satisfy both LGPD deletion rights AND fiscal retention obligations.
+
+---
+
+### 6. Agent Implementation Notes
+
+When implementing payout-related features:
+
+1. **Always calculate withholdings on monthly cumulative totals** for PF creators, not per individual payout.
+2. **Never process a PJ/MEI payout without a verified NFS-e.** Block the payout and notify the creator.
+3. **Track MEI annual limits proactively.** Alert early — desenquadramento is a serious tax event for the creator.
+4. **Store all withholding breakdowns** on the `payout_attempts` row. This is the primary evidence for DIRF/Informe de Rendimentos generation.
+5. **Tax table values change annually.** Store them in a configuration table (`fiscal.tax_tables`) with `valid_from` / `valid_until` dates, not hardcoded.
+6. **RPA generation** should be automated — prefill from creator profile + commission data, generate PDF, store reference.
+7. **Test with edge cases:** creator crosses IRRF bracket mid-month, creator hits INSS ceiling, MEI hits annual limit, PF creator with dependents, creator in municipality with ISS exemption.

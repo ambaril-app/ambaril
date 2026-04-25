@@ -1,3 +1,297 @@
+---
+module: erp
+version: 2.0 (Aratar-compliant)
+status: SPEC_DRAFT
+last_review: 2026-04-24
+reviewer: Manwe (strategic review)
+changes: Compliance overlay added — provider abstraction, Iron Core, S1-S10 security, DS.md alignment, RBAC, decomposition
+---
+
+## Aratar Compliance Overlay
+
+> This section was added during Aratar spec review (2026-04-24) to align with current architecture.
+> The functional spec below remains the source of truth for business logic.
+> This overlay adds mandatory technical constraints that all implementations MUST follow.
+
+### Provider Abstraction (CLAUDE.md mandate)
+
+This module MUST consume capabilities through interfaces, never providers directly:
+
+| Capability          | Interface             | Current Adapter           | Fallback              |
+| ------------------- | --------------------- | ------------------------- | --------------------- |
+| Fiscal/NF-e         | `FiscalCapability`    | Focus NFe adapter         | Manual XML            |
+| Shipping            | `ShippingCapability`  | Melhor Envio adapter      | Manual tracking       |
+| Payments            | `PaymentCapability`   | (TBD per checkout module) | Manual reconciliation |
+| Email/Notifications | `MessagingCapability` | Resend adapter            | Queue + retry         |
+
+Any reference to "Focus NFe" or "Melhor Envio" below describes the ADAPTER implementation, not the interface contract. Code MUST program against the capability interface.
+
+### Iron Core Constraints (mandatory database safety)
+
+All ERP tables MUST enforce:
+
+1. **Stock non-negative:** `CHECK (quantity >= 0)` on all inventory columns
+2. **Prices/values >= 0:** `CHECK (unit_price >= 0)`, `CHECK (total >= 0)` on all monetary columns
+3. **Order FSM:** Status transitions enforced by PostgreSQL trigger — only valid transitions allowed (e.g., `draft→confirmed→shipped→delivered`, never `draft→delivered`)
+4. **Double-entry ledger:** All financial transactions are append-only. No UPDATE or DELETE on ledger entries. Corrections via compensating entries only.
+5. **Audit triggers:** All mutations on financial/inventory tables logged to `audit.erp_audit_log` with `user_id`, `tenant_id`, `operation`, `old_values`, `new_values`, `timestamp`
+6. **Optimistic locking:** `version` column on concurrent-access entities (orders, inventory). `optimisticUpdate()` pattern from `packages/db/src/patterns/optimistic-lock.ts`
+
+### Security Compliance (S1-S10)
+
+| Directive                | ERP Application                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------ |
+| S1: Server Action Triad  | Every mutation: `auth()` + `checkPermission()` + `validateInput()`                               |
+| S2: Tenant Isolation     | `tenant_id` on ALL tables. `withTenantTransaction()` for all writes. RLS as belt-and-suspenders. |
+| S3: Zod Validation       | All inputs validated with Zod schemas. No raw `req.body` access.                                 |
+| S4: XSS Prevention       | `escapeHtml()` for any non-React HTML output (PDF, email)                                        |
+| S5: SSRF Protection      | `safeFetch()` for all external API calls (fiscal, shipping)                                      |
+| S6: Audit Trail          | All financial mutations logged with user, tenant, timestamp, before/after                        |
+| S7: Zero Secrets         | No API keys in code. Provider credentials in `.env` only.                                        |
+| S8: API Route Auth       | All API routes require authentication. No public endpoints for ERP data.                         |
+| S9: Endpoint Checklist   | Before any new endpoint: auth? permission? validation? tenant? audit?                            |
+| S10: Post-Implementation | Run s10-verify.sh after each wave                                                                |
+
+### RBAC Matrix
+
+| Flow             | admin | pm  | creative | operations | support | finance | commercial | b2b_retailer | creator |
+| ---------------- | ----- | --- | -------- | ---------- | ------- | ------- | ---------- | ------------ | ------- |
+| View orders      | ✅    | ✅  | ❌       | ✅         | ✅      | ✅      | ✅         | own          | ❌      |
+| Create order     | ✅    | ❌  | ❌       | ✅         | ❌      | ❌      | ✅         | own          | ❌      |
+| Edit order       | ✅    | ❌  | ❌       | ✅         | ❌      | ❌      | ❌         | ❌           | ❌      |
+| Cancel order     | ✅    | ❌  | ❌       | ✅         | ❌      | ✅      | ❌         | ❌           | ❌      |
+| View inventory   | ✅    | ✅  | ❌       | ✅         | ❌      | ✅      | ✅         | ❌           | ❌      |
+| Adjust inventory | ✅    | ❌  | ❌       | ✅         | ❌      | ❌      | ❌         | ❌           | ❌      |
+| View financials  | ✅    | ❌  | ❌       | ❌         | ❌      | ✅      | ❌         | ❌           | ❌      |
+| Manage suppliers | ✅    | ❌  | ❌       | ✅         | ❌      | ✅      | ❌         | ❌           | ❌      |
+| Issue NF-e       | ✅    | ❌  | ❌       | ✅         | ❌      | ✅      | ❌         | ❌           | ❌      |
+| View reports/DRE | ✅    | ❌  | ❌       | ❌         | ❌      | ✅      | ❌         | ❌           | ❌      |
+
+### LGPD / PII Policy
+
+| Field          | Classification | Storage                       | Access                | Masking                               |
+| -------------- | -------------- | ----------------------------- | --------------------- | ------------------------------------- |
+| Customer name  | PII            | Encrypted at rest             | Operations, Support   | Last 3 chars visible in logs          |
+| CPF/CNPJ       | Sensitive PII  | Encrypted (AES-256-GCM)       | Finance, Admin        | Masked via `maskCPF()` from crypto.ts |
+| Address        | PII            | Encrypted at rest             | Operations (shipping) | City only in logs                     |
+| Email          | PII            | Plaintext (for transactional) | Operations, Support   | Domain only in logs                   |
+| Phone          | PII            | Encrypted at rest             | Support               | Last 4 digits in logs                 |
+| Financial data | Confidential   | Audit-logged access           | Finance, Admin        | Never in logs                         |
+
+Right to deletion: soft-delete + anonymize PII after retention period (configurable per tenant, default 5 years for fiscal).
+Right to portability: export endpoint with Zod-validated output schema.
+
+### Concurrency & Idempotency Strategy
+
+| Operation              | Strategy                                | Implementation                                                              |
+| ---------------------- | --------------------------------------- | --------------------------------------------------------------------------- |
+| Order creation         | Idempotency key (client-generated UUID) | Dedup on `idempotency_key` column, 24h TTL                                  |
+| Inventory adjustment   | Optimistic locking                      | `version` column + `ConflictError` retry                                    |
+| NF-e issuance          | At-most-once with status tracking       | FSM: `pending→processing→issued/failed`, no re-issue without explicit retry |
+| Payment reconciliation | Append-only ledger                      | Double-entry, never modify existing entries                                 |
+| Concurrent order edits | Optimistic locking                      | `version` + conflict resolution UI                                          |
+
+### DS.md — UI Specification
+
+| Page/View             | Energy Level   | Primary Components                           | Key Recipes                   |
+| --------------------- | -------------- | -------------------------------------------- | ----------------------------- |
+| Order list            | L0 (workhorse) | Data Table Row, filters, bulk actions        | Data Table recipe from DS.md  |
+| Order detail          | L1 (ambient)   | Sheet Detail, status timeline, tabs          | Sheet Detail recipe           |
+| New order form        | L0 (workhorse) | Shopify-style Form, product search, address  | Form recipe from DS.md        |
+| Inventory dashboard   | L1 (ambient)   | KPI Cards (stock levels, alerts), Data Table | KPI Card + Data Table recipes |
+| Financial summary/DRE | L1 (ambient)   | Chart Card (waterfall), KPI Cards            | Chart Card recipe             |
+| Supplier management   | L0 (workhorse) | Data Table Row, Sheet Detail                 | Data Table + Sheet recipe     |
+| NF-e issuance         | L0 (workhorse) | Form + status timeline                       | Form recipe                   |
+| Low stock alert       | L2 (moments)   | Flare Alert                                  | Flare Alert recipe            |
+| Empty states          | L2 (moments)   | Empty State component                        | Empty State recipe            |
+
+Typography: DM Sans for interface, DM Mono for monetary values and quantities.
+Palette: Moonstone (no accent colors). Semantic colors for status only.
+Spacing: 4pt grid.
+
+### Dependency Map
+
+```
+ERP depends on:
+  ← global.auth (authentication, session)
+  ← global.tenants (tenant isolation)
+  ← global.rbac (permission checks)
+
+ERP provides to:
+  → Dashboard (order KPIs, revenue, inventory metrics)
+  → PLM (product catalog, BOM cost data)
+  → CRM (order history per customer)
+  → Creators (commission calculation base)
+  → Trocas (original order data for returns)
+  → Mensageria (transactional notifications: order confirmed, shipped, etc.)
+  → B2B (wholesale order pipeline)
+
+External capabilities consumed:
+  → FiscalCapability (NF-e issuance/cancellation)
+  → ShippingCapability (quote, label, tracking)
+  → PaymentCapability (charge, refund, reconciliation)
+```
+
+### Wave Decomposition Plan
+
+**Wave 1: Foundation (catalog + inventory)**
+
+- Slice 1: Product/SKU schema + CRUD + tests
+- Slice 2: Inventory management (adjust, reserve, release) + Iron Core constraints
+- Slice 3: Supplier CRUD + purchase order basics
+- Slice 4: Product list UI (Data Table) + inventory dashboard (KPI Cards)
+- Slice 5: Tests (unit + integration + cross-tenant isolation)
+
+**Wave 2: Order Pipeline**
+
+- Slice 1: Order schema + FSM (draft→confirmed→processing→shipped→delivered→completed)
+- Slice 2: Order creation flow (form + product search + address + validation)
+- Slice 3: Order detail view (Sheet Detail + status timeline)
+- Slice 4: Order list with filters, search, bulk actions
+- Slice 5: Tests (FSM transitions, concurrent edits, cross-tenant)
+
+**Wave 3: Fiscal Integration**
+
+- Slice 1: FiscalCapability interface + Focus NFe adapter
+- Slice 2: NF-e issuance flow (form + status tracking)
+- Slice 3: NF-e cancellation + correction flows
+- Slice 4: Fiscal report views
+- Slice 5: Tests (fiscal validation, error handling, retry logic)
+
+**Wave 4: Financial Module**
+
+- Slice 1: Double-entry ledger schema + append-only enforcement
+- Slice 2: Payment reconciliation (receivables tracking)
+- Slice 3: DRE (income statement) with waterfall chart
+- Slice 4: Margin calculator per product/order
+- Slice 5: Tests (double-entry invariants, reconciliation accuracy)
+
+**Wave 5: Shipping + Polish**
+
+- Slice 1: ShippingCapability interface + Melhor Envio adapter
+- Slice 2: Shipping quote + label generation in order flow
+- Slice 3: Tracking integration + status updates
+- Slice 4: Reports (sales, inventory, shipping)
+- Slice 5: E2E tests (Playwright: full order lifecycle)
+
+### API Envelope (mandatory)
+
+All ERP API responses follow:
+
+```json
+{
+  "data": { ... },
+  "meta": { "page": 1, "total": 100, "tenant_id": "..." },
+  "errors": []
+}
+```
+
+Error responses:
+
+```json
+{
+  "data": null,
+  "meta": {},
+  "errors": [
+    {
+      "code": "VALIDATION_ERROR",
+      "field": "quantity",
+      "message": "Must be >= 0"
+    }
+  ]
+}
+```
+
+### UUID v7
+
+All primary keys use UUID v7 (time-ordered). Never use `gen_random_uuid()` (which generates v4).
+Implementation: `uuidv7()` from packages/shared or Drizzle's built-in UUID v7 support.
+
+### Reversibility Policy
+
+| Operation              | Reversible? | Method                                |
+| ---------------------- | ----------- | ------------------------------------- |
+| Order creation (draft) | Yes         | Delete draft                          |
+| Order confirmation     | No          | Cancel + compensating entry           |
+| Order cancellation     | No          | Append-only (new status entry)        |
+| Inventory adjustment   | No          | Compensating adjustment (append)      |
+| NF-e issuance          | Conditional | Cancellation within 24h via SEFAZ     |
+| Payment received       | No          | Refund = new compensating transaction |
+| Supplier payment       | No          | Compensating entry in ledger          |
+
+### Critical Acceptance Criteria (Given/When/Then)
+
+#### Order Lifecycle
+
+```gherkin
+Given an authenticated user with "operations" role and valid tenant
+When they create an order with valid products and quantities
+Then the order is created with status "draft" and tenant_id matches session
+
+Given an order in "draft" status
+When the user confirms the order
+Then status transitions to "confirmed" AND inventory is reserved AND audit log entry created
+
+Given an order in "confirmed" status
+When the user attempts to transition directly to "delivered"
+Then the FSM trigger rejects the transition AND returns error "Invalid transition"
+
+Given an order in "shipped" status
+When a different tenant's user attempts to view it
+Then the response is 404 (not 403) to prevent tenant enumeration
+```
+
+#### Inventory
+
+```gherkin
+Given a product with 10 units in stock
+When an order reserves 10 units and another order attempts to reserve 1 unit concurrently
+Then exactly one reservation succeeds AND the other receives ConflictError with retry hint
+
+Given a product with 5 units in stock
+When an adjustment of -6 is attempted
+Then the CHECK constraint rejects it AND stock remains at 5
+
+Given an inventory adjustment
+When it is recorded
+Then the adjustment is append-only AND a compensating entry is required to reverse it
+```
+
+#### Financial
+
+```gherkin
+Given a confirmed order worth R$150.00
+When payment of R$150.00 is received
+Then a double-entry ledger entry is created (debit: receivables, credit: revenue) AND the entry is immutable
+
+Given a ledger entry that was recorded incorrectly
+When a correction is needed
+Then a NEW compensating entry is created AND the original entry is NEVER modified or deleted
+```
+
+#### Security
+
+```gherkin
+Given a user with "creative" role
+When they attempt to access financial reports
+Then the response is 403 AND the attempt is logged to audit trail
+
+Given a mutation request without Zod-validated input
+When it reaches the server action
+Then it is rejected before any database operation
+
+Given a user request with a spoofed tenant_id in the body
+When it is processed
+Then the body tenant_id is ignored AND session tenant_id is used exclusively
+```
+
+---
+
+> **END OF COMPLIANCE OVERLAY**
+> **Original functional spec follows below.**
+
+---
+
 # Mini-ERP + Fiscal — Module Spec
 
 > **Module:** Mini-ERP + Fiscal
@@ -6,7 +300,7 @@
 > **Admin UI route group:** `(admin)/erp/*`
 > **Version:** 1.0
 > **Date:** March 2026
-> **Status:** Approved
+> **Status:** SPEC_DRAFT (Aratar lifecycle — pending re-review)
 > **Replaces:** Bling (R$ 0-50/mes savings + massive efficiency gain)
 > **Sub-modules:** Margin Calculator, DRE (Income Statement)
 > **References:** [DATABASE.md](../../architecture/DATABASE.md), [API.md](../../architecture/API.md), [AUTH.md](../../architecture/AUTH.md), [NOTIFICATIONS.md](../../platform/NOTIFICATIONS.md), [GLOSSARY.md](../../dev/GLOSSARY.md)
@@ -19,16 +313,16 @@ The Mini-ERP + Fiscal module is the **operational backbone** of Ambaril. It owns
 
 **Core responsibilities:**
 
-| Capability                              | Description                                                                                                                                     |
-| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Order Pipeline**                      | Kanban-style order management with FSM: Pendente -> Pago -> Separacao -> Enviado -> Entregue. Ana Clara processes orders exclusively on mobile. |
-| **Product & SKU Catalog**               | Product hierarchy with multi-variant SKUs (size x color). Prices, costs, barcodes, weights, dimensions.                                         |
-| **Inventory Management**                | Real-time stock tracking per SKU: available, reserved, in production, in transit. Depletion velocity and days-to-zero forecasting.              |
-| **Fiscal (NF-e)**                       | Brazilian electronic invoice emission via Focus NFe API. Auto-emit on separation, retry on failure, return NF-e from Trocas module.             |
-| **Shipping**                            | Label generation and tracking via Melhor Envio. Carrier selection, cost tracking, delivery status updates.                                      |
-| **Financial Reconciliation**            | Transaction tracking per order. Mercado Pago webhook ingestion. Sale/refund/chargeback/fee recording.                                           |
-| **Margin Calculator** (sub-module)      | Per-SKU margin breakdown: production cost + shipping + gateway fees + taxes = total cost vs. price. Price simulation.                           |
-| **DRE / Income Statement** (sub-module) | Monthly P&L report: gross revenue, discounts, returns, net revenue, COGS, gross margin, operational expenses, net income.                       |
+| Capability                              | Description                                                                                                                                                          |
+| --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Order Pipeline**                      | Kanban-style order management with FSM: Pendente -> Pago -> Separacao -> Enviado -> Entregue. Ana Clara processes orders exclusively on mobile.                      |
+| **Product & SKU Catalog**               | Product hierarchy with multi-variant SKUs (size x color). Prices, costs, barcodes, weights, dimensions.                                                              |
+| **Inventory Management**                | Real-time stock tracking per SKU: available, reserved, in production, in transit. Depletion velocity and days-to-zero forecasting.                                   |
+| **Fiscal (NF-e)**                       | Brazilian electronic invoice emission via Focus NFe API (via FiscalCapability interface). Auto-emit on separation, retry on failure, return NF-e from Trocas module. |
+| **Shipping**                            | Label generation and tracking via Melhor Envio (via ShippingCapability interface). Carrier selection, cost tracking, delivery status updates.                        |
+| **Financial Reconciliation**            | Transaction tracking per order. Mercado Pago (adapter — see Provider Abstraction overlay) webhook ingestion. Sale/refund/chargeback/fee recording.                   |
+| **Margin Calculator** (sub-module)      | Per-SKU margin breakdown: production cost + shipping + gateway fees + taxes = total cost vs. price. Price simulation.                                                |
+| **DRE / Income Statement** (sub-module) | Monthly P&L report: gross revenue, discounts, returns, net revenue, COGS, gross margin, operational expenses, net income.                                            |
 
 **Primary users:**
 
@@ -85,16 +379,16 @@ The ERP is the **master aggregator** for all products across all channels (DTC, 
 
 ### 2.1 Ana Clara (Operations — Mobile)
 
-| #     | Story                                                                                                                                              | Acceptance Criteria                                                                                                          |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| US-01 | As Ana Clara, I want to see all pending orders as cards on my phone so I can process them one by one during the day.                               | Mobile order list with large cards, status badges, swipe gestures. Loads in under 2s on 4G.                                  |
-| US-02 | As Ana Clara, I want to tap an order card and see all details (customer, items, payment status) on a single scrollable mobile screen.              | Order detail page with all info visible without horizontal scrolling.                                                        |
-| US-03 | As Ana Clara, I want to mark an order as "Separando" with a single big button so I can start picking items.                                        | Action button at least 44px tall. Tap triggers status transition + inventory reservation.                                    |
-| US-04 | As Ana Clara, I want to emit the NF-e for an order with one tap, and see immediate feedback on success or failure.                                 | Button triggers NF-e emission via Focus NFe. Loading spinner. Success shows NF-e number. Failure shows error + retry button. |
-| US-05 | As Ana Clara, I want to generate a shipping label with one tap and see the tracking code immediately.                                              | Button triggers Melhor Envio label generation. Success shows tracking code and label PDF link.                               |
-| US-06 | As Ana Clara, I want to mark an order as "Enviado" after I hand it to the carrier, with the tracking code already filled.                          | Confirm button. Status transitions to shipped. Customer notification triggered automatically.                                |
-| US-07 | As Ana Clara, I want to enter new stock when a production batch arrives, by selecting the SKU and typing the quantity.                             | Mobile stock entry form: SKU dropdown (searchable), quantity numeric input, confirm button. All touch targets >= 44px.       |
-| US-08 | As Ana Clara, I want the full order processing flow (Separar -> NF-e -> Etiqueta -> Enviar) to be sequential big buttons so I never lose my place. | Step-by-step action flow on mobile with disabled/enabled states based on current order status.                               |
+| #     | Story                                                                                                                                              | Acceptance Criteria                                                                                                                                                       |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| US-01 | As Ana Clara, I want to see all pending orders as cards on my phone so I can process them one by one during the day.                               | Mobile order list with large cards, status badges, swipe gestures. Loads in under 2s on 4G.                                                                               |
+| US-02 | As Ana Clara, I want to tap an order card and see all details (customer, items, payment status) on a single scrollable mobile screen.              | Order detail page with all info visible without horizontal scrolling.                                                                                                     |
+| US-03 | As Ana Clara, I want to mark an order as "Separando" with a single big button so I can start picking items.                                        | Action button at least 44px tall. Tap triggers status transition + inventory reservation.                                                                                 |
+| US-04 | As Ana Clara, I want to emit the NF-e for an order with one tap, and see immediate feedback on success or failure.                                 | Button triggers NF-e emission via Focus NFe (adapter — see Provider Abstraction overlay). Loading spinner. Success shows NF-e number. Failure shows error + retry button. |
+| US-05 | As Ana Clara, I want to generate a shipping label with one tap and see the tracking code immediately.                                              | Button triggers Melhor Envio (adapter — see Provider Abstraction overlay) label generation. Success shows tracking code and label PDF link.                               |
+| US-06 | As Ana Clara, I want to mark an order as "Enviado" after I hand it to the carrier, with the tracking code already filled.                          | Confirm button. Status transitions to shipped. Customer notification triggered automatically.                                                                             |
+| US-07 | As Ana Clara, I want to enter new stock when a production batch arrives, by selecting the SKU and typing the quantity.                             | Mobile stock entry form: SKU dropdown (searchable), quantity numeric input, confirm button. All touch targets >= 44px.                                                    |
+| US-08 | As Ana Clara, I want the full order processing flow (Separar -> NF-e -> Etiqueta -> Enviar) to be sequential big buttons so I never lose my place. | Step-by-step action flow on mobile with disabled/enabled states based on current order status.                                                                            |
 
 ### 2.2 Tavares (Operations — Desktop & Mobile)
 
@@ -381,7 +675,7 @@ CREATE TYPE erp.order_source AS ENUM (
 
 | Column          | Type         | Constraints                    | Description                                                                                              |
 | --------------- | ------------ | ------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| id              | UUID         | PK, DEFAULT gen_random_uuid()  | UUID v7                                                                                                  |
+| id              | UUID         | PK, DEFAULT uuidv7()           | UUID v7                                                                                                  |
 | name            | VARCHAR(255) | NOT NULL                       | Product display name (e.g., "Camiseta Preta Basic")                                                      |
 | slug            | VARCHAR(255) | NOT NULL, UNIQUE               | URL-friendly identifier (e.g., "camiseta-preta-basic")                                                   |
 | description     | TEXT         | NULL                           | Product description for internal use                                                                     |
@@ -407,7 +701,7 @@ CREATE INDEX idx_products_name_search ON erp.products USING GIN (to_tsvector('po
 
 | Column           | Type          | Constraints                   | Description                                              |
 | ---------------- | ------------- | ----------------------------- | -------------------------------------------------------- |
-| id               | UUID          | PK, DEFAULT gen_random_uuid() | UUID v7                                                  |
+| id               | UUID          | PK, DEFAULT uuidv7()          | UUID v7                                                  |
 | product_id       | UUID          | NOT NULL, FK erp.products(id) | Parent product                                           |
 | sku_code         | VARCHAR(50)   | NOT NULL, UNIQUE              | Human-readable SKU code (e.g., "SKU-0412-P-PRETA")       |
 | size             | VARCHAR(10)   | NOT NULL                      | Size variant (e.g., "PP", "P", "M", "G", "GG", "XGG")    |
@@ -437,7 +731,7 @@ CREATE INDEX idx_skus_barcode ON erp.skus (barcode) WHERE barcode IS NOT NULL;
 
 | Column                   | Type         | Constraints                       | Description                                                           |
 | ------------------------ | ------------ | --------------------------------- | --------------------------------------------------------------------- |
-| id                       | UUID         | PK, DEFAULT gen_random_uuid()     | UUID v7                                                               |
+| id                       | UUID         | PK, DEFAULT uuidv7()              | UUID v7                                                               |
 | sku_id                   | UUID         | NOT NULL, FK erp.skus(id), UNIQUE | One inventory record per SKU                                          |
 | quantity_available       | INTEGER      | NOT NULL DEFAULT 0                | Units available for sale                                              |
 | quantity_reserved        | INTEGER      | NOT NULL DEFAULT 0                | Units reserved by paid orders not yet shipped                         |
@@ -468,7 +762,7 @@ CREATE INDEX idx_inventory_velocity ON erp.inventory (depletion_velocity DESC);
 
 | Column         | Type              | Constraints                   | Description                                                                   |
 | -------------- | ----------------- | ----------------------------- | ----------------------------------------------------------------------------- |
-| id             | UUID              | PK, DEFAULT gen_random_uuid() | UUID v7                                                                       |
+| id             | UUID              | PK, DEFAULT uuidv7()          | UUID v7                                                                       |
 | sku_id         | UUID              | NOT NULL, FK erp.skus(id)     | Which SKU was affected                                                        |
 | movement_type  | erp.movement_type | NOT NULL                      | sale, return, adjustment, production_entry, purchase, loss                    |
 | quantity       | INTEGER           | NOT NULL                      | Positive = entry, negative = exit. Always stored with sign.                   |
@@ -497,7 +791,7 @@ CREATE INDEX idx_movements_sku_30d ON erp.inventory_movements (sku_id, created_a
 
 | Column        | Type           | Constraints                      | Description                                                         |
 | ------------- | -------------- | -------------------------------- | ------------------------------------------------------------------- |
-| id            | UUID           | PK, DEFAULT gen_random_uuid()    | UUID v7                                                             |
+| id            | UUID           | PK, DEFAULT uuidv7()             | UUID v7                                                             |
 | order_id      | UUID           | NOT NULL, FK checkout.orders(id) | Which order this NF-e belongs to                                    |
 | type          | erp.nfe_type   | NOT NULL                         | sale (normal invoice) or return (Trocas return invoice)             |
 | nfe_number    | INTEGER        | NULL                             | NF-e number assigned by SEFAZ (NULL until authorized)               |
@@ -532,7 +826,7 @@ CREATE INDEX idx_nfe_pending_retry ON erp.nfe_documents (retry_count)
 
 | Column                  | Type                   | Constraints                      | Description                                                                   |
 | ----------------------- | ---------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
-| id                      | UUID                   | PK, DEFAULT gen_random_uuid()    | UUID v7                                                                       |
+| id                      | UUID                   | PK, DEFAULT uuidv7()             | UUID v7                                                                       |
 | order_id                | UUID                   | NOT NULL, FK checkout.orders(id) | Which order this transaction belongs to                                       |
 | type                    | erp.transaction_type   | NOT NULL                         | sale, refund, chargeback, fee                                                 |
 | amount                  | NUMERIC(12,2)          | NOT NULL                         | Transaction amount in BRL. Positive for sale, negative for refund/chargeback. |
@@ -563,7 +857,7 @@ CREATE INDEX idx_ft_created ON erp.financial_transactions (created_at DESC);
 
 | Column                   | Type          | Constraints                   | Description                                                                                     |
 | ------------------------ | ------------- | ----------------------------- | ----------------------------------------------------------------------------------------------- |
-| id                       | UUID          | PK, DEFAULT gen_random_uuid() | UUID v7                                                                                         |
+| id                       | UUID          | PK, DEFAULT uuidv7()          | UUID v7                                                                                         |
 | sku_id                   | UUID          | NOT NULL, FK erp.skus(id)     | Which SKU this calculation is for                                                               |
 | production_cost          | NUMERIC(10,2) | NOT NULL                      | Unit production cost (from PLM cost_analyses or manual entry)                                   |
 | avg_shipping_cost        | NUMERIC(10,2) | NOT NULL                      | Average shipping cost per unit (calculated from recent labels)                                  |
@@ -592,7 +886,7 @@ CREATE INDEX idx_margin_percent ON erp.margin_calculations (margin_percent DESC)
 
 | Column               | Type                        | Constraints                                     | Description                                                                                                                |
 | -------------------- | --------------------------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| id                   | UUID                        | PK, DEFAULT gen_random_uuid()                   | UUID v7                                                                                                                    |
+| id                   | UUID                        | PK, DEFAULT uuidv7()                            | UUID v7                                                                                                                    |
 | period_month         | INTEGER                     | NOT NULL, CHECK (period_month BETWEEN 1 AND 12) | Month (1-12)                                                                                                               |
 | period_year          | INTEGER                     | NOT NULL, CHECK (period_year >= 2024)           | Year (e.g., 2026)                                                                                                          |
 | gross_revenue        | NUMERIC(14,2)               | NOT NULL                                        | Sum of all sale transactions in the period                                                                                 |
@@ -621,7 +915,7 @@ CREATE INDEX idx_dre_status ON erp.income_statements (status);
 
 | Column                  | Type                      | Constraints                      | Description                                                                    |
 | ----------------------- | ------------------------- | -------------------------------- | ------------------------------------------------------------------------------ |
-| id                      | UUID                      | PK, DEFAULT gen_random_uuid()    | UUID v7                                                                        |
+| id                      | UUID                      | PK, DEFAULT uuidv7()             | UUID v7                                                                        |
 | order_id                | UUID                      | NOT NULL, FK checkout.orders(id) | Which order this label is for                                                  |
 | provider                | VARCHAR(50)               | NOT NULL DEFAULT 'melhor_envio'  | Shipping provider API                                                          |
 | service_name            | VARCHAR(100)              | NOT NULL                         | Carrier and service (e.g., "Correios PAC", "Correios SEDEX", "Jadlog Package") |
@@ -1959,3 +2253,252 @@ Fallback: If Shopify integration is insufficient (known issue with current Bling
 ### Precificação Assistida por IA
 
 Based on production cost, desired margin, competitor prices (from Marketing Competitor Watch), historical performance. Output: "At R$229 your margin is 78% (very high). At R$199, drops to 62% (fair) but historical volume increases 40%." Important for Tavares (costs), Pedro (finance) and Marcus (strategy). Requires 2-3 months of real ERP data. Intelligence layer in Astro, price simulation UI in ERP.
+
+---
+
+## NF-e Operational Procedures
+
+> **Purpose:** Reference for agents implementing NF-e lifecycle operations beyond standard emission.
+> **API provider:** Focus NFe (https://focusnfe.com.br)
+> **References:** [focus-nfe-api-reference.md](../../dev/focus-nfe-api-reference.md), [LGPD-RETENTION.md](../../platform/LGPD-RETENTION.md), SEFAZ technical documentation.
+
+### 1. Cancelamento (NF-e Cancellation)
+
+Cancellation voids an authorized NF-e. It is a SEFAZ operation — both buyer and seller are notified, and the NF-e becomes legally void.
+
+**Time window:** Up to 24 hours after authorization date/time. Some states (e.g., MT, GO) allow up to 48 hours — check the `uf_cancellation_window` config per state. After the window closes, cancellation is impossible.
+
+**Requirements:**
+
+- NF-e must be in `autorizada` status.
+- Chave de acesso (44-digit NF-e key).
+- Justificativa (minimum 15 characters, maximum 255).
+- Original authorization protocol number.
+
+**Focus NFe API call:**
+
+```http
+POST /v2/nfe/{ref}/cancelamento
+Content-Type: application/json
+Authorization: Token token={api_token}
+
+{
+  "justificativa": "Pedido cancelado pelo cliente antes do envio. Acordo comercial."
+}
+```
+
+**Response handling:**
+
+- `200` with `status: 'cancelado'` -> cancellation accepted by SEFAZ.
+- `422` with error -> cancellation rejected. Common reasons:
+  - `"prazo_excedido"` — window expired, must issue NF-e de devolucao instead.
+  - `"nfe_nao_autorizada"` — NF-e not yet authorized or already cancelled.
+
+**Post-cancellation side effects (ALL must execute in a transaction):**
+
+1. Update `erp.nfe_documents` -> `status = 'cancelada'`, store cancellation protocol.
+2. Update `erp.orders` -> `status = 'cancelled'`.
+3. Reverse inventory allocation: return reserved quantities to available stock.
+4. If payment was captured: initiate refund via Mercado Pago.
+5. Notify customer via WhatsApp (transactional template: `order_cancelled`).
+6. Log in `global.audit_logs` with full context.
+
+**If cancellation window has expired (>24h):**
+
+- Cannot cancel. Must issue an **NF-e de devolucao** (return invoice) referencing the original NF-e.
+- This is a separate NF-e emission with CFOP 1.201/2.201 (return of merchandise) and the original NF-e key in the `nfe_referenciada` field.
+- The financial effect is the same (credit to customer), but the fiscal trail is different.
+
+---
+
+### 2. Carta de Correcao (Correction Letter)
+
+A Carta de Correcao Eletronica (CC-e) corrects supplementary information on an authorized NF-e without voiding it.
+
+**Time window:** Up to 30 days after NF-e authorization.
+
+**CANNOT correct (SEFAZ will reject):**
+
+- Item values, unit prices, total amounts
+- Quantities
+- Tax calculations (ICMS, PIS, COFINS, IPI base or rate)
+- Recipient identity (CNPJ/CPF, Razao Social, Inscricao Estadual)
+- Operation date (data de emissao / saida)
+
+**CAN correct:**
+
+- CFOP (Codigo Fiscal de Operacoes e Prestacoes)
+- Carrier information (transportadora)
+- Additional information (informacoes complementares)
+- Weight, volume, dimensions
+- Address details (street, number, complement — but NOT city/state/CEP changes that would change the tax jurisdiction)
+- Natural person name corrections (minor typos)
+
+**Maximum:** 20 Cartas de Correcao per NF-e. Each new CC-e must contain ALL previous corrections plus the new one (cumulative text).
+
+**Focus NFe API call:**
+
+```http
+POST /v2/nfe/{ref}/carta_correcao
+Content-Type: application/json
+Authorization: Token token={api_token}
+
+{
+  "correcao": "Corrigir CFOP de 5102 para 5101. Informacao adicional: mercadoria sujeita a substituicao tributaria conforme protocolo ICMS 42/09."
+}
+```
+
+**Response handling:**
+
+- `200` with `status: 'autorizado'` -> CC-e accepted by SEFAZ.
+- `422` with error -> correction rejected. Check SEFAZ rejection code.
+
+**Post-correction side effects:**
+
+1. Store CC-e event in `erp.nfe_events` with: event_type `'carta_correcao'`, sequence number, correction text, SEFAZ protocol.
+2. Update `erp.nfe_documents.correction_count` (increment).
+3. Log in audit trail.
+4. If CFOP was corrected: verify tax implications and flag for accountant review.
+
+---
+
+### 3. Inutilizacao (Number Range Invalidation)
+
+When NF-e numbers are skipped (due to system errors, failed emissions, or range gaps), the unused numbers MUST be invalidated with SEFAZ. Unexplained gaps in NF-e numbering trigger fiscal investigations.
+
+**Timing:** Must inutilize the gap BEFORE emitting the next NF-e in sequence. Ideally, detect gaps automatically on every emission.
+
+**Focus NFe API call:**
+
+```http
+POST /v2/nfe/inutilizar
+Content-Type: application/json
+Authorization: Token token={api_token}
+
+{
+  "cnpj": "12345678000199",
+  "serie": "1",
+  "numero_inicial": "142",
+  "numero_final": "145",
+  "justificativa": "Numeracao inutilizada por falha no sistema de emissao. Gap detectado automaticamente entre NF-e 141 e 146."
+}
+```
+
+**Requirements:**
+
+- CNPJ of the emitter.
+- Serie number (usually `"1"` for standard NF-e).
+- Starting and ending number of the gap (inclusive).
+- Justificativa (minimum 15 characters).
+- Numbers must not have been used for authorized NF-e.
+
+**Automated gap detection:**
+
+```sql
+-- Detect gaps in NF-e numbering
+WITH numbered AS (
+  SELECT nfe_number, serie,
+    LEAD(nfe_number) OVER (PARTITION BY serie ORDER BY nfe_number) AS next_number
+  FROM erp.nfe_documents
+  WHERE tenant_id = :tenant_id AND status = 'autorizada'
+)
+SELECT nfe_number + 1 AS gap_start, next_number - 1 AS gap_end
+FROM numbered
+WHERE next_number - nfe_number > 1;
+```
+
+Run this check:
+
+- Before every NF-e emission.
+- As a daily scheduled job.
+- Alert operator if gaps are detected and auto-inutilize if configured.
+
+**Post-inutilizacao:**
+
+1. Store in `erp.nfe_events` with event_type `'inutilizacao'`, number range, protocol.
+2. Log in audit trail.
+3. Clear the gap alert.
+
+---
+
+### 4. Certificate Management (e-CNPJ / A1)
+
+NF-e emission requires a valid digital certificate (e-CNPJ). Ambaril uses Focus NFe as the API provider, which handles certificate storage and signing on their infrastructure.
+
+**Certificate types:**
+
+- **A1 (file-based):** Software certificate stored as a `.pfx` file. Validity: 1 year. This is what Focus NFe accepts.
+- **A3 (hardware token/smartcard):** NOT compatible with API-based emission. Do not use.
+
+**Focus NFe certificate management:**
+
+- Certificate is uploaded to Focus NFe's dashboard or via API during account setup.
+- Focus NFe stores and uses the certificate for all signing operations.
+- Ambaril does NOT store the certificate file — Focus NFe manages it entirely.
+
+**Expiry tracking (Ambaril's responsibility):**
+
+| Config Key                    | Value | Description                                  |
+| ----------------------------- | ----- | -------------------------------------------- |
+| `nfe_certificate_expiry_date` | DATE  | Certificate expiry date                      |
+| `nfe_certificate_alert_days`  | 30    | Days before expiry to start alerting         |
+| `nfe_certificate_serial`      | TEXT  | Certificate serial number for identification |
+| `nfe_certificate_issuer`      | TEXT  | Certificate authority name                   |
+
+**Alert schedule:**
+
+- **30 days before expiry:** Notification to operator (Discord #alertas + email).
+- **15 days before expiry:** Urgent alert. Block non-critical operations if not renewed.
+- **7 days before expiry:** Critical alert. Escalate to Marcus.
+- **0 days (expired):** NF-e emission will fail. All orders stuck in `aguardando_nfe` status.
+
+**Renewal process:**
+
+1. Purchase new A1 certificate from authorized CA (e.g., Serasa, Certisign, AC Valid).
+2. Upload to Focus NFe dashboard.
+3. Update `nfe_certificate_expiry_date` in Ambaril config.
+4. Test emission with a development NF-e (homologacao environment).
+5. Log certificate rotation in audit trail.
+
+---
+
+### 5. SEFAZ Contingency (Offline Mode)
+
+When SEFAZ (the state tax authority server) is unavailable, NF-e emission fails. Focus NFe provides contingency handling for most scenarios.
+
+**Contingency modes:**
+
+| Mode                | Description                                  | When used                                                |
+| ------------------- | -------------------------------------------- | -------------------------------------------------------- |
+| **SVC-AN / SVC-RS** | SEFAZ Virtual de Contingencia                | Primary SEFAZ down, virtual environment available        |
+| **EPEC**            | Evento Previo de Emissao em Contingencia     | Register NF-e summary at national level, authorize later |
+| **FS-DA**           | Formulario de Seguranca — Documento Auxiliar | Paper-based fallback (rare, emergency only)              |
+
+**Focus NFe behavior:**
+
+- Focus NFe detects SEFAZ unavailability automatically.
+- For SVC contingency: Focus NFe redirects the emission to the SVC environment transparently. The API call is the same — the response may include `contingencia: true`.
+- For EPEC: Focus NFe registers the EPEC event and returns a temporary protocol. The definitive authorization happens when SEFAZ recovers.
+
+**Ambaril handling:**
+
+1. **On emission response with `contingencia: true`:**
+   - Store the NF-e with `status = 'contingencia'` (not `'autorizada'`).
+   - The order CAN proceed to fulfillment (the NF-e is fiscally valid in contingency).
+   - Display contingency badge in admin UI.
+
+2. **Automatic reconciliation:**
+   - Focus NFe will send a webhook when the definitive authorization is received.
+   - Update `erp.nfe_documents` -> `status = 'autorizada'`, store definitive protocol.
+   - Log the contingency resolution in audit trail.
+
+3. **If SEFAZ is down for extended period (>4 hours):**
+   - Alert operator via Discord #alertas.
+   - Check SEFAZ status page (https://www.nfe.fazenda.gov.br/portal/disponibilidade.aspx).
+   - All contingency events are logged in `erp.nfe_events` with event_type `'contingencia'`.
+
+4. **Monitoring:**
+   - Track contingency frequency. High frequency may indicate network issues on Focus NFe's side or regional SEFAZ instability.
+   - Dashboard metric: contingency rate (%) per week.
+
+**Important:** NF-e emitted in contingency is legally valid. The buyer can verify the NF-e normally once SEFAZ reconciles. There is no need to re-emit or cancel contingency NF-e — they become regular authorized NF-e after reconciliation.

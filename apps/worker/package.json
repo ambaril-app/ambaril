@@ -1,0 +1,23 @@
+{
+  "name": "@ambaril/worker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Iron Core Worker (ADR-018, 2026-04-24) — Long-running ERP jobs on Hetzner VPS. Handles NF-e batch emission, DRE generation, financial reconciliation, and other tasks that exceed Vercel serverless timeout limits.",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "graphile-worker": "^0.16.0",
+    "postgres": "^3.4.0",
+    "drizzle-orm": "^0.38.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.0",
+    "@types/node": "^22.0.0"
+  }
+}

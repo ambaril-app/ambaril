@@ -307,6 +307,9 @@ CREATE INDEX idx_reverse_logistics_active ON trocas.reverse_logistics (status, c
 
 #### 3.3.4 trocas.store_credits
 
+<!-- TODO: trocas.store_credits table is specified here but does not yet exist in
+     packages/db/src/schema/trocas.ts. It needs to be added to the schema file. -->
+
 | Column              | Type        | Constraints                               | Description                                                                                                           |
 | ------------------- | ----------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
 | id                  | UUID        | PK, DEFAULT gen_random_uuid()             | UUID v7                                                                                                               |

@@ -33,6 +33,21 @@ export const auditActionEnum = globalSchema.enum("audit_action", [
   "create",
   "update",
   "delete",
+  "login",
+  "logout",
+  "impersonate",
+  "export",
+  "import",
+  "approve",
+  "reject",
+  "archive",
+  "restore",
+  "bulk_update",
+  "payout",
+  "webhook_received",
+  "consent_granted",
+  "consent_revoked",
+  "data_deletion_request",
 ]);
 
 export const notificationPriorityEnum = globalSchema.enum(

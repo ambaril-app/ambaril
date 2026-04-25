@@ -42,9 +42,9 @@
   --info-muted: rgba(37, 99, 235, 0.08);
 
   /* Typography */
-  --font-display: "Bricolage Grotesque", "DM Sans", -apple-system, sans-serif;
-  --font: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: "DM Mono", "SF Mono", "Fira Code", monospace;
+  --font-display: var(--font-bricolage), "DM Sans", -apple-system, sans-serif;
+  --font: var(--font-dm-sans), -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: var(--font-dm-mono), "SF Mono", "Fira Code", monospace;
 
   /* Radius — defined in @theme block (static, same in both themes) */
 
@@ -1045,6 +1045,12 @@ html.theme-transition *::after {
   animation-delay: 450ms;
 }
 
+/* ═══ OVERDRIVE ANIMATIONS (L1/L2 ONLY) ═══
+ * These animations are for Ambient and Moment energy levels.
+ * NEVER use on L0 (Workhorse) routes — tables, forms, settings.
+ * Reference: CLAUDE.md P10, DS.md Section 5.1
+ * ═══════════════════════════════════════════ */
+
 /* ─── OVERDRIVE: Sidebar expand/collapse (grid-row transition) ─── */
 
 .sidebar-expand {
@@ -1330,6 +1336,13 @@ select {
 .typing-indicator span:nth-child(3) {
   animation-delay: 320ms;
 }
+
+/* ═══ DELIGHT ANIMATIONS (L2 ONLY) ═══
+ * These animations are for Moment energy levels only.
+ * Onboarding, empty states, auth, first-run experiences.
+ * NEVER use on L0 or L1 routes.
+ * Reference: CLAUDE.md P10, DS.md Section 5.1
+ * ═══════════════════════════════════════════ */
 
 /* ─── DELIGHT: Checkbox satisfaction flash ─── */
 

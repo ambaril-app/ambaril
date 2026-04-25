@@ -33,23 +33,23 @@ main (production — always deployable)
 
 ### 2.1 Long-lived Branches
 
-| Branch | Purpose | Deploys to |
-|--------|---------|------------|
-| `main` | Production-ready code | Production (Vercel) |
+| Branch    | Purpose                     | Deploys to               |
+| --------- | --------------------------- | ------------------------ |
+| `main`    | Production-ready code       | Production (Vercel)      |
 | `develop` | Integration branch, staging | Staging (Vercel preview) |
 
 ### 2.2 Short-lived Branches
 
 Created from `develop`, merged back into `develop`, then deleted.
 
-| Prefix | Use | Example |
-|--------|-----|---------|
-| `feat/` | New feature or module | `feat/pcp/production-orders` |
-| `fix/` | Bug fix | `fix/erp/stock-negative-guard` |
-| `chore/` | Tooling, config, deps | `chore/ci/add-playwright` |
-| `refactor/` | Code restructure (no behavior change) | `refactor/crm/extract-rfm-service` |
-| `docs/` | Documentation only | `docs/api/update-endpoints` |
-| `hotfix/` | Urgent production fix (branches from `main`) | `hotfix/checkout/pix-timeout` |
+| Prefix      | Use                                          | Example                            |
+| ----------- | -------------------------------------------- | ---------------------------------- |
+| `feat/`     | New feature or module                        | `feat/pcp/production-orders`       |
+| `fix/`      | Bug fix                                      | `fix/erp/stock-negative-guard`     |
+| `chore/`    | Tooling, config, deps                        | `chore/ci/add-playwright`          |
+| `refactor/` | Code restructure (no behavior change)        | `refactor/crm/extract-rfm-service` |
+| `docs/`     | Documentation only                           | `docs/api/update-endpoints`        |
+| `hotfix/`   | Urgent production fix (branches from `main`) | `hotfix/checkout/pix-timeout`      |
 
 ### 2.3 Naming Convention
 
@@ -57,15 +57,15 @@ Format: `{type}/{module}/{short-description}`
 
 **Module** matches the codebase domain:
 
-| Category | Modules |
-|----------|---------|
-| Commerce | `checkout`, `b2b` |
-| Operations | `erp`, `pcp`, `trocas` |
-| Growth | `crm`, `creators`, `marketing-intel` |
-| Communication | `whatsapp`, `clawdbot` |
-| Team | `inbox`, `tarefas`, `dam` |
-| Intelligence | `dashboard` |
-| Platform | `auth`, `db`, `ui`, `shared`, `infra`, `ci`, `email` |
+| Category      | Modules                                              |
+| ------------- | ---------------------------------------------------- |
+| Commerce      | `checkout`, `b2b`                                    |
+| Operations    | `erp`, `pcp`, `trocas`                               |
+| Growth        | `crm`, `creators`, `marketing-intel`                 |
+| Communication | `whatsapp`, `clawdbot`                               |
+| Team          | `inbox`, `tarefas`, `dam`                            |
+| Intelligence  | `dashboard`                                          |
+| Platform      | `auth`, `db`, `ui`, `shared`, `infra`, `ci`, `email` |
 
 **Short description:** kebab-case, max 4 words.
 
@@ -101,17 +101,17 @@ Every commit message follows the [Conventional Commits](https://www.conventional
 
 ### 3.2 Types
 
-| Type | When to use |
-|------|-------------|
-| `feat` | New feature or capability |
-| `fix` | Bug fix |
+| Type       | When to use                           |
+| ---------- | ------------------------------------- |
+| `feat`     | New feature or capability             |
+| `fix`      | Bug fix                               |
 | `refactor` | Code restructure (no behavior change) |
-| `style` | Formatting, whitespace, semicolons |
-| `test` | Adding or updating tests |
-| `docs` | Documentation changes |
-| `chore` | Build, CI, deps, tooling |
-| `perf` | Performance improvement |
-| `ci` | CI/CD pipeline changes |
+| `style`    | Formatting, whitespace, semicolons    |
+| `test`     | Adding or updating tests              |
+| `docs`     | Documentation changes                 |
+| `chore`    | Build, CI, deps, tooling              |
+| `perf`     | Performance improvement               |
+| `ci`       | CI/CD pipeline changes                |
 
 ### 3.3 Scope
 
@@ -164,7 +164,7 @@ dedicated service for reuse in scheduled jobs and reports.
 perf(checkout): cache shipping quotes for 5 minutes
 
 Melhor Envio API calls are slow (~800ms). Cache quotes by
-zip+items hash in Redis to avoid redundant calls during
+zip+items hash cached to avoid redundant calls during
 the same checkout session.
 ```
 
@@ -299,9 +299,11 @@ Save this as `.github/PULL_REQUEST_TEMPLATE.md`:
 
 ```markdown
 ## Summary
+
 <!-- 1-3 bullet points describing the change -->
 
 ## Type
+
 - [ ] Feature
 - [ ] Bug fix
 - [ ] Refactor
@@ -309,18 +311,22 @@ Save this as `.github/PULL_REQUEST_TEMPLATE.md`:
 - [ ] Docs
 
 ## Module(s) affected
+
 <!-- e.g., ERP, PCP, CRM -->
 
 ## Screenshots / ASCII
+
 <!-- UI changes: include screenshot or ASCII wireframe -->
 
 ## Testing
+
 - [ ] Unit tests added/updated
 - [ ] Integration tests added/updated
 - [ ] E2E tests added/updated (if UI change)
 - [ ] Manually tested in development
 
 ## Checklist
+
 - [ ] TypeScript strict mode passes
 - [ ] No `any` types introduced
 - [ ] API follows envelope pattern (API.md)
@@ -339,10 +345,10 @@ Save this as `.github/PULL_REQUEST_TEMPLATE.md`:
 
 ## 6. Merge Strategy
 
-| Merge direction | Strategy | Reason |
-|----------------|----------|--------|
+| Merge direction             | Strategy         | Reason                                                    |
+| --------------------------- | ---------------- | --------------------------------------------------------- |
 | Feature branch -> `develop` | **Squash merge** | Keeps `develop` history clean; one commit per feature/fix |
-| `develop` -> `main` | **Merge commit** | Preserves the release boundary; easy to diff releases |
+| `develop` -> `main`         | **Merge commit** | Preserves the release boundary; easy to diff releases     |
 
 **Rules:**
 
@@ -376,22 +382,22 @@ git push origin main --tags
 
 Follow [Semantic Versioning](https://semver.org/):
 
-| Change | Version bump | Example |
-|--------|-------------|---------|
-| Breaking API change | MAJOR | `v1.0.0` -> `v2.0.0` |
-| New feature or module | MINOR | `v1.0.0` -> `v1.1.0` |
-| Bug fix | PATCH | `v1.0.0` -> `v1.0.1` |
+| Change                | Version bump | Example              |
+| --------------------- | ------------ | -------------------- |
+| Breaking API change   | MAJOR        | `v1.0.0` -> `v2.0.0` |
+| New feature or module | MINOR        | `v1.0.0` -> `v1.1.0` |
+| Bug fix               | PATCH        | `v1.0.0` -> `v1.0.1` |
 
 **Tag format:** `v{major}.{minor}.{patch}`
 
 **Phased rollout tags:**
 
-| Phase | Module(s) | Tag |
-|-------|-----------|-----|
-| Phase 1 | CRM | `v0.1.0` |
+| Phase   | Module(s)      | Tag      |
+| ------- | -------------- | -------- |
+| Phase 1 | CRM            | `v0.1.0` |
 | Phase 2 | ERP + Checkout | `v0.2.0` |
-| Phase 3 | PCP + Trocas | `v0.3.0` |
-| ... | ... | ... |
+| Phase 3 | PCP + Trocas   | `v0.3.0` |
+| ...     | ...            | ...      |
 
 The version tracks the overall platform, not individual modules. Once the platform reaches GA, bump to `v1.0.0`.
 
@@ -494,11 +500,11 @@ npx husky init
 
 ### 10.2 Hook Configuration
 
-| Hook | Action | Purpose |
-|------|--------|---------|
+| Hook         | Action                                              | Purpose                                        |
+| ------------ | --------------------------------------------------- | ---------------------------------------------- |
 | `pre-commit` | Run lint-staged (ESLint + Prettier on staged files) | Catch formatting and lint errors before commit |
-| `commit-msg` | Validate conventional commit format (commitlint) | Enforce commit message convention |
-| `pre-push` | Run typecheck + affected tests | Prevent pushing broken code |
+| `commit-msg` | Validate conventional commit format (commitlint)    | Enforce commit message convention              |
+| `pre-push`   | Run typecheck + affected tests                      | Prevent pushing broken code                    |
 
 ### 10.3 lint-staged Config
 
@@ -523,13 +529,27 @@ module.exports = {
       2,
       "always",
       [
-        "checkout", "b2b",
-        "erp", "pcp", "trocas",
-        "crm", "creators", "marketing-intel",
-        "whatsapp", "clawdbot",
-        "inbox", "tarefas", "dam",
+        "checkout",
+        "b2b",
+        "erp",
+        "pcp",
+        "trocas",
+        "crm",
+        "creators",
+        "marketing-intel",
+        "whatsapp",
+        "clawdbot",
+        "inbox",
+        "tarefas",
+        "dam",
         "dashboard",
-        "auth", "db", "ui", "shared", "infra", "ci", "email",
+        "auth",
+        "db",
+        "ui",
+        "shared",
+        "infra",
+        "ci",
+        "email",
         "deps",
       ],
     ],
@@ -541,16 +561,19 @@ module.exports = {
 ### 10.5 Husky Hook Scripts
 
 `.husky/pre-commit`:
+
 ```bash
 pnpm lint-staged
 ```
 
 `.husky/commit-msg`:
+
 ```bash
 npx --no -- commitlint --edit $1
 ```
 
 `.husky/pre-push`:
+
 ```bash
 pnpm typecheck && pnpm test --filter=...[origin/develop]
 ```
@@ -607,17 +630,17 @@ drizzle/*.sql
 
 Configure these in GitHub repository settings.
 
-| Branch | Rule | Value |
-|--------|------|-------|
-| `main` | Require pull request | Yes |
-| `main` | Require status checks to pass | `lint`, `typecheck`, `test`, `build` |
-| `main` | Require approvals | 1 (when team grows beyond 1 dev) |
-| `main` | No force push | Yes |
-| `main` | No deletions | Yes |
-| `develop` | Require pull request | Yes |
+| Branch    | Rule                          | Value                                |
+| --------- | ----------------------------- | ------------------------------------ |
+| `main`    | Require pull request          | Yes                                  |
+| `main`    | Require status checks to pass | `lint`, `typecheck`, `test`, `build` |
+| `main`    | Require approvals             | 1 (when team grows beyond 1 dev)     |
+| `main`    | No force push                 | Yes                                  |
+| `main`    | No deletions                  | Yes                                  |
+| `develop` | Require pull request          | Yes                                  |
 | `develop` | Require status checks to pass | `lint`, `typecheck`, `test`, `build` |
-| `develop` | No force push | Yes |
-| `develop` | No deletions | Yes |
+| `develop` | No force push                 | Yes                                  |
+| `develop` | No deletions                  | Yes                                  |
 
 For a solo dev phase, the approval requirement on `main` can be relaxed, but all CI checks must still pass.
 

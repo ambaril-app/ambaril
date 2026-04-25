@@ -11,29 +11,29 @@
 
 Every state-changing operation in the system produces an audit log entry.
 
-| Category | Examples | Logged |
-|----------|----------|--------|
-| **Data mutations** | CREATE, UPDATE, DELETE on any table across all 15 modules | Yes |
-| **Authentication events** | Login (success and failure), logout, session expiry, password change, password reset | Yes |
-| **Permission changes** | Role assignment, role removal, permission grant, permission revoke | Yes |
-| **NF-e emissions** | NF-e creation, authorization, cancellation, correction letter | Yes |
-| **Financial transactions** | Payment received, refund issued, chargeback, payout to creator, B2B invoice | Yes |
-| **Setting changes** | Any change to system settings, module configuration, integration credentials (value masked) | Yes |
-| **Data exports** | LGPD data export requests, CSV/report exports | Yes |
-| **Bulk operations** | Bulk status updates, bulk deletions, bulk imports | Yes |
-| **Consent changes** | Consent granted, consent revoked | Yes |
-| **Integration events** | Webhook received (Mercado Pago, Melhor Envio, WhatsApp), API key rotation | Yes |
+| Category                   | Examples                                                                                    | Logged |
+| -------------------------- | ------------------------------------------------------------------------------------------- | ------ |
+| **Data mutations**         | CREATE, UPDATE, DELETE on any table across all 15 modules                                   | Yes    |
+| **Authentication events**  | Login (success and failure), logout, session expiry, password change, password reset        | Yes    |
+| **Permission changes**     | Role assignment, role removal, permission grant, permission revoke                          | Yes    |
+| **NF-e emissions**         | NF-e creation, authorization, cancellation, correction letter                               | Yes    |
+| **Financial transactions** | Payment received, refund issued, chargeback, payout to creator, B2B invoice                 | Yes    |
+| **Setting changes**        | Any change to system settings, module configuration, integration credentials (value masked) | Yes    |
+| **Data exports**           | LGPD data export requests, CSV/report exports                                               | Yes    |
+| **Bulk operations**        | Bulk status updates, bulk deletions, bulk imports                                           | Yes    |
+| **Consent changes**        | Consent granted, consent revoked                                                            | Yes    |
+| **Integration events**     | Webhook received (Mercado Pago, Melhor Envio, WhatsApp), API key rotation                   | Yes    |
 
 ### What Does NOT Get Logged
 
-| Category | Reason |
-|----------|--------|
-| **Read operations** | Too high volume; would overwhelm storage. Access control is enforced at the application layer. |
-| **Search queries** | Not state-changing. Search analytics are handled by the Analytics module separately. |
-| **Health check requests** | Automated monitoring noise (`GET /api/health`). |
-| **SSE (Server-Sent Events) connections** | Connection lifecycle is not a data mutation. Real-time event payloads are already logged as their source mutations. |
-| **Static asset requests** | Handled by CDN (Cloudflare). Not application-level events. |
-| **BullMQ internal job state transitions** | BullMQ has its own job lifecycle tracking via BullMQ Board. Only the business outcome of a job (e.g., "NF-e emitted") is logged. |
+| Category                                      | Reason                                                                                                              |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| **Read operations**                           | Too high volume; would overwhelm storage. Access control is enforced at the application layer.                      |
+| **Search queries**                            | Not state-changing. Search analytics are handled by the Analytics module separately.                                |
+| **Health check requests**                     | Automated monitoring noise (`GET /api/health`).                                                                     |
+| **SSE (Server-Sent Events) connections**      | Connection lifecycle is not a data mutation. Real-time event payloads are already logged as their source mutations. |
+| **Static asset requests**                     | Handled by CDN (Cloudflare). Not application-level events.                                                          |
+| **Background job internal state transitions** | Job queue has its own lifecycle tracking. Only the business outcome of a job (e.g., "NF-e emitted") is logged.      |
 
 ---
 
@@ -86,21 +86,21 @@ CREATE INDEX idx_audit_logs_user_timestamp ON global.audit_logs(user_id, timesta
 
 ### Field Details
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | UUID | Unique identifier for the audit entry. |
-| `timestamp` | TIMESTAMPTZ | When the action occurred. Server-side, not client-supplied. |
-| `user_id` | UUID (nullable) | The user who performed the action. NULL for system-initiated actions (cron jobs, webhooks, automated processes). |
-| `user_role` | TEXT (nullable) | The user's role at the time of action (e.g., `admin`, `operator`, `creator`). Denormalized to preserve historical accuracy even if the role changes later. |
-| `action` | TEXT (enum) | The type of action performed. See enum values in schema above. |
-| `resource_type` | TEXT | The schema-qualified table or resource (e.g., `erp.orders`, `crm.contacts`, `global.settings`). For login events: `auth.session`. |
-| `resource_id` | UUID (nullable) | The ID of the specific resource affected. NULL for bulk operations, login events, or setting changes that affect multiple resources. |
-| `module` | TEXT | The module that owns this resource (e.g., `erp`, `crm`, `financial`, `fiscal`, `auth`, `catalog`, `analytics`, `dam`, `checkout`, `creators`, `b2b`, `community`, `ai`, `notifications`, `settings`). |
-| `changes` | JSONB (nullable) | For `update` actions: contains `{before, after}` diff (see Section 4). For `create`: contains `{after: {...}}` with the created record. For `delete`: contains `{before: {...}}` with the deleted record. NULL for login/logout events. |
-| `ip_address` | INET (nullable) | Client IP address. Extracted from `x-forwarded-for` header (Vercel) or direct connection. |
-| `user_agent` | TEXT (nullable) | Client user agent string. |
-| `request_id` | TEXT (nullable) | Correlation ID propagated from the incoming request (`x-request-id` header). Links this audit entry to logs, traces, and other audit entries from the same request. |
-| `metadata` | JSONB | Additional context. Examples: `{"bulk_count": 25}` for bulk operations, `{"export_format": "json"}` for exports, `{"nfe_number": "123456"}` for NF-e events. |
+| Field           | Type             | Description                                                                                                                                                                                                                             |
+| --------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`            | UUID             | Unique identifier for the audit entry.                                                                                                                                                                                                  |
+| `timestamp`     | TIMESTAMPTZ      | When the action occurred. Server-side, not client-supplied.                                                                                                                                                                             |
+| `user_id`       | UUID (nullable)  | The user who performed the action. NULL for system-initiated actions (cron jobs, webhooks, automated processes).                                                                                                                        |
+| `user_role`     | TEXT (nullable)  | The user's role at the time of action (e.g., `admin`, `operator`, `creator`). Denormalized to preserve historical accuracy even if the role changes later.                                                                              |
+| `action`        | TEXT (enum)      | The type of action performed. See enum values in schema above.                                                                                                                                                                          |
+| `resource_type` | TEXT             | The schema-qualified table or resource (e.g., `erp.orders`, `crm.contacts`, `global.settings`). For login events: `auth.session`.                                                                                                       |
+| `resource_id`   | UUID (nullable)  | The ID of the specific resource affected. NULL for bulk operations, login events, or setting changes that affect multiple resources.                                                                                                    |
+| `module`        | TEXT             | The module that owns this resource (e.g., `erp`, `crm`, `financial`, `fiscal`, `auth`, `catalog`, `analytics`, `dam`, `checkout`, `creators`, `b2b`, `community`, `ai`, `notifications`, `settings`).                                   |
+| `changes`       | JSONB (nullable) | For `update` actions: contains `{before, after}` diff (see Section 4). For `create`: contains `{after: {...}}` with the created record. For `delete`: contains `{before: {...}}` with the deleted record. NULL for login/logout events. |
+| `ip_address`    | INET (nullable)  | Client IP address. Extracted from `x-forwarded-for` header (Vercel) or direct connection.                                                                                                                                               |
+| `user_agent`    | TEXT (nullable)  | Client user agent string.                                                                                                                                                                                                               |
+| `request_id`    | TEXT (nullable)  | Correlation ID propagated from the incoming request (`x-request-id` header). Links this audit entry to logs, traces, and other audit entries from the same request.                                                                     |
+| `metadata`      | JSONB            | Additional context. Examples: `{"bulk_count": 25}` for bulk operations, `{"export_format": "json"}` for exports, `{"nfe_number": "123456"}` for NF-e events.                                                                            |
 
 ---
 
@@ -113,8 +113,8 @@ Audit logging is implemented at the ORM level using Drizzle lifecycle hooks, ens
 ```typescript
 // src/lib/audit/hooks.ts
 
-import { type AuditLogEntry } from '@/types/audit';
-import { auditQueue } from '@/lib/queues/audit';
+import { type AuditLogEntry } from "@/types/audit";
+import { auditQueue } from "@/lib/queues/audit";
 
 /**
  * Creates a Drizzle hook wrapper that captures mutations for audit logging.
@@ -122,16 +122,19 @@ import { auditQueue } from '@/lib/queues/audit';
  */
 export function withAuditLog(tableName: string, module: string) {
   return {
-    $onInsert: async (ctx: { values: Record<string, unknown>; userId?: string }) => {
+    $onInsert: async (ctx: {
+      values: Record<string, unknown>;
+      userId?: string;
+    }) => {
       const entry: AuditLogEntry = {
-        action: 'create',
+        action: "create",
         resourceType: tableName,
         resourceId: ctx.values.id as string,
         module,
         changes: { after: sanitize(ctx.values) },
         userId: ctx.userId,
       };
-      await auditQueue.add('log', entry);
+      await auditQueue.add("log", entry);
     },
 
     $onUpdate: async (ctx: {
@@ -143,26 +146,29 @@ export function withAuditLog(tableName: string, module: string) {
       if (Object.keys(diff.before).length === 0) return; // No actual changes
 
       const entry: AuditLogEntry = {
-        action: 'update',
+        action: "update",
         resourceType: tableName,
         resourceId: ctx.after.id as string,
         module,
         changes: diff,
         userId: ctx.userId,
       };
-      await auditQueue.add('log', entry);
+      await auditQueue.add("log", entry);
     },
 
-    $onDelete: async (ctx: { before: Record<string, unknown>; userId?: string }) => {
+    $onDelete: async (ctx: {
+      before: Record<string, unknown>;
+      userId?: string;
+    }) => {
       const entry: AuditLogEntry = {
-        action: 'delete',
+        action: "delete",
         resourceType: tableName,
         resourceId: ctx.before.id as string,
         module,
         changes: { before: sanitize(ctx.before) },
         userId: ctx.userId,
       };
-      await auditQueue.add('log', entry);
+      await auditQueue.add("log", entry);
     },
   };
 }
@@ -175,7 +181,11 @@ For UPDATE operations, the before-state must be captured BEFORE the mutation exe
 ```typescript
 // Pattern for update operations:
 
-async function updateOrder(orderId: string, data: Partial<Order>, userId: string) {
+async function updateOrder(
+  orderId: string,
+  data: Partial<Order>,
+  userId: string,
+) {
   // 1. Capture before state
   const before = await db.query.orders.findFirst({
     where: eq(orders.id, orderId),
@@ -190,11 +200,11 @@ async function updateOrder(orderId: string, data: Partial<Order>, userId: string
 
   // 3. Audit hook fires with before + after (handled by $onUpdate)
   // Or manually enqueue if not using ORM hooks:
-  await auditQueue.add('log', {
-    action: 'update',
-    resourceType: 'erp.orders',
+  await auditQueue.add("log", {
+    action: "update",
+    resourceType: "erp.orders",
     resourceId: orderId,
-    module: 'erp',
+    module: "erp",
     changes: computeDiff(before, after[0]),
     userId,
   });
@@ -205,37 +215,42 @@ async function updateOrder(orderId: string, data: Partial<Order>, userId: string
 
 ### 3.3 Async Write via BullMQ
 
+<!-- TODO: Per ADR-012, Redis and BullMQ were eliminated from the stack.
+     This section should be rewritten to use PostgreSQL queues + Vercel Cron
+     (FOR UPDATE SKIP LOCKED pattern). The code examples below referencing
+     bullmq and redis imports are outdated. -->
+
 Audit log inserts are **asynchronous** to avoid slowing down the main request path. Entries are pushed to a BullMQ queue and written to the database by the worker.
 
 ```typescript
 // src/lib/queues/audit.ts
 
-import { Queue, Worker } from 'bullmq';
-import { redis } from '@/lib/redis';
-import { db } from '@/lib/db';
-import { auditLogs } from '@/db/schema/global';
+import { Queue, Worker } from "bullmq";
+import { redis } from "@/lib/redis";
+import { db } from "@/lib/db";
+import { auditLogs } from "@/db/schema/global";
 
 // Queue definition
-export const auditQueue = new Queue('audit-log', {
+export const auditQueue = new Queue("audit-log", {
   connection: redis,
   defaultJobOptions: {
     removeOnComplete: true,
-    removeOnFail: 1000,       // Keep last 1000 failed for debugging
+    removeOnFail: 1000, // Keep last 1000 failed for debugging
     attempts: 3,
-    backoff: { type: 'exponential', delay: 1000 },
+    backoff: { type: "exponential", delay: 1000 },
   },
 });
 
 // Worker definition (runs on Railway/Fly.io)
 export const auditWorker = new Worker(
-  'audit-log',
+  "audit-log",
   async (job) => {
     await processBatch(job.data);
   },
   {
     connection: redis,
     concurrency: 5,
-  }
+  },
 );
 ```
 
@@ -276,7 +291,7 @@ async function flush() {
       userAgent: entry.userAgent,
       requestId: entry.requestId,
       metadata: entry.metadata ?? {},
-    }))
+    })),
   );
 
   // If more entries remain, schedule another flush
@@ -296,6 +311,7 @@ export function enqueue(entry: AuditLogEntry) {
 ```
 
 **Flush triggers:**
+
 - Every 100ms (timer-based)
 - Every 50 entries (size-based)
 - Whichever comes first
@@ -309,18 +325,25 @@ Every incoming request generates (or inherits) a correlation ID that flows throu
 ```typescript
 // src/middleware.ts (Next.js middleware)
 
-import { NextResponse } from 'next/server';
-import { v4 as uuid } from 'uuid';
+import { NextResponse } from "next/server";
+import { v4 as uuid } from "uuid";
 
 export function middleware(request: Request) {
-  const requestId = request.headers.get('x-request-id') ?? uuid();
+  const requestId = request.headers.get("x-request-id") ?? uuid();
   const response = NextResponse.next();
-  response.headers.set('x-request-id', requestId);
+  response.headers.set("x-request-id", requestId);
 
   // Store in AsyncLocalStorage for access in audit hooks
-  requestContext.run({ requestId, ip: getClientIp(request), userAgent: request.headers.get('user-agent') }, () => {
-    return response;
-  });
+  requestContext.run(
+    {
+      requestId,
+      ip: getClientIp(request),
+      userAgent: request.headers.get("user-agent"),
+    },
+    () => {
+      return response;
+    },
+  );
 
   return response;
 }
@@ -349,7 +372,7 @@ type DiffResult = {
  */
 export function computeDiff(
   before: Record<string, unknown>,
-  after: Record<string, unknown>
+  after: Record<string, unknown>,
 ): DiffResult {
   const diff: DiffResult = { before: {}, after: {} };
 
@@ -357,7 +380,7 @@ export function computeDiff(
 
   for (const key of allKeys) {
     // Skip internal-only fields that are never meaningful in a diff
-    if (key === 'created_at') continue;
+    if (key === "created_at") continue;
 
     const beforeVal = before[key];
     const afterVal = after[key];
@@ -375,7 +398,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (a === null || b === null) return false;
   if (typeof a !== typeof b) return false;
-  if (typeof a === 'object') {
+  if (typeof a === "object") {
     return JSON.stringify(a) === JSON.stringify(b);
   }
   return false;
@@ -448,15 +471,20 @@ Certain fields are sanitized before being stored in the diff:
 
 ```typescript
 const SENSITIVE_FIELDS = [
-  'password_hash', 'cpf', 'access_token', 'api_key',
-  'secret_key', 'webhook_secret', 'bank_account',
+  "password_hash",
+  "cpf",
+  "access_token",
+  "api_key",
+  "secret_key",
+  "webhook_secret",
+  "bank_account",
 ];
 
 function sanitize(data: Record<string, unknown>): Record<string, unknown> {
   const sanitized = { ...data };
   for (const field of SENSITIVE_FIELDS) {
     if (field in sanitized) {
-      sanitized[field] = '[REDACTED]';
+      sanitized[field] = "[REDACTED]";
     }
   }
   return sanitized;
@@ -475,15 +503,15 @@ Accessible only to users with the `admin` role. Provides a comprehensive view of
 
 ### Filters
 
-| Filter | Type | Description |
-|--------|------|-------------|
-| **User** | Dropdown (searchable) | Filter by the user who performed the action. Includes "System" for automated actions. |
-| **Module** | Multi-select | Filter by module: `erp`, `crm`, `financial`, `fiscal`, `catalog`, `analytics`, `dam`, `checkout`, `creators`, `b2b`, `community`, `ai`, `notifications`, `settings`, `auth`. |
-| **Resource Type** | Text input (autocomplete) | Filter by specific resource type (e.g., `erp.orders`, `crm.contacts`). |
-| **Action** | Multi-select | Filter by action type: `create`, `update`, `delete`, `login`, `logout`, `export`, `import`, `permission_change`, `consent_change`, `nfe_emission`, `nfe_cancellation`, `setting_change`, `bulk_operation`. |
-| **Date Range** | Date picker (start + end) | Filter by timestamp range. Defaults to last 24 hours. |
-| **Resource ID** | UUID input | Look up all audit entries for a specific resource. |
-| **Request ID** | Text input | Trace all actions from a single request (correlation ID). |
+| Filter            | Type                      | Description                                                                                                                                                                                                |
+| ----------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **User**          | Dropdown (searchable)     | Filter by the user who performed the action. Includes "System" for automated actions.                                                                                                                      |
+| **Module**        | Multi-select              | Filter by module: `erp`, `crm`, `financial`, `fiscal`, `catalog`, `analytics`, `dam`, `checkout`, `creators`, `b2b`, `community`, `ai`, `notifications`, `settings`, `auth`.                               |
+| **Resource Type** | Text input (autocomplete) | Filter by specific resource type (e.g., `erp.orders`, `crm.contacts`).                                                                                                                                     |
+| **Action**        | Multi-select              | Filter by action type: `create`, `update`, `delete`, `login`, `logout`, `export`, `import`, `permission_change`, `consent_change`, `nfe_emission`, `nfe_cancellation`, `setting_change`, `bulk_operation`. |
+| **Date Range**    | Date picker (start + end) | Filter by timestamp range. Defaults to last 24 hours.                                                                                                                                                      |
+| **Resource ID**   | UUID input                | Look up all audit entries for a specific resource.                                                                                                                                                         |
+| **Request ID**    | Text input                | Trace all actions from a single request (correlation ID).                                                                                                                                                  |
 
 ### Table View
 
@@ -591,7 +619,7 @@ CREATE TABLE global.audit_logs_2026_03 PARTITION OF global.audit_logs
 
 ### Partition Management Job
 
-A BullMQ cron job (`audit:partition-manager`) runs on the 1st of every month:
+A Vercel Cron job (`audit:partition-manager`) runs on the 1st of every month:
 
 1. **Create next month's partition** (e.g., on March 1st, create `audit_logs_2026_04`).
 2. **Move partitions older than 6 months to archive** (detach from `audit_logs`, attach to `audit_logs_archive`).
@@ -600,11 +628,11 @@ A BullMQ cron job (`audit:partition-manager`) runs on the 1st of every month:
 
 ### Storage Estimation
 
-| Traffic | Entries/day | Monthly Storage | 6-month Active | 24-month Total |
-|---------|-------------|-----------------|----------------|----------------|
-| Low (500 orders/mo) | ~2,000 | ~50 MB | ~300 MB | ~1.2 GB |
-| Medium (5k orders/mo) | ~20,000 | ~500 MB | ~3 GB | ~12 GB |
-| High (50k orders/mo) | ~200,000 | ~5 GB | ~30 GB | ~120 GB |
+| Traffic               | Entries/day | Monthly Storage | 6-month Active | 24-month Total |
+| --------------------- | ----------- | --------------- | -------------- | -------------- |
+| Low (500 orders/mo)   | ~2,000      | ~50 MB          | ~300 MB        | ~1.2 GB        |
+| Medium (5k orders/mo) | ~20,000     | ~500 MB         | ~3 GB          | ~12 GB         |
+| High (50k orders/mo)  | ~200,000    | ~5 GB           | ~30 GB         | ~120 GB        |
 
 At high scale, partitioning and archival become critical for maintaining query performance.
 
@@ -616,18 +644,18 @@ Some audit events are classified as **critical** and trigger additional actions 
 
 ### Event Definitions
 
-| Event | Trigger Condition | Additional Action |
-|-------|-------------------|-------------------|
-| **Permission change** | Any modification to `global.user_roles` or role assignments | Notification to all admin users via Discord `#alertas`. Email to the affected user confirming the change. |
-| **Bulk deletion** | DELETE action where `metadata.bulk_count > 10` | Admin alert via Discord `#alertas` with details (who, what module, how many records). Requires admin confirmation for >100 items. |
-| **NF-e emission** | `action: 'nfe_emission'` | Audit entry is marked as **immutable** (cannot be deleted from the audit log, even during retention cleanup). The NF-e number, DANFE URL, and XML reference are stored in `metadata`. |
-| **NF-e cancellation** | `action: 'nfe_cancellation'` | Same immutability as emission. Additionally, the cancellation reason is required in `metadata.reason`. Admin notification via Discord. |
-| **Financial transaction change** | Any UPDATE on `financial.transactions` where `status` or `amount` changes | Notification to finance team (Discord `#financeiro`). If amount changes, flag for manual review. |
-| **Login failure spike** | More than 5 failed login attempts for the same user within 10 minutes | Account temporarily locked (30 minutes). Admin notification. IP logged for potential blocking. |
-| **Setting change** | Any modification to `global.settings` | Admin notification. Before/after values logged (secrets masked). |
-| **LGPD data deletion** | Execution of a data subject deletion request | Immutable audit entry. Confirmation email to the data subject. Report to DPO. |
-| **API key rotation** | Change of any integration credential | Admin notification. Old key hash stored in `metadata` for forensics. |
-| **Bulk import** | Import of >100 records | Admin notification with import summary (records created, updated, failed). |
+| Event                            | Trigger Condition                                                         | Additional Action                                                                                                                                                                     |
+| -------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Permission change**            | Any modification to `global.user_roles` or role assignments               | Notification to all admin users via Discord `#alertas`. Email to the affected user confirming the change.                                                                             |
+| **Bulk deletion**                | DELETE action where `metadata.bulk_count > 10`                            | Admin alert via Discord `#alertas` with details (who, what module, how many records). Requires admin confirmation for >100 items.                                                     |
+| **NF-e emission**                | `action: 'nfe_emission'`                                                  | Audit entry is marked as **immutable** (cannot be deleted from the audit log, even during retention cleanup). The NF-e number, DANFE URL, and XML reference are stored in `metadata`. |
+| **NF-e cancellation**            | `action: 'nfe_cancellation'`                                              | Same immutability as emission. Additionally, the cancellation reason is required in `metadata.reason`. Admin notification via Discord.                                                |
+| **Financial transaction change** | Any UPDATE on `financial.transactions` where `status` or `amount` changes | Notification to finance team (Discord `#financeiro`). If amount changes, flag for manual review.                                                                                      |
+| **Login failure spike**          | More than 5 failed login attempts for the same user within 10 minutes     | Account temporarily locked (30 minutes). Admin notification. IP logged for potential blocking.                                                                                        |
+| **Setting change**               | Any modification to `global.settings`                                     | Admin notification. Before/after values logged (secrets masked).                                                                                                                      |
+| **LGPD data deletion**           | Execution of a data subject deletion request                              | Immutable audit entry. Confirmation email to the data subject. Report to DPO.                                                                                                         |
+| **API key rotation**             | Change of any integration credential                                      | Admin notification. Old key hash stored in `metadata` for forensics.                                                                                                                  |
+| **Bulk import**                  | Import of >100 records                                                    | Admin notification with import summary (records created, updated, failed).                                                                                                            |
 
 ### Implementation
 
@@ -636,7 +664,7 @@ Critical event detection runs as a post-processing step in the audit worker:
 ```typescript
 // src/workers/audit-critical.ts
 
-import { criticalEventHandlers } from '@/lib/audit/critical-handlers';
+import { criticalEventHandlers } from "@/lib/audit/critical-handlers";
 
 export async function processAuditEntry(entry: AuditLogEntry) {
   // 1. Write to database (standard flow)
@@ -652,26 +680,25 @@ export async function processAuditEntry(entry: AuditLogEntry) {
 
 // Example handler: Permission change notification
 const permissionChangeHandler = {
-  matches: (entry: AuditLogEntry) =>
-    entry.action === 'permission_change',
+  matches: (entry: AuditLogEntry) => entry.action === "permission_change",
 
   execute: async (entry: AuditLogEntry) => {
     await sendDiscordAlert({
-      channel: 'alertas',
-      title: 'Permission Change',
+      channel: "alertas",
+      title: "Permission Change",
       description: `User ${entry.userId} changed permissions on ${entry.resourceType}`,
       fields: [
-        { name: 'Before', value: JSON.stringify(entry.changes?.before) },
-        { name: 'After', value: JSON.stringify(entry.changes?.after) },
+        { name: "Before", value: JSON.stringify(entry.changes?.before) },
+        { name: "After", value: JSON.stringify(entry.changes?.after) },
       ],
-      severity: 'warning',
+      severity: "warning",
     });
 
     // Email the affected user
     if (entry.resourceId) {
       await sendEmail({
         to: await getUserEmail(entry.resourceId),
-        template: 'permission-change',
+        template: "permission-change",
         data: { changes: entry.changes },
       });
     }
@@ -683,13 +710,13 @@ const permissionChangeHandler = {
 
 Certain audit entries are protected from deletion, even during retention cleanup:
 
-| Entry Type | Immutable Until |
-|------------|-----------------|
-| NF-e emission | 5 years from emission date |
-| NF-e cancellation | 5 years from cancellation date |
-| LGPD data deletion | Permanent (proof of compliance) |
-| Consent changes | Permanent (proof of lawful processing) |
-| Financial transaction changes involving disputes | Until dispute is resolved + 2 years |
+| Entry Type                                       | Immutable Until                        |
+| ------------------------------------------------ | -------------------------------------- |
+| NF-e emission                                    | 5 years from emission date             |
+| NF-e cancellation                                | 5 years from cancellation date         |
+| LGPD data deletion                               | Permanent (proof of compliance)        |
+| Consent changes                                  | Permanent (proof of lawful processing) |
+| Financial transaction changes involving disputes | Until dispute is resolved + 2 years    |
 
 The partition cleanup job checks for the `immutable` flag (stored in `metadata.immutable: true`) before dropping any partition. Immutable entries from expired partitions are moved to `audit_logs_fiscal_archive` before the partition is dropped.
 
@@ -697,9 +724,9 @@ The partition cleanup job checks for the `immutable` flag (stored in `metadata.i
 
 The audit system has its own health checks:
 
-| Check | Condition | Alert |
-|-------|-----------|-------|
-| Queue depth | Audit queue > 1000 pending jobs | Warning: audit writes are falling behind |
-| Write latency | Batch insert takes > 1 second | Warning: database performance issue |
-| Missing entries | Gap detected between expected and actual entries (sampled) | Critical: audit entries may be lost |
-| Partition check | Next month's partition does not exist within 7 days of month end | Warning: partition must be created |
+| Check           | Condition                                                        | Alert                                    |
+| --------------- | ---------------------------------------------------------------- | ---------------------------------------- |
+| Queue depth     | Audit queue > 1000 pending jobs                                  | Warning: audit writes are falling behind |
+| Write latency   | Batch insert takes > 1 second                                    | Warning: database performance issue      |
+| Missing entries | Gap detected between expected and actual entries (sampled)       | Critical: audit entries may be lost      |
+| Partition check | Next month's partition does not exist within 7 days of month end | Warning: partition must be created       |

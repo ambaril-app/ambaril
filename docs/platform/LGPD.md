@@ -12,6 +12,7 @@ The **LGPD (Lei Geral de Protecao de Dados Pessoais)** -- Law No. 13,709/2018 --
 Ambaril (Ambaril) processes personal data across its 15 modules. As the **data controller** (controlador), the brand operating Ambaril is responsible for lawful processing. Ambaril, as the platform, acts as the **data processor** (operador) and must implement technical and organizational measures to ensure compliance.
 
 **Key LGPD principles Ambaril must uphold:**
+
 - **Purpose limitation**: Data collected only for specific, explicit, and legitimate purposes.
 - **Necessity**: Only collect data strictly necessary for the stated purpose.
 - **Transparency**: Data subjects must be clearly informed about how their data is used.
@@ -27,29 +28,29 @@ Ambaril (Ambaril) processes personal data across its 15 modules. As the **data c
 
 Complete inventory of personal data processed by Ambaril.
 
-| Data Type | Source | Storage Location (Table) | Module | Legal Basis | Retention Period |
-|-----------|--------|--------------------------|--------|-------------|-----------------|
-| Full name | Checkout, CRM import, Creator registration, B2B registration | `crm.contacts.full_name` | CRM | Contract execution | Duration of relationship + 5 years |
-| CPF (tax ID) | Checkout (for NF-e), Creator registration, B2B registration | `crm.contacts.cpf` | CRM / Fiscal | Legal obligation (NF-e) | 5 years after last fiscal transaction |
-| Email address | Checkout, CRM import, Creator registration, B2B registration | `crm.contacts.email` | CRM | Contract execution / Consent (marketing) | Duration of relationship + 5 years; marketing: until consent revoked |
-| Phone number | Checkout, CRM import, WhatsApp conversations | `crm.contacts.phone` | CRM | Contract execution / Consent (WhatsApp marketing) | Duration of relationship + 5 years |
-| Shipping address | Checkout | `erp.orders.shipping_address` (JSONB) | ERP | Contract execution | 5 years (fiscal requirement) |
-| Billing address | Checkout | `erp.orders.billing_address` (JSONB) | ERP | Contract execution | 5 years (fiscal requirement) |
-| Purchase history | Orders, transactions | `erp.orders`, `financial.transactions` | ERP / Financial | Contract execution / Legal obligation | 5 years (fiscal records) |
-| Payment information | Mercado Pago (tokenized) | `financial.transactions.mp_payment_id` (reference only) | Financial | Contract execution | 5 years (fiscal records); full card data never stored |
-| IP address | All web requests, checkout, consent collection | `crm.consents.ip_address`, `global.audit_logs.ip_address` | Global / CRM | Legitimate interest (fraud prevention, audit) | 6 months (audit logs); consent records: permanent |
-| User agent | Web requests, consent collection | `crm.consents.user_agent`, `global.audit_logs.user_agent` | Global / CRM | Legitimate interest (fraud prevention) | 6 months (audit logs) |
-| UTM parameters / browsing source | Checkout, landing pages | `analytics.events.utm_*`, `erp.orders.utm_source` | Analytics | Consent (behavioral tracking) | 24 months, then anonymized |
-| WhatsApp conversation history | WhatsApp Cloud API webhooks | `crm.whatsapp_messages` | CRM | Contract execution (support) / Consent (marketing) | Support: 2 years; Marketing: until consent revoked |
-| Instagram interactions | Instagram API | `crm.instagram_interactions` | CRM | Consent (UGC usage) / Legitimate interest (engagement) | 2 years |
-| Creator personal data | Creator registration form | `creators.profiles` | Creators | Contract execution | Duration of partnership + 5 years |
-| Creator bank/payment details | Creator onboarding | `creators.payment_info` (encrypted) | Creators | Contract execution | Duration of partnership + 1 year |
-| B2B retailer personal data | B2B registration | `b2b.retailers` | B2B | Contract execution | Duration of relationship + 5 years |
-| B2B retailer CNPJ | B2B registration | `b2b.retailers.cnpj` | B2B | Legal obligation | 5 years after last transaction |
-| Login credentials | Registration | `global.users.password_hash` | Auth | Contract execution | Duration of account; deleted on account deletion |
-| Session data | Authentication | Redis (ephemeral) | Auth | Legitimate interest | Session duration (24h max) |
-| Product review content | Customer submission | `catalog.reviews` | Catalog | Consent | Indefinite (anonymized on data deletion request) |
-| Segmentation tags | CRM auto-tagging, manual | `crm.contact_segments` | CRM | Legitimate interest / Consent | Duration of relationship |
+| Data Type                        | Source                                                       | Storage Location (Table)                                  | Module          | Legal Basis                                            | Retention Period                                                     |
+| -------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------- | --------------- | ------------------------------------------------------ | -------------------------------------------------------------------- |
+| Full name                        | Checkout, CRM import, Creator registration, B2B registration | `crm.contacts.full_name`                                  | CRM             | Contract execution                                     | Duration of relationship + 5 years                                   |
+| CPF (tax ID)                     | Checkout (for NF-e), Creator registration, B2B registration  | `crm.contacts.cpf`                                        | CRM / Fiscal    | Legal obligation (NF-e)                                | 5 years after last fiscal transaction                                |
+| Email address                    | Checkout, CRM import, Creator registration, B2B registration | `crm.contacts.email`                                      | CRM             | Contract execution / Consent (marketing)               | Duration of relationship + 5 years; marketing: until consent revoked |
+| Phone number                     | Checkout, CRM import, WhatsApp conversations                 | `crm.contacts.phone`                                      | CRM             | Contract execution / Consent (WhatsApp marketing)      | Duration of relationship + 5 years                                   |
+| Shipping address                 | Checkout                                                     | `erp.orders.shipping_address` (JSONB)                     | ERP             | Contract execution                                     | 5 years (fiscal requirement)                                         |
+| Billing address                  | Checkout                                                     | `erp.orders.billing_address` (JSONB)                      | ERP             | Contract execution                                     | 5 years (fiscal requirement)                                         |
+| Purchase history                 | Orders, transactions                                         | `erp.orders`, `financial.transactions`                    | ERP / Financial | Contract execution / Legal obligation                  | 5 years (fiscal records)                                             |
+| Payment information              | Mercado Pago (tokenized)                                     | `financial.transactions.mp_payment_id` (reference only)   | Financial       | Contract execution                                     | 5 years (fiscal records); full card data never stored                |
+| IP address                       | All web requests, checkout, consent collection               | `crm.consents.ip_address`, `global.audit_logs.ip_address` | Global / CRM    | Legitimate interest (fraud prevention, audit)          | 6 months (audit logs); consent records: permanent                    |
+| User agent                       | Web requests, consent collection                             | `crm.consents.user_agent`, `global.audit_logs.user_agent` | Global / CRM    | Legitimate interest (fraud prevention)                 | 6 months (audit logs)                                                |
+| UTM parameters / browsing source | Checkout, landing pages                                      | `analytics.events.utm_*`, `erp.orders.utm_source`         | Analytics       | Consent (behavioral tracking)                          | 24 months, then anonymized                                           |
+| WhatsApp conversation history    | WhatsApp Cloud API webhooks                                  | `crm.whatsapp_messages`                                   | CRM             | Contract execution (support) / Consent (marketing)     | Support: 2 years; Marketing: until consent revoked                   |
+| Instagram interactions           | Instagram API                                                | `crm.instagram_interactions`                              | CRM             | Consent (UGC usage) / Legitimate interest (engagement) | 2 years                                                              |
+| Creator personal data            | Creator registration form                                    | `creators.profiles`                                       | Creators        | Contract execution                                     | Duration of partnership + 5 years                                    |
+| Creator bank/payment details     | Creator onboarding                                           | `creators.payment_info` (encrypted)                       | Creators        | Contract execution                                     | Duration of partnership + 1 year                                     |
+| B2B retailer personal data       | B2B registration                                             | `b2b.retailers`                                           | B2B             | Contract execution                                     | Duration of relationship + 5 years                                   |
+| B2B retailer CNPJ                | B2B registration                                             | `b2b.retailers.cnpj`                                      | B2B             | Legal obligation                                       | 5 years after last transaction                                       |
+| Login credentials                | Registration                                                 | `global.users.password_hash`                              | Auth            | Contract execution                                     | Duration of account; deleted on account deletion                     |
+| Session data                     | Authentication                                               | PostgreSQL `global.sessions` (ephemeral)                  | Auth            | Legitimate interest                                    | Session duration (24h max)                                           |
+| Product review content           | Customer submission                                          | `catalog.reviews`                                         | Catalog         | Consent                                                | Indefinite (anonymized on data deletion request)                     |
+| Segmentation tags                | CRM auto-tagging, manual                                     | `crm.contact_segments`                                    | CRM             | Legitimate interest / Consent                          | Duration of relationship                                             |
 
 ---
 
@@ -94,6 +95,7 @@ Explicit, informed, freely given, specific consent for each purpose.
 - Cookies for third-party analytics (if any)
 
 **Requirements:**
+
 - Consent must be collected per channel/purpose (not bundled).
 - Consent must not be pre-checked.
 - Consent must be revocable at any time with the same ease it was given.
@@ -124,6 +126,7 @@ During checkout, after the customer fills in their information and before comple
 ```
 
 **Rules:**
+
 - None of the checkboxes are pre-checked (LGPD Art. 8, para. 4).
 - Each checkbox is independent (the customer can consent to one without the others).
 - Below the checkboxes, a link to the full privacy policy and terms of use is displayed.
@@ -210,7 +213,7 @@ SELECT EXISTS (
 ) AS has_consent;
 ```
 
-If `has_consent` is `false`, the message MUST NOT be sent. This check is enforced at the queue level (BullMQ job processor validates consent before dispatching).
+If `has_consent` is `false`, the message MUST NOT be sent. This check is enforced at the queue level (PostgreSQL job processor validates consent before dispatching).
 
 ---
 
@@ -223,10 +226,11 @@ LGPD Articles 17-22 grant data subjects the following rights. Here is how Ambari
 **What:** The data subject can request a copy of all personal data held about them.
 
 **Implementation:**
+
 - API endpoint: `GET /api/lgpd/data-export?contactId={id}`
 - Admin action: "Export Customer Data" button on the CRM contact detail page.
 - Output: JSON file containing all personal data across all modules.
-- Response time: Generated asynchronously (BullMQ job). Customer is notified via email when ready. Maximum 15 calendar days per LGPD.
+- Response time: Generated asynchronously (PostgreSQL queue job). Customer is notified via email when ready. Maximum 15 calendar days per LGPD.
 - Format:
 
 ```json
@@ -254,26 +258,27 @@ LGPD Articles 17-22 grant data subjects the following rights. Here is how Ambari
 **What:** The data subject can request deletion of their personal data.
 
 **Implementation:**
+
 - API endpoint: `POST /api/lgpd/deletion-request`
 - Admin action: "Delete Customer Data" button on CRM contact detail page.
 - Process:
 
-| Data Category | Action | Reason |
-|---------------|--------|--------|
-| Name, email, phone, address in `crm.contacts` | **Anonymized** (replaced with `[REDACTED]` + hash) | Cannot fully delete as order references exist |
-| CPF | **Retained** for 5 years from last NF-e | Legal obligation (fiscal records) |
-| NF-e data, fiscal records | **Retained** for 5 years | Legal obligation (CTN Art. 173) |
-| Order history | **Anonymized** (personal fields replaced, order data retained for accounting) | Legal obligation |
-| Payment references | **Retained** (Mercado Pago IDs, no actual card data stored) | Legal obligation |
-| WhatsApp messages | **Deleted** | No legal retention requirement |
-| Instagram interactions | **Deleted** | No legal retention requirement |
-| Consents | **Retained** (as proof of lawful processing) | Legitimate interest / Legal protection |
-| Reviews | **Anonymized** (author set to "Anonymous") | No legal retention requirement |
-| Segments / tags | **Deleted** | No legal retention requirement |
-| Audit logs | **Anonymized** (user_id set to anonymized hash) | Operational integrity |
-| Creator profile and payment data | **Anonymized** after settlement | Contractual obligation until final payment |
-| B2B retailer data | **Anonymized** after settlement | Contractual obligation until final payment |
-| Login credentials | **Deleted** (account deactivated) | No retention requirement |
+| Data Category                                 | Action                                                                        | Reason                                        |
+| --------------------------------------------- | ----------------------------------------------------------------------------- | --------------------------------------------- |
+| Name, email, phone, address in `crm.contacts` | **Anonymized** (replaced with `[REDACTED]` + hash)                            | Cannot fully delete as order references exist |
+| CPF                                           | **Retained** for 5 years from last NF-e                                       | Legal obligation (fiscal records)             |
+| NF-e data, fiscal records                     | **Retained** for 5 years                                                      | Legal obligation (CTN Art. 173)               |
+| Order history                                 | **Anonymized** (personal fields replaced, order data retained for accounting) | Legal obligation                              |
+| Payment references                            | **Retained** (Mercado Pago IDs, no actual card data stored)                   | Legal obligation                              |
+| WhatsApp messages                             | **Deleted**                                                                   | No legal retention requirement                |
+| Instagram interactions                        | **Deleted**                                                                   | No legal retention requirement                |
+| Consents                                      | **Retained** (as proof of lawful processing)                                  | Legitimate interest / Legal protection        |
+| Reviews                                       | **Anonymized** (author set to "Anonymous")                                    | No legal retention requirement                |
+| Segments / tags                               | **Deleted**                                                                   | No legal retention requirement                |
+| Audit logs                                    | **Anonymized** (user_id set to anonymized hash)                               | Operational integrity                         |
+| Creator profile and payment data              | **Anonymized** after settlement                                               | Contractual obligation until final payment    |
+| B2B retailer data                             | **Anonymized** after settlement                                               | Contractual obligation until final payment    |
+| Login credentials                             | **Deleted** (account deactivated)                                             | No retention requirement                      |
 
 - The deletion request itself is logged in the audit log as an immutable record.
 - A confirmation email is sent when deletion is complete.
@@ -284,6 +289,7 @@ LGPD Articles 17-22 grant data subjects the following rights. Here is how Ambari
 **What:** The data subject can request their data in a structured, machine-readable format for transfer to another service.
 
 **Implementation:**
+
 - Same export endpoint as Right of Access (`GET /api/lgpd/data-export`).
 - Format: JSON (machine-readable, structured).
 - Includes all personal data, purchase history, and consent records.
@@ -294,6 +300,7 @@ LGPD Articles 17-22 grant data subjects the following rights. Here is how Ambari
 **What:** The data subject can revoke consent at any time, with the same ease it was given.
 
 **Implementation:**
+
 - **Email footer**: Every marketing email includes an unsubscribe link that revokes email consent.
 - **WhatsApp**: Reply "SAIR" to any marketing message to revoke WhatsApp consent. The keyword triggers automatic consent revocation.
 - **Account settings**: If the customer has an account, a preferences page allows toggling each consent channel.
@@ -306,6 +313,7 @@ LGPD Articles 17-22 grant data subjects the following rights. Here is how Ambari
 **What:** The data subject has the right to know what data is being processed and why.
 
 **Implementation:**
+
 - Public privacy policy at `ambaril.app/privacidade` (see Section 9).
 - On request, the data export (Section 6.1) provides a complete inventory.
 
@@ -314,6 +322,7 @@ LGPD Articles 17-22 grant data subjects the following rights. Here is how Ambari
 **What:** The data subject can request correction of inaccurate or incomplete data.
 
 **Implementation:**
+
 - Admin action: CRM contact detail page allows editing all personal fields.
 - API endpoint: `PATCH /api/lgpd/correct-data` with the fields to update.
 - All corrections are logged in the audit log.
@@ -323,6 +332,7 @@ LGPD Articles 17-22 grant data subjects the following rights. Here is how Ambari
 **What:** The data subject can object to processing based on legitimate interest.
 
 **Implementation:**
+
 - Handled case-by-case. If a customer objects to segmentation or analytics, their data is excluded from those processes.
 - A flag `processing_objection` on `crm.contacts` excludes the contact from legitimate-interest processing pipelines.
 
@@ -330,29 +340,29 @@ LGPD Articles 17-22 grant data subjects the following rights. Here is how Ambari
 
 ## 7. Data Retention Policy
 
-| Data Type | Active Retention | Archive | Anonymization/Deletion | Legal Basis for Retention |
-|-----------|-----------------|---------|------------------------|---------------------------|
-| Customer PII (name, email, phone) | Duration of active relationship | 5 years after last interaction | Anonymized after 5 years | Contract execution |
-| CPF | Duration of active relationship | 5 years after last fiscal transaction | Anonymized after 5 years | Legal obligation (CTN) |
-| Shipping/billing address | Duration of active relationship | 5 years after last order | Anonymized after 5 years | Legal obligation (NF-e) |
-| NF-e data and XML files | 5 years from emission | N/A (always active for legal compliance) | Deleted after 5 years + 1 month | Legal obligation |
-| Financial transactions | 5 years from transaction date | N/A | Anonymized after 5 years | Legal obligation |
-| Order history | Duration of active relationship | 5 years after last order | Anonymized (personal fields) after 5 years | Legal obligation |
-| WhatsApp messages (support) | 2 years from message date | N/A | Deleted after 2 years | Legitimate interest |
-| WhatsApp messages (marketing) | Until consent revoked | N/A | Deleted on consent revocation + 30 days | Consent |
-| Email marketing history | Until consent revoked | N/A | Deleted on consent revocation + 30 days | Consent |
-| UTM / behavioral tracking | 24 months from collection | N/A | Anonymized after 24 months | Consent |
-| Audit logs | 6 months (active table) | 6-24 months (archive) | Deleted after 24 months (unless NF-e related) | Legitimate interest |
-| Session data (Redis) | Session duration (max 24h) | N/A | Auto-expires | Legitimate interest |
-| Creator data | Duration of partnership | 5 years after partnership ends | Anonymized after 5 years | Contract execution |
-| B2B retailer data | Duration of relationship | 5 years after relationship ends | Anonymized after 5 years | Contract execution |
-| Product reviews | Indefinite (while published) | N/A | Anonymized on deletion request | Consent |
-| Consent records | Permanent | N/A | Never deleted (proof of lawful processing) | Legal protection |
-| Login credentials | Duration of account | N/A | Deleted on account deletion | Contract execution |
+| Data Type                         | Active Retention                | Archive                                  | Anonymization/Deletion                        | Legal Basis for Retention |
+| --------------------------------- | ------------------------------- | ---------------------------------------- | --------------------------------------------- | ------------------------- |
+| Customer PII (name, email, phone) | Duration of active relationship | 5 years after last interaction           | Anonymized after 5 years                      | Contract execution        |
+| CPF                               | Duration of active relationship | 5 years after last fiscal transaction    | Anonymized after 5 years                      | Legal obligation (CTN)    |
+| Shipping/billing address          | Duration of active relationship | 5 years after last order                 | Anonymized after 5 years                      | Legal obligation (NF-e)   |
+| NF-e data and XML files           | 5 years from emission           | N/A (always active for legal compliance) | Deleted after 5 years + 1 month               | Legal obligation          |
+| Financial transactions            | 5 years from transaction date   | N/A                                      | Anonymized after 5 years                      | Legal obligation          |
+| Order history                     | Duration of active relationship | 5 years after last order                 | Anonymized (personal fields) after 5 years    | Legal obligation          |
+| WhatsApp messages (support)       | 2 years from message date       | N/A                                      | Deleted after 2 years                         | Legitimate interest       |
+| WhatsApp messages (marketing)     | Until consent revoked           | N/A                                      | Deleted on consent revocation + 30 days       | Consent                   |
+| Email marketing history           | Until consent revoked           | N/A                                      | Deleted on consent revocation + 30 days       | Consent                   |
+| UTM / behavioral tracking         | 24 months from collection       | N/A                                      | Anonymized after 24 months                    | Consent                   |
+| Audit logs                        | 6 months (active table)         | 6-24 months (archive)                    | Deleted after 24 months (unless NF-e related) | Legitimate interest       |
+| Session data (PostgreSQL)         | Session duration (max 24h)      | N/A                                      | Expired sessions cleaned by Vercel Cron       | Legitimate interest       |
+| Creator data                      | Duration of partnership         | 5 years after partnership ends           | Anonymized after 5 years                      | Contract execution        |
+| B2B retailer data                 | Duration of relationship        | 5 years after relationship ends          | Anonymized after 5 years                      | Contract execution        |
+| Product reviews                   | Indefinite (while published)    | N/A                                      | Anonymized on deletion request                | Consent                   |
+| Consent records                   | Permanent                       | N/A                                      | Never deleted (proof of lawful processing)    | Legal protection          |
+| Login credentials                 | Duration of account             | N/A                                      | Deleted on account deletion                   | Contract execution        |
 
 ### Automated Purge Jobs
 
-A scheduled BullMQ job (`lgpd:data-purge`) runs weekly and:
+A scheduled Vercel Cron job (`lgpd:data-purge`) runs weekly and:
 
 1. Identifies records past their retention period.
 2. Anonymizes or deletes per the policy above.
@@ -441,7 +451,7 @@ Checklist of LGPD requirements per Ambaril module.
 ### 8.11 Auth (Authentication)
 
 - [x] Password stored as bcrypt/argon2 hash (never plaintext)
-- [x] Session data ephemeral (Redis, auto-expires)
+- [x] Session data ephemeral (PostgreSQL `global.sessions`, cleaned by Vercel Cron)
 - [x] Account deletion removes all authentication data
 - [x] Login history in audit log (anonymized after retention period)
 

@@ -1351,3 +1351,216 @@ Add these fields to `whatsapp.broadcast_campaigns` or the broadcast execution ta
 ### WhatsApp Group Manager
 
 28 VIP groups currently managed manually. Features: auto-rotate members when group hits limit (256), broadcast to groups, smart rotation links, CRM segment → auto-add to group. Integration with CRM VIP segments for automatic member management.
+
+---
+
+## WhatsApp Compliance
+
+> **Purpose:** Regulatory and platform compliance requirements for WhatsApp Business API messaging.
+> **Applies to:** All outbound WhatsApp communication (transactional, marketing, support).
+> **References:** [LGPD-RETENTION.md](../../platform/LGPD-RETENTION.md), [LGPD.md](../../platform/LGPD.md), Meta WhatsApp Business Platform Policy, Marco Civil da Internet.
+
+### 1. Opt-in Proof (Consent Collection)
+
+Every WhatsApp message sent requires prior documented consent from the recipient. Consent must be collected **before** the first message and stored as a permanent legal record.
+
+**Consent record schema** (table: `communication.consent_records`):
+
+| Column                   | Type                      | Description                                                                                      |
+| ------------------------ | ------------------------- | ------------------------------------------------------------------------------------------------ |
+| `id`                     | UUID (PK)                 | Unique consent record ID                                                                         |
+| `tenant_id`              | UUID (FK)                 | Tenant context                                                                                   |
+| `contact_id`             | UUID (FK -> crm.contacts) | The consenting contact                                                                           |
+| `channel`                | TEXT                      | `'whatsapp'`                                                                                     |
+| `purpose`                | TEXT                      | `'transactional'` or `'marketing'`                                                               |
+| `consented_at`           | TIMESTAMPTZ               | Exact moment consent was given                                                                   |
+| `consent_source`         | TEXT                      | One of: `'checkout_form'`, `'landing_page'`, `'import'`, `'whatsapp_reply'`, `'portal_settings'` |
+| `ip_address`             | INET                      | IP address at time of consent                                                                    |
+| `user_agent`             | TEXT                      | Browser/device user agent string                                                                 |
+| `privacy_policy_version` | TEXT                      | Version of privacy policy accepted (e.g., `'2026-04-v1'`)                                        |
+| `opted_out_at`           | TIMESTAMPTZ               | NULL until opt-out; set when consent is revoked                                                  |
+| `opted_out_source`       | TEXT                      | `'keyword'`, `'portal'`, `'support_request'`, `'admin_manual'`                                   |
+| `created_at`             | TIMESTAMPTZ               | Record creation timestamp                                                                        |
+
+**Rules:**
+
+- A contact MUST have an active consent record (`opted_out_at IS NULL`) for the relevant purpose before any message is sent.
+- Consent for `'transactional'` and `'marketing'` are tracked separately — transactional consent does NOT grant marketing consent.
+- Imported contacts (`consent_source = 'import'`) must have documented proof of prior consent from the import source. If proof is unavailable, send an opt-in confirmation message first.
+- Consent records are NEVER deleted (see [LGPD-RETENTION.md](../../platform/LGPD-RETENTION.md) — retained indefinitely as legal proof).
+
+---
+
+### 2. Opt-out Processing
+
+Contacts can revoke consent at any time. The system must process opt-outs **within 24 hours** of receiving the keyword, though the target is immediate (real-time webhook processing).
+
+**Opt-out keywords** (case-insensitive, matched against full message body after trim):
+
+- `PARAR`
+- `SAIR`
+- `CANCELAR`
+- `STOP`
+- `UNSUBSCRIBE`
+
+**Processing flow:**
+
+1. **Webhook receives inbound message** -> check if body matches an opt-out keyword.
+2. **Update consent record:**
+   ```sql
+   UPDATE communication.consent_records
+   SET opted_out_at = now(),
+       opted_out_source = 'keyword'
+   WHERE contact_id = :contact_id
+     AND channel = 'whatsapp'
+     AND purpose = 'marketing'
+     AND opted_out_at IS NULL;
+   ```
+3. **Update contact flag** (denormalized for fast lookup):
+   ```sql
+   UPDATE crm.contacts
+   SET whatsapp_opted_out = true,
+       whatsapp_opted_out_at = now()
+   WHERE id = :contact_id;
+   ```
+4. **Block all future marketing messages** to this number immediately. The send pipeline MUST check consent before every send:
+   ```sql
+   -- Pre-send check (MUST pass before any WhatsApp send)
+   SELECT EXISTS (
+     SELECT 1 FROM communication.consent_records
+     WHERE contact_id = :contact_id
+       AND channel = 'whatsapp'
+       AND purpose = :purpose  -- 'transactional' or 'marketing'
+       AND opted_out_at IS NULL
+   ) AS has_consent;
+   ```
+   If `has_consent = false`, the message MUST be rejected with reason `'no_consent'`. No exceptions. No overrides.
+5. **Send confirmation reply** to the contact: "Voce foi removido da nossa lista. Para voltar a receber mensagens, envie OI."
+6. **Log opt-out in audit trail:**
+   ```sql
+   INSERT INTO global.audit_logs (tenant_id, actor_id, action, entity_type, entity_id, details)
+   VALUES (:tenant_id, 'system', 'whatsapp_opt_out', 'contact', :contact_id,
+     jsonb_build_object('keyword', :keyword, 'message_id', :wa_message_id, 'channel', 'whatsapp'));
+   ```
+
+**Re-opt-in:** Contact sends "OI", "VOLTAR", or "ATIVAR" -> create a new consent record. The old opt-out record is NOT modified (historical proof preserved).
+
+---
+
+### 3. Template Governance
+
+All WhatsApp messages sent via the Business API (except free-form replies within a 24-hour conversation window) must use Meta-approved templates.
+
+**Template lifecycle:**
+
+| Status     | Description                                   | Can send? |
+| ---------- | --------------------------------------------- | --------- |
+| `draft`    | Created in Ambaril, not yet submitted to Meta | No        |
+| `pending`  | Submitted to Meta, awaiting review            | No        |
+| `approved` | Meta approved the template                    | Yes       |
+| `rejected` | Meta rejected the template                    | No        |
+| `paused`   | Meta paused due to quality issues             | No        |
+| `disabled` | Meta disabled permanently                     | No        |
+
+**Template storage** (table: `whatsapp.message_templates`):
+
+| Column             | Type        | Description                                     |
+| ------------------ | ----------- | ----------------------------------------------- |
+| `id`               | UUID (PK)   | Internal template ID                            |
+| `tenant_id`        | UUID (FK)   | Tenant context                                  |
+| `meta_template_id` | TEXT        | Meta's template ID (returned on submission)     |
+| `name`             | TEXT        | Template name (snake_case, Meta requirement)    |
+| `language`         | TEXT        | `'pt_BR'`, `'en_US'`, etc.                      |
+| `category`         | TEXT        | `'MARKETING'`, `'UTILITY'`, `'AUTHENTICATION'`  |
+| `status`           | TEXT        | One of the lifecycle statuses above             |
+| `version`          | INT         | Incrementing version number                     |
+| `header`           | JSONB       | Header component (text, image, document, video) |
+| `body`             | TEXT        | Template body text with {{placeholders}}        |
+| `footer`           | TEXT        | Optional footer                                 |
+| `buttons`          | JSONB       | Call-to-action or quick reply buttons           |
+| `submitted_at`     | TIMESTAMPTZ | When submitted to Meta                          |
+| `approved_at`      | TIMESTAMPTZ | When Meta approved                              |
+| `rejected_at`      | TIMESTAMPTZ | When Meta rejected                              |
+| `rejection_reason` | TEXT        | Meta's rejection reason                         |
+| `created_at`       | TIMESTAMPTZ | Record creation                                 |
+| `created_by`       | UUID (FK)   | User who created                                |
+
+**Rules:**
+
+- **REJECT condition:** The send pipeline MUST reject any message that references a template with `status != 'approved'`. No exceptions.
+- **Versioning:** Templates are NEVER edited in place. To modify an approved template:
+  1. Create a new row with `version = previous_version + 1` and `status = 'draft'`.
+  2. Submit the new version to Meta.
+  3. Once approved, update automations/campaigns to reference the new version.
+  4. The old version remains in the database for audit trail (messages already sent reference it).
+- **Quality monitoring:** Track Meta's quality rating per template. If a template is `paused` by Meta, immediately halt all campaigns using it and alert the operator.
+
+---
+
+### 4. Rate Limits (Meta Business API)
+
+Meta enforces tiered messaging limits per WhatsApp Business Account (WABA). Exceeding the limit results in message failures and potential account restrictions.
+
+| Tier              | Daily Limit (business-initiated) | How to reach                            |
+| ----------------- | -------------------------------- | --------------------------------------- |
+| Tier 1 (new WABA) | 1,000 messages / 24h             | Default for new accounts                |
+| Tier 2            | 10,000 messages / 24h            | Send 2x current limit with good quality |
+| Tier 3            | 100,000 messages / 24h           | Send 2x current limit with good quality |
+| Unlimited         | No limit                         | Sustained high volume with good quality |
+
+**Implementation:**
+
+- **Track daily message count** per tenant: `whatsapp.daily_message_counts` table with `(tenant_id, date, messages_sent, tier_limit)`.
+- **Pre-send check:** Before every business-initiated message, check current count against tier limit:
+  ```sql
+  SELECT messages_sent, tier_limit
+  FROM whatsapp.daily_message_counts
+  WHERE tenant_id = :tenant_id AND date = CURRENT_DATE;
+  ```
+  If `messages_sent >= tier_limit`, REJECT the message with reason `'rate_limit_exceeded'`.
+- **Increment on send:**
+  ```sql
+  INSERT INTO whatsapp.daily_message_counts (tenant_id, date, messages_sent, tier_limit)
+  VALUES (:tenant_id, CURRENT_DATE, 1, :current_tier_limit)
+  ON CONFLICT (tenant_id, date)
+  DO UPDATE SET messages_sent = whatsapp.daily_message_counts.messages_sent + 1;
+  ```
+- **Tier detection:** Query Meta Graph API periodically to get current messaging tier. Store in `whatsapp.waba_config`.
+- **Alert thresholds:** Alert operator at 80% and 95% of daily tier limit.
+- **Broadcast scheduling:** Large campaigns must check remaining daily capacity before scheduling. If the campaign exceeds remaining capacity, split across multiple days.
+
+**Note:** User-initiated conversations (customer messages first) do NOT count against the business-initiated limit. Only business-initiated (template) messages count.
+
+---
+
+### 5. Evidence Trail (Audit Compliance)
+
+For every WhatsApp message sent by the system, store a complete evidence record proving compliance. This is essential for ANPD audits, Meta policy reviews, and internal dispute resolution.
+
+**Per-message record** (stored in `whatsapp.message_log` or equivalent):
+
+| Field                        | Description                                                                 |
+| ---------------------------- | --------------------------------------------------------------------------- |
+| `message_id`                 | Internal unique ID                                                          |
+| `wa_message_id`              | Meta's message ID (returned from API)                                       |
+| `tenant_id`                  | Tenant context                                                              |
+| `contact_id`                 | Recipient contact                                                           |
+| `recipient_phone`            | Phone number (E.164 format)                                                 |
+| `template_id`                | FK to `whatsapp.message_templates` (NULL for free-form replies)             |
+| `template_version`           | Template version used at time of send                                       |
+| `consent_record_id`          | FK to `communication.consent_records` — proves consent existed at send time |
+| `message_type`               | `'template'`, `'reply'`, `'interactive'`                                    |
+| `direction`                  | `'outbound'`                                                                |
+| `sent_at`                    | Timestamp of API call                                                       |
+| `delivery_status`            | `'sent'`, `'delivered'`, `'read'`, `'failed'` (updated via webhook)         |
+| `delivery_status_updated_at` | Last status update timestamp                                                |
+| `failure_reason`             | If failed: error code and message from Meta API                             |
+| `campaign_id`                | FK to campaign/broadcast (NULL for transactional)                           |
+| `cost_category`              | `'business_initiated'` or `'user_initiated'` (affects billing)              |
+
+**Rules:**
+
+- Every outbound message MUST have a `consent_record_id` linking to an active consent record at the time of send. This is the primary compliance proof.
+- Delivery status updates arrive via Meta webhooks and must be stored promptly.
+- Message logs are retained for 5 years (fiscal/legal compliance — see [LGPD-RETENTION.md](../../platform/LGPD-RETENTION.md)).
+- On data subject deletion request: anonymize recipient_phone and contact_id, but retain the message log record with template_id and consent_record_id (fiscal/compliance retention takes precedence).

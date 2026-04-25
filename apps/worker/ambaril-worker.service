@@ -1,0 +1,47 @@
+# =============================================================================
+# Iron Core Worker — systemd service (ADR-018)
+# =============================================================================
+# Created: 2026-04-24
+# Why: The worker must restart automatically on crash and start on boot.
+#      systemd is the standard Linux process manager on Ubuntu 24.04.
+#
+# Install:
+#   sudo cp ambaril-worker.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable ambaril-worker
+#   sudo systemctl start ambaril-worker
+#
+# Logs:
+#   journalctl -u ambaril-worker -f
+# =============================================================================
+
+[Unit]
+Description=Ambaril Iron Core Worker (ADR-018) — ERP background jobs
+Documentation=https://github.com/ambaril/ambaril-web/packages/db/sql/README.md
+After=network.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=aratar
+Group=aratar
+WorkingDirectory=/home/aratar/projects/ambaril-web/apps/worker
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ambaril-worker
+
+# Environment
+EnvironmentFile=/home/aratar/projects/ambaril-web/.env
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/aratar/projects/ambaril-web/apps/worker/logs
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

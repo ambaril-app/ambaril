@@ -40,9 +40,11 @@ The `flow-*` skill family (`flow-01-shape` through `flow-06-spec-execute`) was r
 - No risk tier, blast radius, regression set, and rollback path: no medium+ execution.
 - No real data for the target module: no UI-first implementation.
 - No operator review at wave boundary: not done.
-- If UI is involved, no execution without `DESIGN.md` + relevant Design Lab baseline.
+- If UI is involved, no execution without `DESIGN.md` (LLM-optimized tokens) + `DS.md` + relevant Design Lab baseline.
 
 ## Artifact Map
+
+- `DESIGN.md` — Google spec design tokens, YAML frontmatter + 8 sections, read for all UI work
 
 - `docs/pitches/YYYY-MM-DD-{slug}.md`
 - `docs/cycles/YYYY-MM-DD.md`
@@ -54,7 +56,7 @@ The `flow-*` skill family (`flow-01-shape` through `flow-06-spec-execute`) was r
 
 - `GOLD-STANDARD.md`
 - `CLAUDE.md`
-- `../DESIGN.md` when UI is involved
+- `DESIGN.md` (LLM-optimized design tokens — Google spec format, YAML frontmatter + 8 sections) when UI is involved
 - `DS.md` when UI is involved
 - `apps/web/src/app/(admin)/admin/design-lab/*` matching page when UI is involved
 - `docs/dev/CHANGE-SAFETY.md`

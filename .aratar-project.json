@@ -1,0 +1,13 @@
+{
+  "project_name": "ambaril-web",
+  "ds_path": "DS.md",
+  "design_md_path": "DESIGN.md",
+  "design_lab_path": "docs/design-lab/",
+  "gold_standard_path": "GOLD-STANDARD.md",
+  "insights_path": "INSIGHTS.md",
+  "security_checklist_path": "SECURITY-CHECKLIST.md",
+  "language": {
+    "code": "en",
+    "interface": "pt-BR"
+  }
+}

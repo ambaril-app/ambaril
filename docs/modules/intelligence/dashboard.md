@@ -9,7 +9,7 @@
 > **Date:** March 2026
 > **Status:** Approved
 > **Replaces:** None (new capability; previously spreadsheets and manual Bling/Yever dashboards)
-> **References:** [DATABASE.md](../../architecture/DATABASE.md), [API.md](../../architecture/API.md), [AUTH.md](../../architecture/AUTH.md), [NOTIFICATIONS.md](../../platform/NOTIFICATIONS.md), [GLOSSARY.md](../../dev/GLOSSARY.md), [Pulse spec](../communication/pulse.md)
+> **References:** [DATABASE.md](../../architecture/DATABASE.md), [API.md](../../architecture/API.md), [AUTH.md](../../architecture/AUTH.md), [NOTIFICATIONS.md](../../platform/NOTIFICATIONS.md), [GLOSSARY.md](../../dev/GLOSSARY.md), [Pulse spec (archived)](../../archive/pulse-spec.md)
 
 ---
 

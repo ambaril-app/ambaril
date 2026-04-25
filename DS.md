@@ -21,6 +21,21 @@ O sistema de design Ambaril agora opera com dois artefatos complementares:
 - `DESIGN.md` simplifica e operacionaliza; não redefine a identidade.
 - Mudanças de regra nascem aqui primeiro e depois são refletidas no companion.
 
+### DS.md ↔ DESIGN.md Relationship
+
+| File          | Purpose                                                                                            | Length       | Audience                        |
+| ------------- | -------------------------------------------------------------------------------------------------- | ------------ | ------------------------------- |
+| **DS.md**     | Source of truth. Brand research, detailed rationale, component recipes, energy levels, do's/don'ts | ~1,500 lines | Human designers, deep reference |
+| **DESIGN.md** | LLM-optimized derivative. Google spec format: YAML tokens + 8 concise sections                     | ~200 lines   | AI agents during implementation |
+
+**Workflow:** DS.md → `node scripts/ds-to-design.mjs` → DESIGN.md
+
+- Edit DS.md for brand/design decisions
+- Run converter to regenerate DESIGN.md tokens
+- DESIGN.md markdown body is hand-maintained (concise summaries)
+- On divergence, DS.md wins
+- CI runs `node scripts/ds-to-design.mjs --check` to detect drift
+
 ### 0.2 Camadas de leitura
 
 Para reduzir ambiguidade entre marca, produto e geração por IA, toda decisão deve identificar em qual camada está operando:
@@ -521,6 +536,26 @@ Isso impede que a marca escorregue para fantasia, sci-fi ou "luxo vazio". Clarez
 | Auth (login, signup)                      | 2     | Tela de login com artefato de luz contido |
 | Status grades e health scores             | 2     | Nota A-F de saúde do setor                |
 | First-run welcome                         | 2     | "Bem-vindo ao Ambaril, Marcus."           |
+
+### Energy Level → Page/Route Mapping
+
+| Route/Page Type                              | Energy | Rationale                             |
+| -------------------------------------------- | ------ | ------------------------------------- |
+| `/app/erp/*` (orders, inventory, suppliers)  | L0     | Workhorse — data-heavy CRUD           |
+| `/app/plm/*` (products, variants, materials) | L0     | Workhorse — structured data           |
+| `/app/crm/*` (contacts, segments)            | L0     | Workhorse — lists and forms           |
+| `/app/tarefas/*` (tasks, kanban)             | L0-L1  | Mostly workhorse, kanban gets ambient |
+| `/app/dashboard`                             | L1     | Ambient — KPI cards, charts, overview |
+| `/app/mensageria/*` (messages, campaigns)    | L1     | Ambient — conversational UI           |
+| `/app/marketing/*` (campaigns, analytics)    | L1     | Ambient — visual data                 |
+| `/app/creators/*`                            | L1     | Ambient — profile-centric             |
+| `/app/dam/*` (digital assets)                | L1     | Ambient — gallery/grid layouts        |
+| `/app/trocas/*` (exchanges/returns)          | L0     | Workhorse — transactional             |
+| `/app/b2b/*` (wholesale)                     | L0     | Workhorse — B2B is functional         |
+| `/onboarding/*`                              | L2     | Moments — first-run experience        |
+| Empty states (any module)                    | L2     | Moments — encourage action            |
+| Success/celebration screens                  | L2     | Moments — reinforce positive action   |
+| `/auth/*` (login, register)                  | L1-L2  | Between ambient and moments           |
 
 ---
 

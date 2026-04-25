@@ -1,6 +1,30 @@
 import type { Metadata } from "next";
+import { Bricolage_Grotesque, DM_Sans, DM_Mono } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
+
+const bricolage = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-bricolage",
+  display: "swap",
+  weight: ["400", "500", "600"],
+  axes: ["opsz"],
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
+  axes: ["opsz"],
+});
+
+const dmMono = DM_Mono({
+  subsets: ["latin"],
+  variable: "--font-dm-mono",
+  display: "swap",
+  weight: ["400"],
+});
 
 export const metadata: Metadata = {
   title: "Ambaril",
@@ -20,14 +44,10 @@ export default function RootLayout({
             __html: `(function(){var t=localStorage.getItem('ambaril_theme')||document.cookie.match(/ambaril_theme=(\\w+)/)?.[1];if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme:dark)').matches))document.documentElement.classList.add('dark')})()`,
           }}
         />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400&display=swap"
-          rel="stylesheet"
-        />
       </head>
-      <body>
+      <body
+        className={`${bricolage.variable} ${dmSans.variable} ${dmMono.variable}`}
+      >
         <Providers>{children}</Providers>
       </body>
     </html>

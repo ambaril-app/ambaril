@@ -8,24 +8,29 @@
 
 ---
 
+<!-- TODO: Schema name drift — the code (packages/db/src/schema/) uses `plm` for the production schema,
+     but this doc and most module docs reference `pcp.*` tables. Similarly, code uses `messaging` but docs say `whatsapp`.
+     Schemas `inbox`, `clawdbot`, and `reviews` are referenced in docs but have no schema files in code yet.
+     A global rename pass is needed once the canonical names are confirmed. -->
+
 ## 1. Design Principles
 
-| Principle        | Rule                                                                                                               |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **Naming**       | All table and column names in `snake_case`, English. See GLOSSARY.md for PT-BR mapping                             |
-| **Primary Keys** | UUID v7 (`gen_random_uuid()` or app-generated). Sortable by creation time                                          |
-| **Soft Delete**  | `deleted_at TIMESTAMPTZ NULL` on entities that support deletion                                                    |
-| **Timestamps**   | `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()` and `updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()` on every table |
-| **Timezone**     | All timestamps stored in UTC. Converted to BRT (`America/Sao_Paulo`) in the frontend only                          |
-| **Foreign Keys** | `{entity}_id` format (e.g., `contact_id`, `order_id`). Always indexed                                              |
-| **Enums**        | PostgreSQL native `CREATE TYPE ... AS ENUM (...)` for all status and category fields                               |
-| **JSONB**        | Used for flexible metadata: audit diffs, config objects, address structures, extra fields                          |
-| **Indexes**      | On all foreign keys, frequently filtered columns, and search columns. Detailed in section 5                        |
-| **Namespacing**  | PostgreSQL schemas per module. No table prefixes                                                                   |
-| **Money**        | `NUMERIC(12,2)` for all monetary values (BRL). Never use `FLOAT` or `REAL`                                         |
-| **Percentages**  | `NUMERIC(5,2)` for rates and percentages (e.g., `12.50` = 12.5%)                                                   |
-| **Scores**       | `INTEGER` for 0-100 scores, `NUMERIC(3,2)` for 1-5 ratings                                                         |
-| **Arrays**       | PostgreSQL native `TEXT[]` for simple tag lists. JSONB for complex arrays                                          |
+| Principle        | Rule                                                                                                                                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Naming**       | All table and column names in `snake_case`, English. See GLOSSARY.md for PT-BR mapping                                                                                                                              |
+| **Primary Keys** | UUID v7 (`gen_random_uuid()` or app-generated). Sortable by creation time                                                                                                                                           |
+| **Soft Delete**  | `deleted_at TIMESTAMPTZ NULL` on entities that support deletion                                                                                                                                                     |
+| **Timestamps**   | `created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()` and `updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()` on every table                                                                                                  |
+| **Timezone**     | All timestamps stored in UTC. Converted to BRT (`America/Sao_Paulo`) in the frontend only                                                                                                                           |
+| **Foreign Keys** | `{entity}_id` format (e.g., `contact_id`, `order_id`). Always indexed                                                                                                                                               |
+| **Enums**        | PostgreSQL native `CREATE TYPE ... AS ENUM (...)` for all status and category fields                                                                                                                                |
+| **JSONB**        | Used for flexible metadata: audit diffs, config objects, address structures, extra fields                                                                                                                           |
+| **Indexes**      | On all foreign keys, frequently filtered columns, and search columns. Detailed in section 5                                                                                                                         |
+| **Namespacing**  | PostgreSQL schemas per module. No table prefixes                                                                                                                                                                    |
+| **Money**        | `INTEGER` for all monetary values stored as **cents** (BRL × 100). See `packages/shared/src/money.ts`. Never use `FLOAT` or `REAL`. Legacy `NUMERIC(12,2)` columns being migrated per `docs/dev/MONEY-MIGRATION.md` |
+| **Percentages**  | `NUMERIC(5,2)` for rates and percentages (e.g., `12.50` = 12.5%)                                                                                                                                                    |
+| **Scores**       | `INTEGER` for 0-100 scores, `NUMERIC(3,2)` for 1-5 ratings                                                                                                                                                          |
+| **Arrays**       | PostgreSQL native `TEXT[]` for simple tag lists. JSONB for complex arrays                                                                                                                                           |
 
 ---
 
@@ -38,18 +43,18 @@ CREATE SCHEMA IF NOT EXISTS global;
 CREATE SCHEMA IF NOT EXISTS checkout;
 CREATE SCHEMA IF NOT EXISTS crm;
 CREATE SCHEMA IF NOT EXISTS erp;
-CREATE SCHEMA IF NOT EXISTS pcp;
-CREATE SCHEMA IF NOT EXISTS whatsapp;
+CREATE SCHEMA IF NOT EXISTS plm;  -- NOTE: docs historically used 'pcp', code uses 'plm'
+CREATE SCHEMA IF NOT EXISTS messaging;  -- NOTE: docs historically used 'whatsapp', code uses 'messaging'
 CREATE SCHEMA IF NOT EXISTS trocas;
-CREATE SCHEMA IF NOT EXISTS inbox;
+-- CREATE SCHEMA IF NOT EXISTS inbox;  -- NOTE: no inbox schema file exists in code (archived module)
 CREATE SCHEMA IF NOT EXISTS b2b;
 CREATE SCHEMA IF NOT EXISTS creators;
 CREATE SCHEMA IF NOT EXISTS marketing;
 CREATE SCHEMA IF NOT EXISTS tarefas;
-CREATE SCHEMA IF NOT EXISTS clawdbot;
+-- CREATE SCHEMA IF NOT EXISTS clawdbot;  -- NOTE: no clawdbot schema file exists in code yet
 CREATE SCHEMA IF NOT EXISTS dashboard;
 CREATE SCHEMA IF NOT EXISTS dam;
-CREATE SCHEMA IF NOT EXISTS reviews;
+-- CREATE SCHEMA IF NOT EXISTS reviews;  -- NOTE: no reviews schema file exists in code yet
 ```
 
 | Schema      | Module             | Tables                                                                                                                                                                                                                              |

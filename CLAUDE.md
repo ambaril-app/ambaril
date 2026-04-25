@@ -25,6 +25,8 @@
 - Soft delete: coluna `deleted_at` (nullable timestamp)
 - API envelope: `{ data, meta, errors }` — ver `docs/architecture/API.md`
 - Prefixar arquivos com kebab-case: `order-list.tsx`, não `OrderList.tsx`
+- Após qualquer `db:push` ou `db:migrate`: rodar `bash packages/db/sql/iron-core-runner.sh` — ver seção Iron Core abaixo
+- Mutações multi-tabela DEVEM usar `db.transaction()` — ver `packages/db/src/patterns/transaction.ts`
 
 ## Stack (ver docs/architecture/STACK.md)
 
@@ -187,6 +189,59 @@ packages/shared/src/integrations/
 
 - **Credentials:** por tenant em `global.tenant_integrations` (encrypted). `.env` é para infra da plataforma, não para API keys de tenant.
 - **Adicionar novo provider:** implementar interface da capability + registrar no catálogo. Zero mudanças no código dos módulos.
+
+## Feature Flags (Progressive Rollout)
+
+New features that change user-visible behavior MUST be wrapped in feature flags when:
+
+- The feature affects checkout, payments, or orders (high-risk)
+- The feature is being released incrementally across tenants
+- The feature has a rollback plan that depends on quick disable
+
+### Implementation Pattern
+
+```typescript
+// packages/shared/src/feature-flags.ts
+// Simple feature flag check — no external service needed
+export async function isFeatureEnabled(
+  tenantId: string,
+  flag: string,
+): Promise<boolean> {
+  // Phase 1: Database-backed flags (tenant_feature_flags table)
+  // Phase 2: Consider LaunchDarkly/Flagsmith if >20 flags
+  const result = await db
+    .select()
+    .from(tenantFeatureFlags)
+    .where(
+      and(
+        eq(tenantFeatureFlags.tenantId, tenantId),
+        eq(tenantFeatureFlags.flag, flag),
+        eq(tenantFeatureFlags.enabled, true),
+      ),
+    )
+    .limit(1);
+  return result.length > 0;
+}
+```
+
+### Usage in Server Actions
+
+```typescript
+export async function processOrder(input: OrderInput) {
+  const session = await getTenantSession();
+  if (await isFeatureEnabled(session.tenantId, "new-order-flow")) {
+    return processOrderV2(session, input);
+  }
+  return processOrderV1(session, input);
+}
+```
+
+### Rules
+
+- Flag names: kebab-case, descriptive (e.g., `new-checkout-flow`, `erp-bulk-import`)
+- Default: disabled (new tenants don't get unfinished features)
+- Clean up: remove flag code within 2 weeks of 100% rollout
+- Never nest flags (if A && if B = combinatorial explosion)
 
 ## Diretivas de agente — Segurança obrigatória (ESAA-Security Enforcement)
 
@@ -422,3 +477,246 @@ Durante implementação (`/spec-implement`), anotar inconsistências, gaps, expa
 - NUNCA usar underscore em nomes de `.md` — usar hyphen
 - NUNCA misturar idiomas no mesmo filename
 - Archived docs SEMPRE em `docs/archive/`, nunca soltos em `docs/modules/`
+
+## Iron Core — Database Safety Layer (ADR-015 a ADR-019)
+
+> **Regra absoluta:** Após qualquer `db:push`, `db:migrate`, ou criação de tabela nova no schema Drizzle, rodar:
+>
+> ```bash
+> cd ~/projects/ambaril-web && bash packages/db/sql/iron-core-runner.sh
+> ```
+>
+> O script é idempotente — safe to re-run quantas vezes quiser.
+
+### O que Iron Core faz
+
+O PostgreSQL **não confia no app**. Invariants de negócio são enforçados no banco via constraints e triggers, independente de bugs no código TypeScript.
+
+| Proteção                                    | Mecanismo                    | Arquivo                                                 |
+| ------------------------------------------- | ---------------------------- | ------------------------------------------------------- |
+| Estoque nunca negativo                      | CHECK constraint             | `iron-core-constraints.sql`                             |
+| Preços/custos ≥ 0                           | CHECK constraint             | `iron-core-constraints.sql`                             |
+| NF-e não duplica por pedido                 | Partial UNIQUE index         | `iron-core-constraints.sql`                             |
+| Status de pedido segue FSM                  | BEFORE UPDATE trigger        | `iron-core-fsm.sql`                                     |
+| Movimentos de inventário são append-only    | BEFORE UPDATE/DELETE trigger | `iron-core-double-entry.sql`                            |
+| Transações financeiras são append-only      | BEFORE UPDATE/DELETE trigger | `iron-core-double-entry.sql`                            |
+| NF-e autorizada é imutável (pai + filhos)   | BEFORE UPDATE trigger        | `iron-core-double-entry.sql` + `iron-core-v2-fixes.sql` |
+| Toda mutação financeira/inventory auditada  | AFTER trigger → audit_logs   | `iron-core-audit.sql`                                   |
+| Overpayment prevenido                       | AFTER INSERT/UPDATE trigger  | `iron-core-v3-column-fix.sql`                           |
+| NF-e payment sum = total_nfe antes de SEFAZ | BEFORE UPDATE trigger        | `iron-core-v2-fixes.sql`                                |
+
+### Regras para código (ADR-016 + ADR-017)
+
+- **Toda mutação multi-tabela DEVE usar `db.transaction()`** — nunca múltiplos `db.update()` sem transaction wrapper
+- **Usar `withTenantTransaction()`** de `@ambaril/db/patterns/transaction` — seta `app.tenant_id` e `app.user_id` automaticamente para RLS + audit
+- **Tabelas concorrentes usam optimistic locking** — coluna `version` + `WHERE version = ?` via `optimisticUpdate()` de `@ambaril/db/patterns/optimistic-lock`
+- **Jobs pesados (batch NF-e, DRE, reconciliação) vão para o Worker** (`apps/worker`) no Hetzner, não em Server Actions (timeout Vercel)
+
+### Arquivos
+
+```
+packages/db/sql/                    # SQL executado contra PostgreSQL
+├── rls-bootstrap.sql               # RLS + ambaril_app role
+├── iron-core-constraints.sql       # CHECK + partial UNIQUE
+├── iron-core-audit.sql             # Audit triggers
+├── iron-core-fsm.sql               # FSM enforcement
+├── iron-core-double-entry.sql      # Append-only + inventory sync
+├── iron-core-v2-fixes.sql          # Cascading NF-e, balance, PO FSM
+├── iron-core-v3-column-fix.sql     # gross_amount fix
+└── iron-core-runner.sh             # Roda tudo em ordem
+
+packages/db/src/patterns/           # TypeScript patterns obrigatórios
+├── transaction.ts                  # withTenantTransaction()
+└── optimistic-lock.ts              # ConflictError + optimisticUpdate()
+
+apps/worker/                        # graphile-worker no Hetzner VPS
+└── src/jobs/                       # Job handlers (stubs, implementar por fase)
+```
+
+---
+
+## Performance Budget (P-directives)
+
+ERP users navigate constantly. Speed is non-negotiable.
+
+### P1 — Core Web Vitals Targets
+
+| Metric                 | Target  | Hard Limit |
+| ---------------------- | ------- | ---------- |
+| LCP                    | < 1.5s  | < 2.5s     |
+| INP                    | < 150ms | < 200ms    |
+| CLS                    | < 0.05  | < 0.1      |
+| Initial JS bundle      | < 150KB | < 250KB    |
+| First contentful paint | < 800ms | < 1.5s     |
+
+### P2 — Font Loading
+
+Fonts MUST be loaded via `next/font` (self-hosted). Never use Google Fonts CDN `<link>` tags. The three font CSS variables are: `--font-bricolage`, `--font-dm-sans`, `--font-dm-mono`.
+
+### P3 — Dynamic Imports
+
+Lazy-load components >50KB or below the fold:
+
+```typescript
+const Chart = dynamic(() => import('@/components/charts/revenue'), {
+  loading: () => <ChartSkeleton />,
+  ssr: false,
+})
+```
+
+Candidates: Recharts, rich text editors, PDF viewers, data exporters, advanced filters, bulk actions.
+
+Never lazy-load: navigation, headers, sidebar, components <10KB.
+
+### P4 — Caching Architecture (3 tiers)
+
+**Tier 1 — Server cache** (`unstable_cache` or `use cache`):
+
+```typescript
+import { unstable_cache } from "next/cache";
+
+export const getCachedOrders = unstable_cache(
+  async (tenantId: string) => {
+    return db.select().from(orders).where(eq(orders.tenantId, tenantId));
+  },
+  ["orders"],
+  { tags: [`orders-${tenantId}`], revalidate: 300 },
+);
+```
+
+**Tier 2 — Client cache** (TanStack Query):
+
+```typescript
+// Reference data: 24h staleTime
+// Dashboard KPIs: 5min
+// Active lists (orders): 30s
+// Real-time (inventory): refetchInterval 10s
+```
+
+**Tier 3 — Request dedup** (`React.cache`):
+
+```typescript
+import { cache } from 'react'
+export const getTenant = cache(async (tenantId: string) => { ... })
+```
+
+### P5 — Tenant-Scoped Cache Keys (MANDATORY)
+
+Every cache key MUST include `tenantId`. Cross-tenant cache pollution is a security vulnerability.
+
+```typescript
+// CORRECT
+queryKey: ["orders", tenantId, filters];
+tags: [`orders-${tenantId}`];
+
+// FORBIDDEN — will be rejected in review
+queryKey: ["orders", filters];
+tags: ["orders"];
+```
+
+### P6 — Database Query Patterns
+
+1. **Select specific columns** — never `db.select().from(table)` (SELECT \*)
+2. **Use relational queries** for related data — never loop + query (N+1)
+3. **Prepared statements** for repeated queries
+4. **Composite indexes** on `(tenant_id, ...)` for every table
+5. **Use neon-http driver** for serverless, pooled connection for transactions
+
+```typescript
+// CORRECT
+const list = await db
+  .select({
+    id: products.id,
+    name: products.name,
+    price: products.price,
+  })
+  .from(products)
+  .where(eq(products.tenantId, tenantId));
+
+// FORBIDDEN
+const all = await db.select().from(products);
+```
+
+### P7 — Skeleton Screens
+
+Every route with async data MUST have a `loading.tsx` with dimension-matched skeletons. Set `min-height` on data containers. Use `aspect-ratio` for media. Never show a bare spinner.
+
+### P8 — Virtualized Tables
+
+Tables with >50 rows MUST use `@tanstack/react-virtual`. ERP data tables (orders, inventory, transactions) will routinely have 500+ rows.
+
+### P9 — Bundle Optimization
+
+`optimizePackageImports` is configured in next.config.ts for: lucide-react, recharts, date-fns, @phosphor-icons/react.
+
+Never import full libraries. Prefer native JS over lodash. Use date-fns (tree-shakeable) over moment.js.
+
+### P10 — Animations
+
+Animations load from globals.css. OVERDRIVE and DELIGHT animation sets only apply at L1/L2 energy levels. L0 (Workhorse) routes must have zero animation overhead. Use `prefers-reduced-motion` to disable all motion.
+
+### P11 — Prefetching
+
+ERP sidebar has many links. Use `prefetch={false}` on sidebar Links, switch to hover-intent prefetching:
+
+```typescript
+<Link href={route} prefetch={false} onMouseEnter={() => router.prefetch(route)}>
+```
+
+Prefetch API data on hover for detail views (orders, products).
+
+### P12 — RLS Performance
+
+PostgreSQL Row-Level Security is belt-and-suspenders with code-level tenant filtering. For RLS to not kill performance:
+
+1. **STABLE functions only** — tenant context function must be `LANGUAGE sql STABLE` (executes once per transaction, not per row)
+2. **Set tenant context per request** — `SET LOCAL app.tenant_id = $1` in middleware/request wrapper
+3. **Composite indexes** — every RLS-filtered table needs `(tenant_id, ...)` composite index
+4. **Never use row-parameter functions** in policies — `USING (check_access(tenant_id, user_id))` executes PER ROW
+
+```sql
+-- CORRECT: STABLE, no row params, executes ONCE
+CREATE OR REPLACE FUNCTION current_tenant_id()
+RETURNS uuid AS $$
+  SELECT current_setting('app.tenant_id', true)::uuid;
+$$ LANGUAGE sql STABLE;
+
+CREATE POLICY tenant_isolation ON orders
+  USING (tenant_id = current_tenant_id());
+```
+
+### P13 — Neon Connection Strategy
+
+| Context                       | Driver                               | Endpoint                       |
+| ----------------------------- | ------------------------------------ | ------------------------------ |
+| Server Components, API routes | `drizzle-orm/neon-http`              | Direct (single HTTP per query) |
+| Transactions, long-running    | `drizzle-orm/neon-serverless` + Pool | Pooled (`-pooler` suffix)      |
+| Migrations, admin             | Direct `pg` connection               | Direct (no pooler)             |
+
+Never use pooled connections for migrations. Never use direct connections for web traffic.
+
+### P14 — Service Worker (Phase 2)
+
+Service Worker setup deferred until app shell is stable. When ready, use Serwist (Next.js SW library):
+
+**Strategy per asset:**
+
+| Asset            | Strategy             | TTL                        |
+| ---------------- | -------------------- | -------------------------- |
+| App shell (HTML) | NetworkFirst         | 3s timeout                 |
+| JS/CSS bundles   | CacheFirst           | Versioned hashes           |
+| Fonts            | CacheFirst           | 30 days                    |
+| API data         | NetworkFirst         | 3s timeout, cache fallback |
+| Images/logos     | StaleWhileRevalidate | 7 days                     |
+
+**Install when:** First ERP module (ERP-01) reaches production with stable routing.
+
+### P15 — Bundle Analysis
+
+Run bundle analysis before each release:
+
+```bash
+ANALYZE=true pnpm --filter=web build
+```
+
+Requires `@next/bundle-analyzer` (install when needed). Target: main JS bundle <150KB.

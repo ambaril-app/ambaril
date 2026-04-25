@@ -39,6 +39,13 @@ const nextConfig: NextConfig = {
     root: "../../",
   },
   experimental: {
+    optimizePackageImports: [
+      "lucide-react",
+      "@phosphor-icons/react",
+      "recharts",
+      "date-fns",
+      "@radix-ui/react-icons",
+    ],
     serverActions: {
       bodySizeLimit: "2mb",
     },
